@@ -40,6 +40,8 @@ function saveApprovedExample(caption: string) {
 // ---------------------------------------------------------------------------
 export default function QuickPostPage() {
   const router = useRouter()
+  // Single shared Supabase client — never create one per-asset in render
+  const supabaseRef = useRef(createClient())
 
   // Media browser state
   const [assets, setAssets]           = useState<MediaAsset[]>([])
@@ -102,11 +104,11 @@ export default function QuickPostPage() {
       setFolderNameById(nameMap)
     } catch {}
 
-    const supabase = createClient()
-    supabase
+    supabaseRef.current
       .from('media_assets')
       .select('*')
       .order('created_at', { ascending: false })
+      .limit(200)
       .then(({ data }) => {
         setAssets(data ?? [])
         setLoadingAssets(false)
@@ -252,10 +254,9 @@ export default function QuickPostPage() {
     setGenerating(true)
     setGenError(null)
 
-    const supabase = createClient()
     const imageUrls = selectedMedia
       .filter((a) => a.file_type.startsWith('image/') && !['image/heic', 'image/heif'].includes(a.file_type.toLowerCase()))
-      .map((a) => supabase.storage.from('media').getPublicUrl(a.storage_path).data.publicUrl)
+      .map((a) => supabaseRef.current.storage.from('media').getPublicUrl(a.storage_path).data.publicUrl)
 
     try {
       const res = await fetch('/api/generate-caption', {
@@ -363,7 +364,7 @@ export default function QuickPostPage() {
     setSaving(true)
     setSaveError(null)
 
-    const supabase = createClient()
+    const supabase = supabaseRef.current
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id ?? 'dev'
 
@@ -580,9 +581,10 @@ export default function QuickPostPage() {
                     const isSelected = selectedMedia.some((a) => a.id === asset.id)
                     const order = isSelected ? selectedMedia.findIndex((a) => a.id === asset.id) + 1 : null
                     const canPreview = asset.file_type.startsWith('image/')
-                    const supabase = createClient()
                     const url = canPreview
-                      ? supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
+                      ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path, {
+                          transform: { width: 200, height: 200, resize: 'cover' },
+                        }).data.publicUrl
                       : null
                     const assetPillar = getPillarForAsset(asset.id)
                     const color = assetPillar ? (PILLAR_COLORS[assetPillar] ?? '') : ''
@@ -646,10 +648,11 @@ export default function QuickPostPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedMedia.map((asset, idx) => {
-                    const supabase = createClient()
                     const canPreview = asset.file_type.startsWith('image/')
                     const url = canPreview
-                      ? supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
+                      ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path, {
+                          transform: { width: 120, height: 120, resize: 'cover' },
+                        }).data.publicUrl
                       : null
 
                     return (
