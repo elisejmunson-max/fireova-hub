@@ -19,38 +19,59 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Handle magic link redirect — Supabase sends tokens in the URL hash fragment
-  // when using the implicit flow. Read them client-side and set the session.
+  // Handle magic link redirect — supports both implicit flow (hash) and PKCE flow (code param)
   useEffect(() => {
-    const hash = window.location.hash
-    if (!hash.includes('access_token')) return
+    async function handleAuthCallback() {
+      const hash = window.location.hash
+      const searchParams = new URLSearchParams(window.location.search)
+      const code = searchParams.get('code')
 
-    const params = new URLSearchParams(hash.slice(1))
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
-    if (!accessToken || !refreshToken) return
-
-    fetch('/api/auth/set-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
-    }).then(async (res) => {
-      if (res.ok) {
-        // Also hydrate the browser client's localStorage so client-side
-        // operations (uploads, queries) have a valid session too.
+      // PKCE flow — exchange code for session using the SDK
+      if (code) {
         const browserSupabase = createClient()
-        await browserSupabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
-        window.location.replace('/dashboard')
-      } else {
-        const body = await res.json().catch(() => ({}))
-        console.error('[auth] set-session failed', res.status, body)
+        const { data, error } = await browserSupabase.auth.exchangeCodeForSession(code)
+        if (!error && data.session) {
+          await fetch('/api/auth/set-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            }),
+          })
+          window.location.replace('/dashboard')
+        }
+        return
       }
-    }).catch((err) => {
-      console.error('[auth] set-session error', err)
-    })
+
+      // Implicit flow — tokens in hash fragment
+      if (!hash.includes('access_token')) return
+      const params = new URLSearchParams(hash.slice(1))
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+      if (!accessToken || !refreshToken) return
+
+      fetch('/api/auth/set-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+      }).then(async (res) => {
+        if (res.ok) {
+          const browserSupabase = createClient()
+          await browserSupabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          window.location.replace('/dashboard')
+        } else {
+          const body = await res.json().catch(() => ({}))
+          console.error('[auth] set-session failed', res.status, body)
+        }
+      }).catch((err) => {
+        console.error('[auth] set-session error', err)
+      })
+    }
+    handleAuthCallback()
   }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
