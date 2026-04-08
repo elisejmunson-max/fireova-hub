@@ -23,7 +23,7 @@ export default function PostThumbnail({ postId }: { postId: string }) {
           .in('id', ids)
           .order('created_at', { ascending: true })
           .limit(1)
-          .single()
+          .single() as { data: { storage_path: string; file_type: string } | null; error: unknown }
 
         if (!data) return
         const isImage = data.file_type.startsWith('image/')

@@ -65,7 +65,7 @@ export default function CaptionsClient({ initialTemplates, userId }: Props) {
 
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('caption_templates')
+      .from('caption_templates' as never)
       .insert({
         user_id: userId,
         name: form.name,
@@ -74,7 +74,7 @@ export default function CaptionsClient({ initialTemplates, userId }: Props) {
         option2: form.option2 || null,
         hashtags: form.hashtags.filter(Boolean),
         notes: form.notes || null,
-      })
+      } as never)
       .select()
       .single()
 

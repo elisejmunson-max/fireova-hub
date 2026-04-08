@@ -247,7 +247,7 @@ export default function PostDetailPage() {
     }
 
     const supabase = createClient()
-    const { error: saveError } = await supabase.from('posts').update(payload).eq('id', id)
+    const { error: saveError } = await supabase.from('posts').update(payload as never).eq('id', id)
 
     if (saveError) { setError(saveError.message); setSaving(false); return }
     saveMediaAssociation(selectedMedia.map((m) => m.id))

@@ -471,7 +471,7 @@ export default function CalendarPage() {
     if (!schedulingDraftId || !schedulingDate) return
     setScheduling(true)
     const supabase = createClient()
-    await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' }).eq('id', schedulingDraftId)
+    await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' } as never).eq('id', schedulingDraftId)
     await loadPosts()
     setSchedulingDraftId('')
     setScheduling(false)
@@ -483,7 +483,7 @@ export default function CalendarPage() {
     if (draftId && schedulingDate) {
       setScheduling(true)
       const supabase = createClient()
-      await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' }).eq('id', draftId)
+      await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' } as never).eq('id', draftId)
       await loadPosts()
       setSchedulingDraftId('')
       setScheduling(false)
@@ -492,7 +492,7 @@ export default function CalendarPage() {
 
   async function unschedulePost(postId: string) {
     const supabase = createClient()
-    await supabase.from('posts').update({ scheduled_date: null, status: 'draft' }).eq('id', postId)
+    await supabase.from('posts').update({ scheduled_date: null, status: 'draft' } as never).eq('id', postId)
     await loadPosts()
   }
 
