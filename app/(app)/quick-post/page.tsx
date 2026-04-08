@@ -46,7 +46,7 @@ export default function QuickPostPage() {
   // Media browser state
   const [assets, setAssets]           = useState<MediaAsset[]>([])
   const [loadingAssets, setLoadingAssets] = useState(true)
-  const [search, setSearch]           = useState('')
+  // search removed — browsing is pillar-driven, not text search
   const [pillarFilter, setPillarFilter] = useState<string | null>(null)
   const [subPillarFilter, setSubPillarFilter] = useState<string | null>(null)
   const [itemFilter, setItemFilter] = useState<string | null>(null)
@@ -231,20 +231,14 @@ export default function QuickPostPage() {
       )
     : []
 
-  const filtered = assets.filter((a) => {
+  const filtered = !pillarFilter ? [] : assets.filter((a) => {
     if (pillarFilter && subPillarFilter && itemFilter) {
-      if (!assetInItem(a.id, pillarFilter, subPillarFilter, itemFilter)) return false
+      return assetInItem(a.id, pillarFilter, subPillarFilter, itemFilter)
     } else if (pillarFilter && subPillarFilter) {
-      if (!assetInSubPillar(a.id, pillarFilter, subPillarFilter)) return false
-    } else if (pillarFilter) {
-      if (!assetInPillar(a.id, pillarFilter)) return false
+      return assetInSubPillar(a.id, pillarFilter, subPillarFilter)
+    } else {
+      return assetInPillar(a.id, pillarFilter)
     }
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      const folderName = (getFolderId(a.id) ? (folderNameById[getFolderId(a.id)!] ?? '') : '').toLowerCase()
-      if (!a.filename.toLowerCase().includes(q) && !folderName.includes(q)) return false
-    }
-    return true
   })
 
   // ---------------------------------------------------------------------------
@@ -455,23 +449,14 @@ export default function QuickPostPage() {
               LEFT — Media browser (3/5)
           ---------------------------------------------------------------- */}
           <div className="lg:col-span-3 space-y-4">
-            {/* Search + pillar filters */}
+            {/* Pillar drill-down filters */}
             <div className="card p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search media..."
-                    className="input pl-9 text-sm"
-                  />
-                </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Browse by folder</p>
                 {selectedMedia.length > 0 && (
                   <button
                     onClick={() => setSelectedMedia([])}
-                    className="text-xs text-stone-500 hover:text-red-500 transition-colors whitespace-nowrap"
+                    className="text-xs text-stone-500 hover:text-red-500 transition-colors"
                   >
                     Clear {selectedMedia.length} selected
                   </button>
@@ -568,9 +553,13 @@ export default function QuickPostPage() {
             <div className="card p-4">
               {loadingAssets ? (
                 <div className="text-center py-12 text-stone-400 text-sm">Loading media...</div>
+              ) : !pillarFilter ? (
+                <div className="text-center py-10">
+                  <p className="text-stone-400 text-sm">Pick a pillar above to browse photos.</p>
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-stone-400 text-sm">No media found.</p>
+                  <p className="text-stone-400 text-sm">No media in this folder yet.</p>
                   <a href="/media-bank" className="text-xs text-ember-600 hover:text-ember-700 font-medium mt-1 inline-block">
                     Upload in Media Bank
                   </a>
