@@ -213,22 +213,17 @@ export default function QuickPostPage() {
   // ---------------------------------------------------------------------------
   // Filtered asset grid
   // ---------------------------------------------------------------------------
-  const pillarsWithMedia = dynPillars.filter((p) =>
-    assets.some((a) => assetInPillar(a.id, p))
-  )
+  // Always show all configured pillars (not just ones with media)
+  const allPillars = dynPillars
 
-  // Sub-pillars that have at least one asset assigned, for the active pillar filter
-  const subPillarsWithMedia = pillarFilter
-    ? (dynSubPillars[pillarFilter] ?? []).filter((s) =>
-        assets.some((a) => assetInSubPillar(a.id, pillarFilter, s))
-      )
+  // All sub-pillars for the active pillar
+  const subPillarsForPillar = pillarFilter
+    ? (dynSubPillars[pillarFilter] ?? [])
     : []
 
-  // Items that have at least one asset assigned, for the active sub-pillar filter
-  const itemsWithMedia = (pillarFilter && subPillarFilter)
-    ? (dynSubPillarItems[subPillarFilter] ?? []).filter((item) =>
-        assets.some((a) => assetInItem(a.id, pillarFilter, subPillarFilter, item))
-      )
+  // All items for the active sub-pillar
+  const itemsForSubPillar = (pillarFilter && subPillarFilter)
+    ? (dynSubPillarItems[subPillarFilter] ?? [])
     : []
 
   const filtered = !pillarFilter ? [] : assets.filter((a) => {
@@ -463,7 +458,7 @@ export default function QuickPostPage() {
                 )}
               </div>
 
-              {pillarsWithMedia.length > 0 && (
+              {allPillars.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {/* Breadcrumb back button */}
                   {pillarFilter && (
@@ -487,48 +482,32 @@ export default function QuickPostPage() {
                     <span className="text-xs text-stone-300 select-none">/</span>
                   )}
 
-                  {/* Pills — show the deepest active level */}
-                  {!pillarFilter && pillarsWithMedia.map((p) => (
+                  {/* Level 1: pillars */}
+                  {!pillarFilter && allPillars.map((p) => (
                     <button key={p}
                       onClick={() => { setPillarFilter(p); setSubPillarFilter(null); setItemFilter(null) }}
                       className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
                     >{p}</button>
                   ))}
 
-                  {pillarFilter && !subPillarFilter && subPillarsWithMedia.length > 0 && subPillarsWithMedia.map((s) => (
+                  {/* Level 2: sub-pillars */}
+                  {pillarFilter && !subPillarFilter && subPillarsForPillar.length > 0 && subPillarsForPillar.map((s) => (
                     <button key={s}
                       onClick={() => { setSubPillarFilter(s); setItemFilter(null) }}
                       className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
                     >{s}</button>
                   ))}
 
-                  {pillarFilter && !subPillarFilter && subPillarsWithMedia.length === 0 && pillarsWithMedia.map((p) => (
-                    <button key={p}
-                      onClick={() => { setPillarFilter(p); setSubPillarFilter(null); setItemFilter(null) }}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        pillarFilter === p ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'
-                      }`}
-                    >{p}</button>
-                  ))}
-
-                  {subPillarFilter && !itemFilter && itemsWithMedia.length > 0 && itemsWithMedia.map((item) => (
+                  {/* Level 3: items */}
+                  {subPillarFilter && !itemFilter && itemsForSubPillar.length > 0 && itemsForSubPillar.map((item) => (
                     <button key={item}
                       onClick={() => setItemFilter(item)}
                       className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
                     >{item}</button>
                   ))}
 
-                  {subPillarFilter && !itemFilter && itemsWithMedia.length === 0 && subPillarsWithMedia.map((s) => (
-                    <button key={s}
-                      onClick={() => { setSubPillarFilter(s); setItemFilter(null) }}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        subPillarFilter === s ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'
-                      }`}
-                    >{s}</button>
-                  ))}
-
                   {/* Active selection badge */}
-                  {(itemFilter || (subPillarFilter && itemsWithMedia.length === 0) || (pillarFilter && subPillarsWithMedia.length === 0 && !subPillarFilter)) && (
+                  {(itemFilter || (subPillarFilter && itemsForSubPillar.length === 0) || (pillarFilter && subPillarsForPillar.length === 0 && !subPillarFilter)) && (
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-800 text-white">
                       {itemFilter ?? subPillarFilter ?? pillarFilter}
                       <button
