@@ -3,26 +3,29 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const LS_POST_MEDIA_KEY = 'fireova_post_media'
-
 export default function PostThumbnail({ postId }: { postId: string }) {
   const [url, setUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const raw = localStorage.getItem(LS_POST_MEDIA_KEY)
-        const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
-        const ids = store[postId] ?? []
-        if (ids.length === 0) return
-
         const supabase = createClient()
+
+        // First get asset_ids from post_media table
+        const { data: postMedia } = await supabase
+          .from('post_media')
+          .select('asset_id')
+          .eq('post_id', postId)
+          .order('display_order', { ascending: true })
+          .limit(1)
+
+        if (!postMedia || postMedia.length === 0) return
+        const assetId = postMedia[0].asset_id
+
         const { data } = await supabase
           .from('media_assets')
           .select('storage_path, file_type')
-          .in('id', ids)
-          .order('created_at', { ascending: true })
-          .limit(1)
+          .eq('id', assetId)
           .single() as { data: { storage_path: string; file_type: string } | null; error: unknown }
 
         if (!data) return

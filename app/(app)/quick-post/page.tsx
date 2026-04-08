@@ -16,8 +16,6 @@ import type { MediaAsset, PostInsert } from '@/lib/types'
 type Format = 'Reel' | 'Carousel' | 'Photo'
 type Status = 'draft' | 'scheduled' | 'published'
 
-const LS_POST_MEDIA_KEY   = 'fireova_post_media'
-const LS_ASSET_META_KEY   = 'fireova_asset_meta'
 const LS_EXAMPLES_KEY     = 'fireova_approved_examples'
 const REVIEW_KEY          = 'fireova_review_posts'
 const APPROVED_KEY        = 'fireova_approved_posts'
@@ -45,7 +43,6 @@ export default function QuickPostPage() {
 
   // Media browser state
   const [assets, setAssets]           = useState<MediaAsset[]>([])
-  const [assetMeta, setAssetMeta]     = useState<Record<string, { folder_id?: string | null }>>({})
   const [loadingAssets, setLoadingAssets] = useState(true)
   const [search, setSearch]           = useState('')
   const [pillarFilter, setPillarFilter] = useState<string | null>(null)
@@ -93,11 +90,6 @@ export default function QuickPostPage() {
   // ---------------------------------------------------------------------------
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(LS_ASSET_META_KEY)
-      if (raw) setAssetMeta(JSON.parse(raw))
-    } catch {}
-
-    try {
       const d = getDynamicPillarData()
       setDynPillars(d.pillars)
       setDynPillarFolderIds(d.pillarFolderIds)
@@ -127,7 +119,7 @@ export default function QuickPostPage() {
   useEffect(() => {
     if (selectedMedia.length === 0) return
     const folderIds = selectedMedia
-      .map((a) => assetMeta[a.id]?.folder_id ?? null)
+      .map((a) => a.folder_id ?? null)
       .filter(Boolean) as string[]
 
     // Find which pillar each folder belongs to
@@ -152,7 +144,7 @@ export default function QuickPostPage() {
   // Helpers
   // ---------------------------------------------------------------------------
   function getFolderId(assetId: string): string | null {
-    return assetMeta[assetId]?.folder_id ?? null
+    return assets.find((a) => a.id === assetId)?.folder_id ?? null
   }
 
   function assetInPillar(assetId: string, p: string): boolean {
@@ -405,10 +397,9 @@ export default function QuickPostPage() {
     // Save media association
     if (selectedMedia.length > 0) {
       try {
-        const raw = localStorage.getItem(LS_POST_MEDIA_KEY)
-        const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
-        store[post.id] = selectedMedia.map((m) => m.id)
-        localStorage.setItem(LS_POST_MEDIA_KEY, JSON.stringify(store))
+        await supabase.from('post_media').insert(
+          selectedMedia.map((m, i) => ({ post_id: post.id, asset_id: m.id, display_order: i }))
+        )
       } catch {}
     }
 

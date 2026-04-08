@@ -31,7 +31,7 @@ interface LocalAsset {
   photographer: string | null
 }
 
-type AnyAsset = (MediaAsset & { folder_id?: string | null; photographer?: string | null }) | LocalAsset
+type AnyAsset = MediaAsset | LocalAsset
 
 interface Props {
   initialAssets: MediaAsset[]
@@ -43,7 +43,6 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 const LS_FOLDERS_KEY = 'fireova_folders'
-const LS_ASSET_META_KEY = 'fireova_asset_meta'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,16 +63,6 @@ function isLocal(a: AnyAsset): a is LocalAsset {
 }
 
 const isDevMode = (userId: string) => !supabaseConfigured || userId === 'dev'
-
-// Asset meta: folder_id + photographer for DB assets (stored in localStorage)
-type AssetMeta = Record<string, { folder_id?: string | null; photographer?: string | null }>
-
-function readAssetMeta(): AssetMeta {
-  try { return JSON.parse(localStorage.getItem(LS_ASSET_META_KEY) ?? '{}') } catch { return {} }
-}
-function writeAssetMeta(meta: AssetMeta) {
-  localStorage.setItem(LS_ASSET_META_KEY, JSON.stringify(meta))
-}
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -134,11 +123,6 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
       } else {
         setFolders(dynamicTree)
         foldersReady.current = true
-      }
-      // Apply stored meta to initialAssets
-      const meta = readAssetMeta()
-      if (Object.keys(meta).length > 0) {
-        setAssets(initialAssets.map((a) => meta[a.id] ? { ...a, ...meta[a.id] } : a))
       }
     } catch {
       foldersReady.current = true
@@ -238,10 +222,10 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
       if (!dbError && record) {
         const asset = { ...record, folder_id: activeFolder, photographer: null }
         newAssets.push(asset)
-        // Persist meta
-        const meta = readAssetMeta()
-        meta[record.id] = { folder_id: activeFolder, photographer: null }
-        writeAssetMeta(meta)
+        // Persist folder_id to DB
+        if (activeFolder) {
+          await supabase.from('media_assets').update({ folder_id: activeFolder }).eq('id', record.id)
+        }
       }
     }
 
@@ -260,9 +244,6 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
       const supabase = createClient()
       await supabase.storage.from('media').remove([asset.storage_path])
       await supabase.from('media_assets').delete().eq('id', asset.id)
-      const meta = readAssetMeta()
-      delete meta[asset.id]
-      writeAssetMeta(meta)
     }
     setAssets((prev) => prev.filter((a) => a.id !== asset.id))
     if (selectedAsset?.id === asset.id) setSelectedAsset(null)
@@ -278,17 +259,12 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
 
     if (!isLocal(asset) && !isDevMode(userId)) {
       const supabase = createClient()
-      // DB columns: tags, notes only
       const dbPatch: Record<string, unknown> = {}
       if ('tags' in patch) dbPatch.tags = patch.tags
       if ('notes' in patch) dbPatch.notes = patch.notes
+      if ('folder_id' in patch) dbPatch.folder_id = patch.folder_id
+      if ('photographer' in patch) dbPatch.photographer = patch.photographer
       if (Object.keys(dbPatch).length > 0) await supabase.from('media_assets').update(dbPatch).eq('id', asset.id)
-    }
-    // Always persist folder_id + photographer in localStorage for DB assets
-    if (!isLocal(asset) && ('folder_id' in patch || 'photographer' in patch)) {
-      const meta = readAssetMeta()
-      meta[asset.id] = { ...meta[asset.id], ...patch }
-      writeAssetMeta(meta)
     }
   }
 

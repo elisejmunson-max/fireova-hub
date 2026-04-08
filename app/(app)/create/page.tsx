@@ -10,7 +10,6 @@ import type { PostInsert, MediaAsset } from '@/lib/types'
 type Format = 'Reel' | 'Carousel' | 'Photo'
 type Status = 'draft' | 'scheduled' | 'published'
 
-const LS_POST_MEDIA_KEY = 'fireova_post_media' // Record<postId, string[]>
 
 const EMPTY_FORM = {
   title: '',
@@ -180,11 +179,6 @@ export default function CreatePage() {
       .single()
 
     if (saveError || !post) {
-      // Dev / offline fallback — still save media association with a temp ID
-      if (selectedMedia.length > 0) {
-        const tempId = `local-${Date.now()}`
-        saveMediaAssociation(tempId, selectedMedia.map((m) => m.id))
-      }
       if (saveError) {
         setError(saveError.message)
         setSaving(false)
@@ -192,7 +186,11 @@ export default function CreatePage() {
       }
     } else {
       if (selectedMedia.length > 0) {
-        saveMediaAssociation(post.id, selectedMedia.map((m) => m.id))
+        try {
+          await supabase.from('post_media').insert(
+            selectedMedia.map((m, i) => ({ post_id: post.id, asset_id: m.id, display_order: i }))
+          )
+        } catch {}
       }
       if (approval) {
         try {
@@ -287,15 +285,6 @@ export default function CreatePage() {
     } finally {
       setGenerating(false)
     }
-  }
-
-  function saveMediaAssociation(postId: string, assetIds: string[]) {
-    try {
-      const raw = localStorage.getItem(LS_POST_MEDIA_KEY)
-      const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
-      store[postId] = assetIds
-      localStorage.setItem(LS_POST_MEDIA_KEY, JSON.stringify(store))
-    } catch {}
   }
 
   const usedHashtags = new Set(form.hashtags.filter(Boolean))

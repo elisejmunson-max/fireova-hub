@@ -93,6 +93,8 @@ export type Database = {
           tags: string[]
           notes: string | null
           created_at: string
+          folder_id: string | null
+          photographer: string | null
         }
         Insert: {
           id?: string
@@ -104,11 +106,54 @@ export type Database = {
           tags?: string[]
           notes?: string | null
           created_at?: string
+          folder_id?: string | null
+          photographer?: string | null
         }
         Update: {
           filename?: string
           tags?: string[]
           notes?: string | null
+          folder_id?: string | null
+          photographer?: string | null
+        }
+      }
+      post_media: {
+        Row: {
+          id: string
+          post_id: string
+          asset_id: string
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          asset_id: string
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          display_order?: number
+        }
+      }
+      user_settings: {
+        Row: {
+          id: string
+          user_id: string
+          key: string
+          value: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          key: string
+          value: Json
+          updated_at?: string
+        }
+        Update: {
+          value?: Json
+          updated_at?: string
         }
       }
       caption_templates: {
