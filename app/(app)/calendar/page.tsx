@@ -471,7 +471,8 @@ export default function CalendarPage() {
     if (!schedulingDraftId || !schedulingDate) return
     setScheduling(true)
     const supabase = createClient()
-    await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' } as never).eq('id', schedulingDraftId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('posts') as any).update({ scheduled_date: schedulingDate, status: 'scheduled' }).eq('id', schedulingDraftId)
     await loadPosts()
     setSchedulingDraftId('')
     setScheduling(false)
