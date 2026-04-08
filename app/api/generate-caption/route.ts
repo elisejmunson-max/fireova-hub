@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
 
   const contentParts: Anthropic.MessageParam['content'] = []
 
-  // Attach images if provided
-  for (const url of (imageUrls ?? []).slice(0, 5)) { // max 5 images
+  // Attach images if provided (cap at 2 to stay within Vercel function timeout)
+  for (const url of (imageUrls ?? []).slice(0, 2)) {
     contentParts.push({
       type: 'image',
       source: { type: 'url', url },
