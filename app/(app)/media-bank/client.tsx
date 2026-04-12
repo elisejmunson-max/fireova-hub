@@ -816,11 +816,22 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={getDisplayUrl(asset, true)} alt={asset.filename} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                       ) : isVideo(asset.file_type) ? (
-                        <div className="absolute inset-0 bg-stone-800 flex items-center justify-center">
-                          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+                        <>
+                          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                          <video
+                            src={getDisplayUrl(asset, false)}
+                            muted
+                            preload="metadata"
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onLoadedMetadata={(e) => { (e.target as HTMLVideoElement).currentTime = 1 }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-sm">
+                              <PlayIcon className="w-4 h-4 text-white ml-0.5" />
+                            </div>
                           </div>
-                        </div>
+                        </>
                       ) : isImage(asset.file_type) ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
                           <MediaIcon className="w-8 h-8 text-stone-300" />
