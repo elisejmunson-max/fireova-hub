@@ -262,7 +262,28 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files)
   }
 
-  async function handleDelete(asset: AnyAsset) {
+  async function handleArchive(asset: AnyAsset) {
+    if (isLocal(asset)) {
+      setAssets((prev) => prev.filter((a) => a.id !== asset.id))
+      if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+      return
+    }
+    const supabase = createClient()
+    await supabase.from('media_assets').update({ folder_id: '__archive__' }).eq('id', asset.id)
+    setAssets((prev) => prev.filter((a) => a.id !== asset.id))
+    if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+  }
+
+  async function handleRestore(asset: AnyAsset) {
+    if (isLocal(asset)) return
+    const supabase = createClient()
+    await supabase.from('media_assets').update({ folder_id: null }).eq('id', asset.id)
+    setAssets((prev) => prev.filter((a) => a.id !== asset.id))
+    if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+  }
+
+  async function handleDeletePermanently(asset: AnyAsset) {
+    if (!confirm('Permanently delete this file? This cannot be undone.')) return
     if (isLocal(asset)) {
       URL.revokeObjectURL(asset.objectUrl)
     } else {
@@ -600,6 +621,18 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
               </button>
 
               {folders.filter((f) => !f.parent_id).map((folder) => renderFolderRow(folder, 0))}
+
+              <button
+                onClick={() => setActiveFolder('__archive__')}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors mt-1 ${
+                  activeFolder === '__archive__' ? 'bg-stone-800 text-white' : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
+                }`}
+              >
+                <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                </svg>
+                Archive
+              </button>
             </nav>
 
             {/* New folder */}
@@ -751,11 +784,14 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
           asset={selectedAsset}
           folders={folders}
           onClose={() => setSelectedAsset(null)}
-          onDelete={handleDelete}
+          onArchive={handleArchive}
+          onRestore={handleRestore}
+          onDeletePermanently={handleDeletePermanently}
           onUpdate={handleUpdateAsset}
           getDisplayUrl={getDisplayUrl}
           isImage={isImage}
           canPreview={canPreview}
+          isArchiveView={activeFolder === '__archive__'}
         />
       )}
 
@@ -810,14 +846,17 @@ interface PanelProps {
   asset: AnyAsset
   folders: Folder[]
   onClose: () => void
-  onDelete: (a: AnyAsset) => void
+  onArchive: (a: AnyAsset) => void
+  onRestore: (a: AnyAsset) => void
+  onDeletePermanently: (a: AnyAsset) => void
   onUpdate: (a: AnyAsset, patch: Partial<Pick<LocalAsset, 'tags' | 'notes' | 'folder_id' | 'photographer'>>) => void
   getDisplayUrl: (a: AnyAsset) => string
   isImage: (t: string) => boolean
   canPreview: (t: string) => boolean
+  isArchiveView: boolean
 }
 
-function AssetPanel({ asset, folders, onClose, onDelete, onUpdate, getDisplayUrl, isImage, canPreview }: PanelProps) {
+function AssetPanel({ asset, folders, onClose, onArchive, onRestore, onDeletePermanently, onUpdate, getDisplayUrl, isImage, canPreview, isArchiveView }: PanelProps) {
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes] = useState(asset.notes ?? '')
   const [notesDirty, setNotesDirty] = useState(false)
@@ -996,9 +1035,20 @@ function AssetPanel({ asset, folders, onClose, onDelete, onUpdate, getDisplayUrl
           <a href={getDisplayUrl(asset)} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full justify-center text-xs">
             <ExternalLinkIcon className="w-3.5 h-3.5" /> Open file
           </a>
-          <button onClick={() => onDelete(asset)} className="w-full px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">
-            Delete
-          </button>
+          {isArchiveView ? (
+            <>
+              <button onClick={() => onRestore(asset)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 text-sm font-medium transition-colors">
+                Restore to Unassigned
+              </button>
+              <button onClick={() => onDeletePermanently(asset)} className="w-full px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">
+                Delete permanently
+              </button>
+            </>
+          ) : (
+            <button onClick={() => onArchive(asset)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 text-sm font-medium transition-colors">
+              Move to Archive
+            </button>
+          )}
         </div>
       </div>
     </div>
