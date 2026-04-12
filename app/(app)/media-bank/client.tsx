@@ -70,6 +70,7 @@ const isDevMode = (userId: string) => !supabaseConfigured || userId === 'dev'
 
 export default function MediaBankClient({ initialAssets, userId }: Props) {
   const [assets, setAssets] = useState<AnyAsset[]>(initialAssets)
+  const [folderLoading, setFolderLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -139,6 +140,28 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     }
     localStorage.setItem(LS_FOLDERS_KEY, JSON.stringify(folders))
   }, [folders])
+
+  // Fetch assets for the active folder from Supabase
+  useEffect(() => {
+    if (!activeFolder || isDevMode(userId)) return
+    const supabase = createClient()
+    setFolderLoading(true)
+    supabase
+      .from('media_assets')
+      .select('*')
+      .eq('folder_id', activeFolder)
+      .order('created_at', { ascending: false })
+      .limit(200)
+      .then(({ data }) => {
+        setAssets(data ?? [])
+        setFolderLoading(false)
+      })
+  }, [activeFolder, userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear assets when folder is deselected
+  useEffect(() => {
+    if (!activeFolder) setAssets([])
+  }, [activeFolder])
 
   // Tags in use
   const allTags = useMemo(() => {
@@ -668,10 +691,12 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
 
             <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
 
-            {filteredAssets.length === 0 ? (
-              assets.length === 0
-                ? <EmptyState onUpload={() => fileInputRef.current?.click()} />
-                : <div className="text-center py-16 text-stone-400 text-sm">No assets here yet.</div>
+            {folderLoading ? (
+              <div className="text-center py-16 text-stone-400 text-sm">Loading...</div>
+            ) : !activeFolder ? (
+              <div className="text-center py-16 text-stone-400 text-sm">Select a folder to view media.</div>
+            ) : filteredAssets.length === 0 ? (
+              <EmptyState onUpload={() => fileInputRef.current?.click()} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredAssets.map((asset) => (
