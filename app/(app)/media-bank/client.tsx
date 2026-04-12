@@ -146,16 +146,18 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     if (!activeFolder || isDevMode(userId)) return
     const supabase = createClient()
     setFolderLoading(true)
-    supabase
+    const query = supabase
       .from('media_assets')
       .select('*')
-      .eq('folder_id', activeFolder)
       .order('created_at', { ascending: false })
       .limit(200)
-      .then(({ data }) => {
-        setAssets(data ?? [])
-        setFolderLoading(false)
-      })
+    const finalQuery = activeFolder === '__unassigned__'
+      ? query.is('folder_id', null)
+      : query.eq('folder_id', activeFolder)
+    finalQuery.then(({ data }) => {
+      setAssets(data ?? [])
+      setFolderLoading(false)
+    })
   }, [activeFolder, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear assets when folder is deselected
@@ -173,7 +175,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   // Filtered assets
   const filteredAssets = useMemo(() => {
     let result = assets
-    if (activeFolder) result = result.filter((a) => (a as LocalAsset).folder_id === activeFolder)
+    // Assets are already pre-fetched per folder — no client-side folder filter needed
     if (activeTag) result = result.filter((a) => a.tags.includes(activeTag))
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -595,7 +597,15 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                 }`}
               >
                 <span className="flex items-center gap-2"><FolderOpenIcon className="w-4 h-4 opacity-70" />All Files</span>
-                <span className={`text-xs ${activeFolder === null ? 'text-stone-300' : 'text-stone-400'}`}>{assets.length}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveFolder('__unassigned__')}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
+                  activeFolder === '__unassigned__' ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <FolderOpenIcon className="w-4 h-4 opacity-70" />Unassigned
               </button>
 
               {folders.filter((f) => !f.parent_id).map((folder) => renderFolderRow(folder, 0))}
