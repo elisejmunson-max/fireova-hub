@@ -1054,9 +1054,14 @@ function AssetPanel({ asset, folders, onClose, onArchive, onRestore, onDeletePer
               </button>
             </>
           ) : (
-            <button onClick={() => onArchive(asset)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 text-sm font-medium transition-colors">
-              Move to Archive
-            </button>
+            <>
+              <button onClick={() => onArchive(asset)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 text-sm font-medium transition-colors">
+                Move to Archive
+              </button>
+              <button onClick={() => onDeletePermanently(asset)} className="w-full px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">
+                Delete permanently
+              </button>
+            </>
           )}
         </div>
       </div>
