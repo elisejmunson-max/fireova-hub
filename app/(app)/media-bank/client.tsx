@@ -91,6 +91,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null)
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   // Tracks whether the initial load has completed so the save effect doesn't
@@ -165,6 +166,22 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     if (!activeFolder) setAssets([])
   }, [activeFolder])
 
+  // Fetch per-folder counts for the sidebar
+  async function refreshFolderCounts() {
+    if (isDevMode(userId)) return
+    const supabase = createClient()
+    const { data } = await supabase.from('media_assets').select('folder_id').neq('folder_id', '__archive__')
+    if (!data) return
+    const counts: Record<string, number> = {}
+    for (const row of data) {
+      const id = row.folder_id ?? '__unassigned__'
+      counts[id] = (counts[id] ?? 0) + 1
+    }
+    setFolderCounts(counts)
+  }
+
+  useEffect(() => { refreshFolderCounts() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Tags in use
   const allTags = useMemo(() => {
     const tagSet = new Set<string>()
@@ -187,7 +204,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   }, [assets, activeFolder, activeTag, searchQuery])
 
   function folderCount(folderId: string) {
-    return assets.filter((a) => (a as LocalAsset).folder_id === folderId).length
+    return folderCounts[folderId] ?? 0
   }
 
   async function handleFiles(files: FileList | null) {
@@ -256,6 +273,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
 
     setAssets((prev) => [...newAssets, ...prev])
     setUploading(false)
+    refreshFolderCounts()
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -272,6 +290,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     await supabase.from('media_assets').update({ folder_id: '__archive__' }).eq('id', asset.id)
     setAssets((prev) => prev.filter((a) => a.id !== asset.id))
     if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+    refreshFolderCounts()
   }
 
   async function handleRestore(asset: AnyAsset) {
@@ -280,6 +299,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     await supabase.from('media_assets').update({ folder_id: null }).eq('id', asset.id)
     setAssets((prev) => prev.filter((a) => a.id !== asset.id))
     if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+    refreshFolderCounts()
   }
 
   async function handleDeletePermanently(asset: AnyAsset) {
@@ -293,6 +313,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     }
     setAssets((prev) => prev.filter((a) => a.id !== asset.id))
     if (selectedAsset?.id === asset.id) setSelectedAsset(null)
+    refreshFolderCounts()
   }
 
   async function handleUpdateAsset(
