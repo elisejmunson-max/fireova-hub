@@ -591,15 +591,6 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2 px-2">Folders</p>
             <nav className="space-y-0.5">
               <button
-                onClick={() => setActiveFolder(null)}
-                className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
-                  activeFolder === null ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
-                }`}
-              >
-                <span className="flex items-center gap-2"><FolderOpenIcon className="w-4 h-4 opacity-70" />All Files</span>
-              </button>
-
-              <button
                 onClick={() => setActiveFolder('__unassigned__')}
                 className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
                   activeFolder === '__unassigned__' ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
