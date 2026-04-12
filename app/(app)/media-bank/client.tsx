@@ -490,8 +490,15 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                 e.stopPropagation()
                 setExpandedFolders((prev) => {
                   const next = new Set(prev)
-                  if (next.has(folder.id)) next.delete(folder.id)
-                  else next.add(folder.id)
+                  if (next.has(folder.id)) {
+                    next.delete(folder.id)
+                  } else {
+                    // Collapse all siblings at the same level before expanding
+                    folders
+                      .filter((f) => (f.parent_id ?? null) === (folder.parent_id ?? null) && f.id !== folder.id)
+                      .forEach((f) => next.delete(f.id))
+                    next.add(folder.id)
+                  }
                   return next
                 })
               }}
