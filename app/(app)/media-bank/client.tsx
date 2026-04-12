@@ -611,15 +611,6 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
           <div className="w-48 flex-shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2 px-2">Folders</p>
             <nav className="space-y-0.5">
-              <button
-                onClick={() => setActiveFolder('__unassigned__')}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
-                  activeFolder === '__unassigned__' ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
-                }`}
-              >
-                <FolderOpenIcon className="w-4 h-4 opacity-70" />Unassigned
-              </button>
-
               {folders.filter((f) => !f.parent_id).map((folder) => renderFolderRow(folder, 0))}
 
               <button
@@ -667,8 +658,26 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
+            {/* Landing page — no folder selected */}
+            {!activeFolder && (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mb-5">
+                  <UploadIcon className="w-7 h-7 text-stone-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-stone-800 mb-1">Upload your media</h2>
+                <p className="text-sm text-stone-400 mb-6 max-w-xs">Select a folder on the left to view or upload photos and videos.</p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn-primary"
+                >
+                  <UploadIcon className="w-4 h-4" /> Upload Files
+                </button>
+                <p className="text-xs text-stone-300 mt-3">Tip: select a folder first to keep things organized.</p>
+              </div>
+            )}
+
             {/* Search + tag filters */}
-            {assets.length > 0 && (
+            {activeFolder && assets.length > 0 && (
               <div className="mb-5 space-y-3">
                 <div className="flex items-center gap-3">
                   {activeFolderName && (
@@ -707,29 +716,29 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
               </div>
             )}
 
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`mb-6 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${dragOver ? 'border-ember-400 bg-ember-50' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
-            >
-              <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-2">
-                <UploadIcon className="w-4 h-4 text-stone-400" />
+            {activeFolder && (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`mb-6 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${dragOver ? 'border-ember-400 bg-ember-50' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-2">
+                  <UploadIcon className="w-4 h-4 text-stone-400" />
+                </div>
+                <p className="text-sm font-medium text-stone-700">
+                  {dragOver ? 'Drop to upload' : `Drop into ${activeFolderName ?? 'this folder'}`}
+                </p>
+                <p className="text-xs text-stone-400 mt-0.5">or click to browse — JPG, PNG, MP4, MOV</p>
               </div>
-              <p className="text-sm font-medium text-stone-700">
-                {dragOver ? 'Drop to upload' : activeFolderName ? `Drop into ${activeFolderName}` : 'Drag and drop files here'}
-              </p>
-              <p className="text-xs text-stone-400 mt-0.5">or click to browse — JPG, PNG, MP4, MOV</p>
-            </div>
+            )}
 
             <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
 
-            {folderLoading ? (
+            {activeFolder && folderLoading ? (
               <div className="text-center py-16 text-stone-400 text-sm">Loading...</div>
-            ) : !activeFolder ? (
-              <div className="text-center py-16 text-stone-400 text-sm">Select a folder to view media.</div>
-            ) : filteredAssets.length === 0 ? (
+            ) : activeFolder && filteredAssets.length === 0 ? (
               <EmptyState onUpload={() => fileInputRef.current?.click()} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
