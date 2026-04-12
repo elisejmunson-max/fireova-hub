@@ -268,9 +268,14 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     }
   }
 
-  function getDisplayUrl(asset: AnyAsset): string {
+  function getDisplayUrl(asset: AnyAsset, thumbnail = false): string {
     if (isLocal(asset)) return asset.objectUrl
     const supabase = createClient()
+    if (thumbnail) {
+      return supabase.storage.from('media').getPublicUrl(asset.storage_path, {
+        transform: { width: 400, height: 400, resize: 'cover' },
+      }).data.publicUrl
+    }
     return supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
   }
 
@@ -678,7 +683,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                     <div className="aspect-square bg-stone-100 relative overflow-hidden">
                       {canPreview(asset.file_type) ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={getDisplayUrl(asset)} alt={asset.filename} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={getDisplayUrl(asset, true)} alt={asset.filename} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                       ) : isVideo(asset.file_type) ? (
                         <div className="absolute inset-0 flex items-center justify-center"><VideoIcon className="w-10 h-10 text-stone-400" /></div>
                       ) : isImage(asset.file_type) ? (

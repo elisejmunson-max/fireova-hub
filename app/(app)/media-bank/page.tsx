@@ -15,6 +15,7 @@ export default async function MediaBankPage() {
     .from('media_assets')
     .select('*')
     .order('created_at', { ascending: false })
+    .limit(200)
 
   const assets: MediaAsset[] = data ?? []
 

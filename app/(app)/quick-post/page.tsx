@@ -245,7 +245,9 @@ export default function QuickPostPage() {
 
     const imageUrls = selectedMedia
       .filter((a) => a.file_type.startsWith('image/') && !['image/heic', 'image/heif'].includes(a.file_type.toLowerCase()))
-      .map((a) => supabaseRef.current.storage.from('media').getPublicUrl(a.storage_path).data.publicUrl)
+      .map((a) => supabaseRef.current.storage.from('media').getPublicUrl(a.storage_path, {
+        transform: { width: 800, quality: 75 },
+      }).data.publicUrl)
 
     try {
       const res = await fetch('/api/generate-caption', {
