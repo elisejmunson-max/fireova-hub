@@ -77,6 +77,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   const [selectedAsset, setSelectedAsset] = useState<AnyAsset | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'photo' | 'video'>('all')
   const [activeFolder, setActiveFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<Folder[]>(PRESET_FOLDERS as Folder[])
   const [dynPillarIds, setDynPillarIds] = useState<Set<string>>(new Set(Object.values(PILLAR_FOLDER_IDS)))
@@ -193,6 +194,8 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   const filteredAssets = useMemo(() => {
     let result = assets
     // Assets are already pre-fetched per folder — no client-side folder filter needed
+    if (mediaTypeFilter === 'photo') result = result.filter((a) => a.file_type.startsWith('image/'))
+    if (mediaTypeFilter === 'video') result = result.filter((a) => a.file_type.startsWith('video/'))
     if (activeTag) result = result.filter((a) => a.tags.includes(activeTag))
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -201,7 +204,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
       )
     }
     return result
-  }, [assets, activeFolder, activeTag, searchQuery])
+  }, [assets, activeFolder, activeTag, searchQuery, mediaTypeFilter])
 
   function folderCount(folderId: string) {
     return folderCounts[folderId] ?? 0
@@ -741,6 +744,18 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                       className="input pl-9 text-sm"
                     />
                   </div>
+                  {/* Photo / Video filter */}
+                  <div className="flex rounded-lg border border-stone-200 overflow-hidden flex-shrink-0">
+                    {(['all', 'photo', 'video'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setMediaTypeFilter(type)}
+                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${mediaTypeFilter === type ? 'bg-stone-800 text-white' : 'text-stone-500 hover:bg-stone-50'}`}
+                      >
+                        {type === 'all' ? 'All' : type === 'photo' ? 'Photos' : 'Videos'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {allTags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -801,7 +816,11 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={getDisplayUrl(asset, true)} alt={asset.filename} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                       ) : isVideo(asset.file_type) ? (
-                        <div className="absolute inset-0 flex items-center justify-center"><VideoIcon className="w-10 h-10 text-stone-400" /></div>
+                        <div className="absolute inset-0 bg-stone-800 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+                          </div>
+                        </div>
                       ) : isImage(asset.file_type) ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
                           <MediaIcon className="w-8 h-8 text-stone-300" />
@@ -847,6 +866,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
           onUpdate={handleUpdateAsset}
           getDisplayUrl={getDisplayUrl}
           isImage={isImage}
+          isVideo={isVideo}
           canPreview={canPreview}
           isArchiveView={activeFolder === '__archive__'}
         />
@@ -909,11 +929,12 @@ interface PanelProps {
   onUpdate: (a: AnyAsset, patch: Partial<Pick<LocalAsset, 'tags' | 'notes' | 'folder_id' | 'photographer'>>) => void
   getDisplayUrl: (a: AnyAsset) => string
   isImage: (t: string) => boolean
+  isVideo: (t: string) => boolean
   canPreview: (t: string) => boolean
   isArchiveView: boolean
 }
 
-function AssetPanel({ asset, folders, onClose, onArchive, onRestore, onDeletePermanently, onUpdate, getDisplayUrl, isImage, canPreview, isArchiveView }: PanelProps) {
+function AssetPanel({ asset, folders, onClose, onArchive, onRestore, onDeletePermanently, onUpdate, getDisplayUrl, isImage, isVideo, canPreview, isArchiveView }: PanelProps) {
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes] = useState(asset.notes ?? '')
   const [notesDirty, setNotesDirty] = useState(false)
@@ -973,6 +994,17 @@ function AssetPanel({ asset, folders, onClose, onArchive, onRestore, onDeletePer
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600 p-1"><CloseIcon className="w-4 h-4" /></button>
         </div>
 
+        {isVideo(asset.file_type) && (
+          <div className="rounded-lg overflow-hidden bg-stone-900 mb-4">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video
+              src={getDisplayUrl(asset)}
+              controls
+              preload="metadata"
+              className="w-full max-h-64 object-contain"
+            />
+          </div>
+        )}
         {isImage(asset.file_type) && (
           <div className="aspect-video relative rounded-lg overflow-hidden bg-stone-100 mb-4">
             {canPreview(asset.file_type) ? (
@@ -1144,6 +1176,9 @@ function UploadIcon({ className }: { className?: string }) {
 }
 function MediaIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+}
+function PlayIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
 }
 function VideoIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" /></svg>
