@@ -392,6 +392,26 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     setRenamingFolder(null)
   }
 
+  // Returns the set of ancestor folder IDs for a given folder
+  function getAncestors(folderId: string): Set<string> {
+    const ancestors = new Set<string>()
+    let current = folders.find((f) => f.id === folderId)
+    while (current?.parent_id) {
+      ancestors.add(current.parent_id)
+      current = folders.find((f) => f.id === current!.parent_id)
+    }
+    return ancestors
+  }
+
+  // Select a folder and collapse everything except its ancestor chain
+  function selectFolder(folderId: string) {
+    const ancestors = getAncestors(folderId)
+    ancestors.add(folderId) // keep selected folder expanded if it has children
+    setExpandedFolders(ancestors)
+    setActiveFolder(folderId)
+    setFolderMenu(null)
+  }
+
   // Only top-level pillar folders are locked (managed from the Pillars page)
   const canDelete = (f: Folder) => !dynPillarIds.has(f.id)
   const canMove = (f: Folder) => !dynPillarIds.has(f.id)
@@ -450,7 +470,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
               isActive ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
             }`}
             style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: '8px' }}
-            onClick={() => { setActiveFolder(folder.id); setFolderMenu(null) }}
+            onClick={() => selectFolder(folder.id)}
             onDoubleClick={(e) => {
               if (!canRename(folder)) return
               e.stopPropagation()
