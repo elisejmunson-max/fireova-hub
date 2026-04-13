@@ -983,36 +983,10 @@ function DrivingTab({
 
   return (
     <div className="p-6 space-y-8">
-      {/* Event address display */}
-      {form.address && (
-        <div className="flex items-start gap-2 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
-          <svg className="w-4 h-4 text-stone-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-stone-500 font-medium mb-0.5">Event Address</p>
-            <p className="text-sm text-stone-800">{form.address as string}</p>
-          </div>
-          <a
-            href={`https://maps.google.com/?q=${encodeURIComponent(form.address as string)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-ember-600 hover:text-ember-700 font-medium whitespace-nowrap mt-0.5"
-          >
-            Open in Maps
-          </a>
-        </div>
-      )}
-
-      {/* Timing */}
+      {/* Timing — Drive & Leave at top */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* On-Site Time */}
-          {field('On-Site Time', 'on_site_time', '4:00 PM')}
-          {field('Food Service Time', 'food_service_time', '6:00 PM')}
-
           {/* Drive Time — auto-calculated */}
           <div>
             <label className="block text-xs font-medium text-stone-500 mb-1">
@@ -1043,9 +1017,34 @@ function DrivingTab({
               className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
             <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
           </div>
+
+          {field('On-Site Time', 'on_site_time', '4:00 PM')}
+          {field('Food Service Time', 'food_service_time', '6:00 PM')}
         </div>
         {calcError && <p className="text-xs text-red-500 mt-3">{calcError}</p>}
       </section>
+
+      {/* Event address display */}
+      {form.address && (
+        <div className="flex items-start gap-2 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
+          <svg className="w-4 h-4 text-stone-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-stone-500 font-medium mb-0.5">Event Address</p>
+            <p className="text-sm text-stone-800">{form.address as string}</p>
+          </div>
+          <a
+            href={`https://maps.google.com/?q=${encodeURIComponent(form.address as string)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-ember-600 hover:text-ember-700 font-medium whitespace-nowrap mt-0.5"
+          >
+            Open in Maps
+          </a>
+        </div>
+      )}
 
       {/* Parking */}
       <section>
