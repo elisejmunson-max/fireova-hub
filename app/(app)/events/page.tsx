@@ -19,7 +19,7 @@ interface Event {
   cocktail_time: string | null
   dinner_time: string | null
   guest_count: number | null
-  confirmed: boolean
+  status: string
   address: string | null
   venue_name: string | null
   team_oven: string | null
@@ -188,7 +188,7 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     cocktail_time: null,
     dinner_time: null,
     guest_count: null,
-    confirmed: false,
+    status: 'not_confirmed',
     address: null,
     venue_name: null,
     team_oven: null,
@@ -573,11 +573,13 @@ export default function EventsPage() {
                   )}
                 </div>
                 <div className="mt-1">
-                  {event.confirmed ? (
+                  {event.status === 'confirmed' ? (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
                       <CheckCircleIcon className="w-3 h-3" />
                       Confirmed
                     </span>
+                  ) : event.status === 'waiting' ? (
+                    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Waiting</span>
                   ) : (
                     <span className="text-xs text-stone-400">Not confirmed</span>
                   )}
@@ -608,13 +610,15 @@ export default function EventsPage() {
                     {selectedEvent.event_date && (
                       <span className="text-sm text-stone-500">{formatDateDisplay(selectedEvent.event_date)}</span>
                     )}
-                    {selectedEvent.confirmed ? (
+                    {selectedEvent.status === 'confirmed' ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
                         <CheckCircleIcon className="w-3.5 h-3.5" />
                         Confirmed
                       </span>
+                    ) : selectedEvent.status === 'waiting' ? (
+                      <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Waiting on Confirmation</span>
                     ) : (
-                      <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">Not confirmed</span>
+                      <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">Not Confirmed</span>
                     )}
                     {saveMsg && (
                       <span className="text-xs text-green-600 font-medium">{saveMsg}</span>
@@ -795,6 +799,24 @@ function DetailsTab({
 
   return (
     <div className="p-6 max-w-3xl space-y-8">
+      {/* Status selector — top of page */}
+      <div className="flex gap-2">
+        {([
+          { value: 'not_confirmed', label: 'Not Confirmed', active: 'bg-stone-700 text-white', inactive: 'bg-white text-stone-500 border border-stone-200 hover:bg-stone-50' },
+          { value: 'waiting', label: 'Waiting on Confirmation', active: 'bg-amber-500 text-white', inactive: 'bg-white text-stone-500 border border-stone-200 hover:bg-amber-50' },
+          { value: 'confirmed', label: 'Confirmed', active: 'bg-green-600 text-white', inactive: 'bg-white text-stone-500 border border-stone-200 hover:bg-green-50' },
+        ] as const).map(({ value, label, active, inactive }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onChange('status', value)}
+            className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${form.status === value ? active : inactive}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Basic info */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Event Info</h3>
@@ -889,24 +911,6 @@ function DetailsTab({
                 </div>
               </div>
             </div>
-          </div>
-          <div className="sm:col-span-2 flex items-center gap-3 py-1">
-            <button
-              type="button"
-              onClick={() => onChange('confirmed', !form.confirmed)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ember-500 focus:ring-offset-2 ${
-                form.confirmed ? 'bg-green-500' : 'bg-stone-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  form.confirmed ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-            <span className={`text-sm font-medium ${form.confirmed ? 'text-green-700' : 'text-stone-500'}`}>
-              {form.confirmed ? 'Confirmed' : 'Not Confirmed'}
-            </span>
           </div>
         </div>
       </section>
