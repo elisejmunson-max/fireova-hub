@@ -713,11 +713,23 @@ export default function EventsPage() {
 // ---------------------------------------------------------------------------
 
 async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
-  const results = await res.json()
-  if (!results.length) return null
-  return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
+  // Expand Texas FM road abbreviations so Nominatim can find them
+  const normalized = address
+    .replace(/\bFM\s*(\d+)/gi, 'Farm to Market Road $1')
+    .replace(/\bCR\s*(\d+)/gi, 'County Road $1')
+
+  const attempts = Array.from(new Set([normalized, address]))
+  for (const q of attempts) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'en', 'User-Agent': 'FireovaHub/1.0' },
+      })
+      const results = await res.json()
+      if (results.length) return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
+    } catch { /* try next */ }
+  }
+  return null
 }
 
 async function calcDriveTime(fromAddress: string, toAddress: string): Promise<string | null> {
