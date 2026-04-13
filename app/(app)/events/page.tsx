@@ -783,7 +783,7 @@ function DetailsTab({
 
     // Subtract drive time from on-site time
     const leaveMinutes = onSiteMinutes - driveMinutes
-    const leaveHour24 = ((leaveMinutes / 60) | 0 + 24) % 24
+    const leaveHour24 = (Math.floor(leaveMinutes / 60) + 24) % 24
     const leaveMins = ((leaveMinutes % 60) + 60) % 60
     const leaveAmpm = leaveHour24 >= 12 ? 'PM' : 'AM'
     const leaveHour12 = leaveHour24 % 12 || 12
