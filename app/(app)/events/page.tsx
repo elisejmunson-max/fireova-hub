@@ -40,7 +40,7 @@ interface Event {
   updated_at: string
 }
 
-type Tab = 'details' | 'driving' | 'menu' | 'packlist'
+type Tab = 'details' | 'driving' | 'notes' | 'menu' | 'packlist'
 
 // ---------------------------------------------------------------------------
 // Menu data
@@ -665,7 +665,7 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'driving', 'menu', 'packlist'] as Tab[]).map((tab) => (
+                {(['details', 'driving', 'notes', 'menu', 'packlist'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -677,6 +677,7 @@ export default function EventsPage() {
                   >
                     {tab === 'details' ? 'Event Details'
                       : tab === 'driving' ? 'Driving & Parking'
+                      : tab === 'notes' ? 'Menu Notes'
                       : tab === 'menu' ? 'Menu'
                       : (
                       <span className="flex items-center gap-1.5">
@@ -712,6 +713,14 @@ export default function EventsPage() {
                   onChange={handleFormChange}
                   onSave={handleSaveDetails}
                   eventId={selectedEvent.id}
+                />
+              )}
+              {activeTab === 'notes' && (
+                <MenuNotesTab
+                  form={form}
+                  dirty={formDirty}
+                  onChange={handleFormChange}
+                  onSave={handleSaveDetails}
                 />
               )}
               {activeTab === 'menu' && (
@@ -926,23 +935,6 @@ function DetailsTab({
         </div>
       </section>
 
-      {/* Food menu notes */}
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Food Menu Notes</h3>
-        <div className="space-y-4">
-          {textarea('Cocktail Hour', 'cocktail_hour', 'What is being served during cocktail hour?')}
-          {textarea('Dietary Meals', 'dietary_meals', 'GF, dairy-free, vegetarian, etc.')}
-          {textarea("Couple's Meal", 'couples_meal', "What are we making for the couple's plate?")}
-          {textarea('Dinner Service', 'dinner_service', 'Dinner service details and notes')}
-          {textarea('Dessert', 'dessert_notes', 'Dessert options and notes')}
-        </div>
-      </section>
-
-      {/* Special notes */}
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Special Notes</h3>
-        {textarea('Special Notes', 'special_notes', 'Anything else the team needs to know')}
-      </section>
 
       <div className="pt-2 pb-8">
         <button
@@ -1378,6 +1370,59 @@ function DrivingTab({
       <div className="pt-2">
         <button onClick={onSave} disabled={!dirty}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dirty ? 'bg-ember-600 hover:bg-ember-700 text-white' : 'bg-stone-100 text-stone-400 cursor-not-allowed'}`}>
+          {dirty ? 'Save' : 'All changes saved'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Menu Notes Tab
+// ---------------------------------------------------------------------------
+
+function MenuNotesTab({
+  form,
+  dirty,
+  onChange,
+  onSave,
+}: {
+  form: Partial<Event>
+  dirty: boolean
+  onChange: (field: keyof Event, value: string | number | boolean | null) => void
+  onSave: () => void
+}) {
+  function textarea(label: string, key: keyof Event, placeholder?: string) {
+    return (
+      <div>
+        <label className="block text-xs font-medium text-stone-500 mb-1">{label}</label>
+        <textarea
+          value={(form[key] as string) ?? ''}
+          onChange={(e) => onChange(key, e.target.value || null)}
+          placeholder={placeholder}
+          rows={3}
+          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-3xl space-y-4">
+      {textarea('Cocktail Hour', 'cocktail_hour', 'What is being served during cocktail hour?')}
+      {textarea('Dietary Meals', 'dietary_meals', 'GF, dairy-free, vegetarian, etc.')}
+      {textarea("Couple's Meal", 'couples_meal', "What are we making for the couple's plate?")}
+      {textarea('Dinner Service', 'dinner_service', 'Dinner service details and notes')}
+      {textarea('Dessert', 'dessert_notes', 'Dessert options and notes')}
+      {textarea('Special Notes', 'special_notes', 'Anything else the team needs to know')}
+
+      <div className="pt-2 pb-8">
+        <button
+          onClick={onSave}
+          className={`px-5 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+            dirty ? 'bg-ember-600 hover:bg-ember-700 text-white' : 'bg-stone-100 text-stone-400 cursor-default'
+          }`}
+        >
           {dirty ? 'Save' : 'All changes saved'}
         </button>
       </div>
