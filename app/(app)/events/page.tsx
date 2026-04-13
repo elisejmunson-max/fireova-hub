@@ -332,6 +332,18 @@ export default function EventsPage() {
       return
     }
 
+    // Optimistic: show the event immediately so the UI responds
+    const stub: Event = {
+      ...newData,
+      id: `pending-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setEvents((prev) => [stub, ...prev])
+    setSelectedId(stub.id)
+    setActiveTab('details')
+
+    // Then persist to Supabase and replace stub with real record
     setSaving(true)
     const supabase = createClient()
     const { data, error } = await supabase
@@ -341,9 +353,11 @@ export default function EventsPage() {
       .single()
     setSaving(false)
     if (!error && data) {
-      setEvents((prev) => [data as Event, ...prev])
+      setEvents((prev) => prev.map((e) => e.id === stub.id ? (data as Event) : e))
       setSelectedId((data as Event).id)
-      setActiveTab('details')
+    } else if (error) {
+      console.error('Failed to save event to Supabase:', error.message)
+      // Keep stub in local state so user can still interact
     }
   }
 
