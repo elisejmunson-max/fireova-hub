@@ -21,6 +21,7 @@ interface Event {
   guest_count: number | null
   confirmed: boolean
   address: string | null
+  venue_name: string | null
   team_oven: string | null
   team_stretch_top: string | null
   team_expo: string | null
@@ -188,6 +189,7 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     guest_count: null,
     confirmed: false,
     address: null,
+    venue_name: null,
     team_oven: null,
     team_stretch_top: null,
     team_expo: null,
@@ -402,6 +404,7 @@ export default function EventsPage() {
       dinner_time: event.dinner_time,
       guest_count: event.guest_count,
       address: event.address,
+      venue_name: event.venue_name,
       team_oven: event.team_oven,
       team_stretch_top: event.team_stretch_top,
       team_expo: event.team_expo,
@@ -805,6 +808,9 @@ function DetailsTab({
           </div>
           {field('Date', 'event_date', 'date')}
           {field('Guest Count', 'guest_count', 'number', '150')}
+          <div className="sm:col-span-2">
+            {field('Venue Name', 'venue_name', 'text', 'e.g. The Peach Orchard')}
+          </div>
           <div className="sm:col-span-2">
             {field('Address', 'address', 'text', '123 Main St, Dallas, TX')}
           </div>
