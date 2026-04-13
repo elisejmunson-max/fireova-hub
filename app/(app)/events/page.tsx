@@ -750,7 +750,7 @@ function DetailsTab({
   onSave: () => void
 }) {
   const [fromAddress, setFromAddress] = useState(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || 'Denton, TX') : 'Denton, TX'
+    typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || '3839 Market St Suite 107, Denton, TX 76209') : '3839 Market St Suite 107, Denton, TX 76209'
   )
   const [calculating, setCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)

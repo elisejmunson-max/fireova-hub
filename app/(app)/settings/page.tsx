@@ -34,7 +34,7 @@ export default function SettingsPage() {
       }
 
       // Load base address from localStorage
-      setBaseAddress(localStorage.getItem('fireova_base_address') ?? '')
+      setBaseAddress(localStorage.getItem('fireova_base_address') ?? '3839 Market St Suite 107, Denton, TX 76209')
       setLoading(false)
     }
     load()
