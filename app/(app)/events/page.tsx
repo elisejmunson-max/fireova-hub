@@ -808,10 +808,42 @@ function DetailsTab({
           <div className="sm:col-span-2">
             {field('Address', 'address', 'text', '123 Main St, Dallas, TX')}
           </div>
-          {field('On-Site Time', 'on_site_time', 'text', '4:00 PM')}
-          {field('Ceremony Time', 'ceremony_time', 'text', '5:00 PM')}
-          {field('Cocktail Hour Time', 'cocktail_time', 'text', '5:30 PM')}
-          {field('Dinner Service Time', 'dinner_time', 'text', '7:00 PM')}
+          <div className="sm:col-span-2">
+            <div className="space-y-0 divide-y divide-stone-100 border border-stone-200 rounded-xl overflow-hidden">
+              {/* On-Site Time — highlighted */}
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-ember-50 border-l-4 border-l-ember-500">
+                <span className="text-xs font-bold text-ember-700 w-36 flex-shrink-0 uppercase tracking-wide">On-Site Time</span>
+                <input type="text" value={(form.on_site_time as string) ?? ''}
+                  onChange={(e) => onChange('on_site_time', e.target.value || null)}
+                  placeholder="4:00 PM"
+                  className="flex-1 px-2.5 py-1.5 text-sm font-semibold bg-white border border-ember-200 rounded-lg text-ember-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              </div>
+              {/* Ceremony */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Ceremony</span>
+                <input type="text" value={(form.ceremony_time as string) ?? ''}
+                  onChange={(e) => onChange('ceremony_time', e.target.value || null)}
+                  placeholder="5:00 PM"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              </div>
+              {/* Cocktail Hour */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Cocktail Hour</span>
+                <input type="text" value={(form.cocktail_time as string) ?? ''}
+                  onChange={(e) => onChange('cocktail_time', e.target.value || null)}
+                  placeholder="5:30 PM"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              </div>
+              {/* Dinner Service */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Dinner Service</span>
+                <input type="text" value={(form.dinner_time as string) ?? ''}
+                  onChange={(e) => onChange('dinner_time', e.target.value || null)}
+                  placeholder="7:00 PM"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              </div>
+            </div>
+          </div>
           <div className="sm:col-span-2">
             {field('Onsite Contact', 'onsite_contact', 'text', 'Name + phone number')}
           </div>
