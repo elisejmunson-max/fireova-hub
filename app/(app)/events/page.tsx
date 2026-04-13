@@ -712,38 +712,13 @@ export default function EventsPage() {
 // Drive time calculator (OpenStreetMap Nominatim + OSRM — no API key needed)
 // ---------------------------------------------------------------------------
 
-async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
-  // Expand Texas FM road abbreviations so Nominatim can find them
-  const normalized = address
-    .replace(/\bFM\s*(\d+)/gi, 'Farm to Market Road $1')
-    .replace(/\bCR\s*(\d+)/gi, 'County Road $1')
-
-  const attempts = Array.from(new Set([normalized, address]))
-  for (const q of attempts) {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'en', 'User-Agent': 'FireovaHub/1.0' },
-      })
-      const results = await res.json()
-      if (results.length) return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
-    } catch { /* try next */ }
-  }
-  return null
-}
-
-async function calcDriveTime(fromAddress: string, toAddress: string): Promise<string | null> {
-  const [from, to] = await Promise.all([geocode(fromAddress), geocode(toAddress)])
-  if (!from || !to) return null
-  const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`
-  const res = await fetch(url)
-  const data = await res.json()
-  if (data.code !== 'Ok' || !data.routes?.length) return null
-  const seconds = data.routes[0].duration
-  const hrs = Math.floor(seconds / 3600)
-  const mins = Math.round((seconds % 3600) / 60)
-  if (hrs === 0) return `${mins} min`
-  return `${hrs} hr ${mins} min`
+async function calcDriveTime(fromAddress: string, toAddress: string): Promise<{ driveTime?: string; error?: string }> {
+  const res = await fetch('/api/drive-time', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: fromAddress, to: toAddress }),
+  })
+  return res.json()
 }
 
 // ---------------------------------------------------------------------------
@@ -775,10 +750,10 @@ function DetailsTab({
     setCalcError(null)
     const result = await calcDriveTime(fromAddress, toAddress)
     setCalculating(false)
-    if (result) {
-      onChange('drive_time', result)
+    if (result.driveTime) {
+      onChange('drive_time', result.driveTime)
     } else {
-      setCalcError('Could not calculate. Check both addresses.')
+      setCalcError(result.error ?? 'Could not calculate. Check both addresses.')
     }
   }
 
