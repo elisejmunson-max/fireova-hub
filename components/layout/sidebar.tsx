@@ -21,7 +21,8 @@ function QuickPostIcon({ className }: { className?: string }) {
 
 const navGroups = [
   {
-    label: 'CONTENT',
+    label: 'Social Media Content',
+    collapsible: true,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
       { href: '/quick-post', label: 'Quick Post', icon: QuickPostIcon },
@@ -31,7 +32,8 @@ const navGroups = [
     ],
   },
   {
-    label: 'LIBRARY',
+    label: 'Library',
+    collapsible: true,
     items: [
       { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
       { href: '/recipes', label: 'Recipes', icon: RecipesIcon },
@@ -39,7 +41,8 @@ const navGroups = [
     ],
   },
   {
-    label: 'SETTINGS',
+    label: 'Settings',
+    collapsible: true,
     items: [
       { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
       { href: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -52,6 +55,11 @@ export default function Sidebar({ user }: SidebarProps) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+
+  function toggleGroup(label: string) {
+    setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }))
+  }
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -80,38 +88,61 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto sidebar-nav">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="text-stone-600 text-[10px] font-semibold tracking-wider px-3 pt-4 pb-1">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map(({ href, label, icon: Icon, badge }: { href: string; label: string; icon: (p: { className?: string }) => JSX.Element; badge?: string }) => {
-                const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-stone-800 text-white'
-                        : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ember-400' : 'text-stone-500'}`} />
-                    {label}
-                    {badge && (
-                      <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
-                        {badge}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
+        {navGroups.map((group) => {
+          const isCollapsed = !!collapsedGroups[group.label]
+          const hasActiveItem = group.items.some(({ href }) =>
+            pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+          )
+          return (
+            <div key={group.label} className="mb-1">
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-stone-800/40 transition-colors group"
+              >
+                <span className="text-xs font-semibold tracking-wide">{group.label}</span>
+                <svg
+                  className={`w-3.5 h-3.5 text-stone-600 group-hover:text-stone-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {!isCollapsed && (
+                <div className="space-y-0.5 mt-0.5">
+                  {group.items.map(({ href, label, icon: Icon, badge }: { href: string; label: string; icon: (p: { className?: string }) => JSX.Element; badge?: string }) => {
+                    const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-stone-800 text-white'
+                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ember-400' : 'text-stone-500'}`} />
+                        {label}
+                        {badge && (
+                          <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
+                            {badge}
+                          </span>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Show active indicator dot on group header when collapsed and has active item */}
+              {isCollapsed && hasActiveItem && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-ember-500" />
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* User */}
