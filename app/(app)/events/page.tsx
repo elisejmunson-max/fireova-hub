@@ -891,6 +891,9 @@ function DrivingTab({
   const [calculating, setCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
 
+  // Keep a ref to the latest handleCalcDriveTime so the debounce effect can call it
+  const calcDriveRef = useRef<(() => void) | null>(null)
+
   async function handleCalcDriveTime() {
     const toAddress = form.address as string | null
     if (!toAddress?.trim()) { setCalcError('Enter an event address in Event Details first'); return }
@@ -939,6 +942,28 @@ function DrivingTab({
     setCalcError(null)
   }
 
+  // Keep ref in sync so the debounce timer always calls the latest version
+  calcDriveRef.current = handleCalcDriveTime
+
+  // Auto-calculate drive time when event address or starting address changes (debounced 900ms)
+  useEffect(() => {
+    const address = form.address as string | null
+    if (!address?.trim() || !fromAddress.trim()) return
+    const timer = setTimeout(() => { calcDriveRef.current?.() }, 900)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.address, fromAddress])
+
+  // Auto-calculate leave time whenever drive time or on-site time changes
+  useEffect(() => {
+    const driveTime = form.drive_time as string | null
+    const onSiteTime = form.on_site_time as string | null
+    if (driveTime?.trim() && onSiteTime?.trim()) {
+      handleCalcLeaveTime()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.drive_time, form.on_site_time])
+
   function field(label: string, key: keyof Event, placeholder?: string) {
     return (
       <div>
@@ -986,22 +1011,19 @@ function DrivingTab({
           {field('On-Site Time', 'on_site_time', '4:00 PM')}
           {field('Food Service Time', 'food_service_time', '6:00 PM')}
 
-          {/* Drive Time with calculator */}
+          {/* Drive Time — auto-calculated */}
           <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1">Drive Time</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={(form.drive_time as string) ?? ''}
-                onChange={(e) => onChange('drive_time', e.target.value || null)}
-                placeholder="45 min"
-                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-              />
-              <button type="button" onClick={handleCalcDriveTime} disabled={calculating}
-                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors disabled:opacity-50 whitespace-nowrap">
-                {calculating ? '...' : 'Calculate'}
-              </button>
-            </div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">
+              Drive Time
+              {calculating && <span className="ml-2 text-[10px] text-ember-500 font-normal animate-pulse">Calculating...</span>}
+            </label>
+            <input
+              type="text"
+              value={(form.drive_time as string) ?? ''}
+              onChange={(e) => onChange('drive_time', e.target.value || null)}
+              placeholder="Auto-calculated from address"
+              className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
             <div className="mt-1.5 flex items-center gap-1.5">
               <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
               <input type="text" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)}
@@ -1010,19 +1032,13 @@ function DrivingTab({
             </div>
           </div>
 
-          {/* Leave Time */}
+          {/* Leave Time — auto-calculated */}
           <div>
             <label className="block text-xs font-medium text-stone-500 mb-1">Leave Time</label>
-            <div className="flex gap-2">
-              <input type="text" value={(form.leave_time as string) ?? ''}
-                onChange={(e) => onChange('leave_time', e.target.value || null)}
-                placeholder="2:00 PM"
-                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
-              <button type="button" onClick={handleCalcLeaveTime}
-                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors whitespace-nowrap">
-                Calculate
-              </button>
-            </div>
+            <input type="text" value={(form.leave_time as string) ?? ''}
+              onChange={(e) => onChange('leave_time', e.target.value || null)}
+              placeholder="Auto-calculated from On-Site Time"
+              className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
             <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
           </div>
         </div>
