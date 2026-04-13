@@ -36,7 +36,7 @@ interface Event {
   updated_at: string
 }
 
-type Tab = 'details' | 'menu' | 'packlist'
+type Tab = 'details' | 'driving' | 'menu' | 'packlist'
 
 // ---------------------------------------------------------------------------
 // Menu data
@@ -649,17 +649,20 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'menu', 'packlist'] as Tab[]).map((tab) => (
+                {(['details', 'driving', 'menu', 'packlist'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                       activeTab === tab
                         ? 'bg-ember-600 text-white'
                         : 'text-stone-500 hover:text-stone-700 hover:bg-stone-100'
                     }`}
                   >
-                    {tab === 'details' ? 'Event Details' : tab === 'menu' ? 'Menu' : (
+                    {tab === 'details' ? 'Event Details'
+                      : tab === 'driving' ? 'Driving & Parking'
+                      : tab === 'menu' ? 'Menu'
+                      : (
                       <span className="flex items-center gap-1.5">
                         Pack List
                         {progress.total > 0 && (
@@ -680,6 +683,14 @@ export default function EventsPage() {
             <div className="flex-1 overflow-y-auto">
               {activeTab === 'details' && (
                 <DetailsTab
+                  form={form}
+                  dirty={formDirty}
+                  onChange={handleFormChange}
+                  onSave={handleSaveDetails}
+                />
+              )}
+              {activeTab === 'driving' && (
+                <DrivingTab
                   form={form}
                   dirty={formDirty}
                   onChange={handleFormChange}
@@ -736,62 +747,6 @@ function DetailsTab({
   onChange: (field: keyof Event, value: string | number | boolean | null) => void
   onSave: () => void
 }) {
-  const [fromAddress, setFromAddress] = useState(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || '3839 Market St Suite 107, Denton, TX 76209') : '3839 Market St Suite 107, Denton, TX 76209'
-  )
-  const [calculating, setCalculating] = useState(false)
-  const [calcError, setCalcError] = useState<string | null>(null)
-
-  async function handleCalcDriveTime() {
-    const toAddress = form.address as string | null
-    if (!toAddress?.trim()) { setCalcError('Enter an event address first'); return }
-    if (!fromAddress.trim()) { setCalcError('Enter your starting address'); return }
-    setCalculating(true)
-    setCalcError(null)
-    const result = await calcDriveTime(fromAddress, toAddress)
-    setCalculating(false)
-    if (result.driveTime) {
-      onChange('drive_time', result.driveTime)
-    } else {
-      setCalcError(result.error ?? 'Could not calculate. Check both addresses.')
-    }
-  }
-
-  function handleCalcLeaveTime() {
-    const onSiteTime = form.on_site_time as string | null
-    const driveTime = form.drive_time as string | null
-    if (!onSiteTime?.trim()) { setCalcError('Enter On-Site Time first'); return }
-    if (!driveTime?.trim()) { setCalcError('Calculate Drive Time first'); return }
-
-    // Parse on-site time (e.g. "4:00 PM", "3:30 PM")
-    const timeMatch = onSiteTime.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i)
-    if (!timeMatch) { setCalcError('On-Site Time format should be like "4:00 PM"'); return }
-    let hours = parseInt(timeMatch[1])
-    const mins = parseInt(timeMatch[2] ?? '0')
-    const ampm = timeMatch[3].toUpperCase()
-    if (ampm === 'PM' && hours !== 12) hours += 12
-    if (ampm === 'AM' && hours === 12) hours = 0
-    const onSiteMinutes = hours * 60 + mins
-
-    // Parse drive time (e.g. "45 min", "1 hr 15 min", "2 hr")
-    let driveMinutes = 0
-    const hrMatch = driveTime.match(/(\d+)\s*hr/)
-    const minMatch = driveTime.match(/(\d+)\s*min/)
-    if (hrMatch) driveMinutes += parseInt(hrMatch[1]) * 60
-    if (minMatch) driveMinutes += parseInt(minMatch[1])
-    if (driveMinutes === 0) { setCalcError('Could not read Drive Time value'); return }
-
-    // Subtract drive time from on-site time
-    const leaveMinutes = onSiteMinutes - driveMinutes
-    const leaveHour24 = (Math.floor(leaveMinutes / 60) + 24) % 24
-    const leaveMins = ((leaveMinutes % 60) + 60) % 60
-    const leaveAmpm = leaveHour24 >= 12 ? 'PM' : 'AM'
-    const leaveHour12 = leaveHour24 % 12 || 12
-    const leaveTime = `${leaveHour12}:${leaveMins.toString().padStart(2, '0')} ${leaveAmpm}`
-    onChange('leave_time', leaveTime)
-    setCalcError(null)
-  }
-
   function field(label: string, key: keyof Event, type: 'text' | 'date' | 'number' = 'text', placeholder?: string) {
     return (
       <div>
@@ -870,73 +825,6 @@ function DetailsTab({
         </div>
       </section>
 
-      {/* Timing */}
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Leave Time with auto-calculate */}
-          <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1">Leave Time</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={(form.leave_time as string) ?? ''}
-                onChange={(e) => onChange('leave_time', e.target.value || null)}
-                placeholder="2:00 PM"
-                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-              />
-              <button
-                type="button"
-                onClick={handleCalcLeaveTime}
-                title="Calculate leave time from On-Site Time minus Drive Time"
-                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors whitespace-nowrap"
-              >
-                Calculate
-              </button>
-            </div>
-            <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
-          </div>
-
-          {/* Drive Time with calculator */}
-          <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1">Drive Time</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={(form.drive_time as string) ?? ''}
-                onChange={(e) => onChange('drive_time', e.target.value || null)}
-                placeholder="45 min"
-                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-              />
-              <button
-                type="button"
-                onClick={handleCalcDriveTime}
-                disabled={calculating}
-                title="Calculate drive time from your starting address to the event address"
-                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors disabled:opacity-50 whitespace-nowrap"
-              >
-                {calculating ? '...' : 'Calculate'}
-              </button>
-            </div>
-            {/* From address input */}
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
-              <input
-                type="text"
-                value={fromAddress}
-                onChange={(e) => setFromAddress(e.target.value)}
-                placeholder="Your starting address"
-                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors"
-              />
-            </div>
-            {calcError && <p className="text-[10px] text-red-500 mt-1">{calcError}</p>}
-          </div>
-
-          {field('On-Site Time', 'on_site_time', 'text', '4:00 PM')}
-          {field('Food Service Time', 'food_service_time', 'text', '6:00 PM')}
-        </div>
-      </section>
-
       {/* Team */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Team</h3>
@@ -976,6 +864,168 @@ function DetailsTab({
           }`}
         >
           {dirty ? 'Save Event Details' : 'All changes saved'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Driving / Parking Tab
+// ---------------------------------------------------------------------------
+
+function DrivingTab({
+  form,
+  dirty,
+  onChange,
+  onSave,
+}: {
+  form: Partial<Event>
+  dirty: boolean
+  onChange: (field: keyof Event, value: string | number | boolean | null) => void
+  onSave: () => void
+}) {
+  const [fromAddress, setFromAddress] = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || '3839 Market St Suite 107, Denton, TX 76209') : '3839 Market St Suite 107, Denton, TX 76209'
+  )
+  const [calculating, setCalculating] = useState(false)
+  const [calcError, setCalcError] = useState<string | null>(null)
+
+  async function handleCalcDriveTime() {
+    const toAddress = form.address as string | null
+    if (!toAddress?.trim()) { setCalcError('Enter an event address in Event Details first'); return }
+    if (!fromAddress.trim()) { setCalcError('Enter your starting address'); return }
+    setCalculating(true)
+    setCalcError(null)
+    const res = await fetch('/api/drive-time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: fromAddress, to: toAddress }),
+    })
+    const result = await res.json()
+    setCalculating(false)
+    if (result.driveTime) {
+      onChange('drive_time', result.driveTime)
+    } else {
+      setCalcError(result.error ?? 'Could not calculate. Check both addresses.')
+    }
+  }
+
+  function handleCalcLeaveTime() {
+    const onSiteTime = form.on_site_time as string | null
+    const driveTime = form.drive_time as string | null
+    if (!onSiteTime?.trim()) { setCalcError('Enter On-Site Time first'); return }
+    if (!driveTime?.trim()) { setCalcError('Calculate Drive Time first'); return }
+    const timeMatch = onSiteTime.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i)
+    if (!timeMatch) { setCalcError('On-Site Time should be like "4:00 PM"'); return }
+    let hours = parseInt(timeMatch[1])
+    const mins = parseInt(timeMatch[2] ?? '0')
+    const ampm = timeMatch[3].toUpperCase()
+    if (ampm === 'PM' && hours !== 12) hours += 12
+    if (ampm === 'AM' && hours === 12) hours = 0
+    const onSiteMinutes = hours * 60 + mins
+    let driveMinutes = 0
+    const hrMatch = driveTime.match(/(\d+)\s*hr/)
+    const minMatch = driveTime.match(/(\d+)\s*min/)
+    if (hrMatch) driveMinutes += parseInt(hrMatch[1]) * 60
+    if (minMatch) driveMinutes += parseInt(minMatch[1])
+    if (driveMinutes === 0) { setCalcError('Could not read Drive Time value'); return }
+    const leaveMinutes = onSiteMinutes - driveMinutes
+    const leaveHour24 = (Math.floor(leaveMinutes / 60) + 24) % 24
+    const leaveMins = ((leaveMinutes % 60) + 60) % 60
+    const leaveAmpm = leaveHour24 >= 12 ? 'PM' : 'AM'
+    const leaveHour12 = leaveHour24 % 12 || 12
+    onChange('leave_time', `${leaveHour12}:${leaveMins.toString().padStart(2, '0')} ${leaveAmpm}`)
+    setCalcError(null)
+  }
+
+  function field(label: string, key: keyof Event, placeholder?: string) {
+    return (
+      <div>
+        <label className="block text-xs font-medium text-stone-500 mb-1">{label}</label>
+        <input
+          type="text"
+          value={(form[key] as string) ?? ''}
+          onChange={(e) => onChange(key, e.target.value || null)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 space-y-8">
+      {/* Timing */}
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* On-Site Time */}
+          {field('On-Site Time', 'on_site_time', '4:00 PM')}
+          {field('Food Service Time', 'food_service_time', '6:00 PM')}
+
+          {/* Drive Time with calculator */}
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">Drive Time</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={(form.drive_time as string) ?? ''}
+                onChange={(e) => onChange('drive_time', e.target.value || null)}
+                placeholder="45 min"
+                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              />
+              <button type="button" onClick={handleCalcDriveTime} disabled={calculating}
+                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors disabled:opacity-50 whitespace-nowrap">
+                {calculating ? '...' : 'Calculate'}
+              </button>
+            </div>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
+              <input type="text" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)}
+                placeholder="Your starting address"
+                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors" />
+            </div>
+          </div>
+
+          {/* Leave Time */}
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">Leave Time</label>
+            <div className="flex gap-2">
+              <input type="text" value={(form.leave_time as string) ?? ''}
+                onChange={(e) => onChange('leave_time', e.target.value || null)}
+                placeholder="2:00 PM"
+                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              <button type="button" onClick={handleCalcLeaveTime}
+                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors whitespace-nowrap">
+                Calculate
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
+          </div>
+        </div>
+        {calcError && <p className="text-xs text-red-500 mt-3">{calcError}</p>}
+      </section>
+
+      {/* Parking */}
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Parking</h3>
+        <div>
+          <label className="block text-xs font-medium text-stone-500 mb-1">Parking Notes</label>
+          <textarea
+            value={(form.special_notes as string) ?? ''}
+            onChange={(e) => onChange('special_notes', e.target.value || null)}
+            placeholder="Parking location, access code, load-in instructions, restrictions..."
+            rows={4}
+            className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+          />
+        </div>
+      </section>
+
+      <div className="pt-2">
+        <button onClick={onSave} disabled={!dirty}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dirty ? 'bg-ember-600 hover:bg-ember-700 text-white' : 'bg-stone-100 text-stone-400 cursor-not-allowed'}`}>
+          {dirty ? 'Save' : 'All changes saved'}
         </button>
       </div>
     </div>
