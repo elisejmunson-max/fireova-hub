@@ -749,7 +749,9 @@ function DetailsTab({
   onChange: (field: keyof Event, value: string | number | boolean | null) => void
   onSave: () => void
 }) {
-  const [fromAddress, setFromAddress] = useState('Denton, TX')
+  const [fromAddress, setFromAddress] = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || 'Denton, TX') : 'Denton, TX'
+  )
   const [calculating, setCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
 

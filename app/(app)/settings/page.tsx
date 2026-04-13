@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [form, setForm] = useState({ full_name: '', business_name: '' })
+  const [baseAddress, setBaseAddress] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -31,6 +32,9 @@ export default function SettingsPage() {
           business_name: data.business_name ?? '',
         })
       }
+
+      // Load base address from localStorage
+      setBaseAddress(localStorage.getItem('fireova_base_address') ?? '')
       setLoading(false)
     }
     load()
@@ -58,6 +62,8 @@ export default function SettingsPage() {
     if (error) {
       setError(error.message)
     } else {
+      // Save base address to localStorage
+      localStorage.setItem('fireova_base_address', baseAddress.trim())
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     }
@@ -132,6 +138,18 @@ export default function SettingsPage() {
               placeholder="Fireova Pizza"
               className="input"
             />
+          </div>
+
+          <div>
+            <label className="label">Starting Address</label>
+            <input
+              type="text"
+              value={baseAddress}
+              onChange={(e) => setBaseAddress(e.target.value)}
+              placeholder="e.g. 123 Main St, Denton, TX 76201"
+              className="input"
+            />
+            <p className="text-xs text-stone-400 mt-1">Used to auto-calculate drive time on events.</p>
           </div>
 
           {error && (
