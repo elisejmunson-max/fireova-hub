@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const CATEGORIES = ['Onboarding', 'Oven & Equipment', 'Food Safety', 'Event Operations', 'Team Culture', 'Other'] as const
+const CATEGORIES = ['Catering Coordinator', 'Oven/Driver', 'Pizza Cook', 'Prep'] as const
 type Category = typeof CATEGORIES[number]
 
 interface Section {
@@ -25,17 +25,15 @@ type ManualForm = Omit<Manual, 'id' | 'user_id' | 'created_at' | 'updated_at'>
 
 const EMPTY_FORM: ManualForm = {
   title: '',
-  category: 'Other',
+  category: 'Catering Coordinator',
   sections: [{ heading: '', body: '' }],
 }
 
 const CATEGORY_COLORS: Record<Category, string> = {
-  Onboarding: 'bg-emerald-100 text-emerald-700',
-  'Oven & Equipment': 'bg-orange-100 text-orange-700',
-  'Food Safety': 'bg-red-100 text-red-700',
-  'Event Operations': 'bg-blue-100 text-blue-700',
-  'Team Culture': 'bg-violet-100 text-violet-700',
-  Other: 'bg-stone-100 text-stone-600',
+  'Catering Coordinator': 'bg-blue-100 text-blue-700',
+  'Oven/Driver': 'bg-orange-100 text-orange-700',
+  'Pizza Cook': 'bg-red-100 text-red-700',
+  'Prep': 'bg-emerald-100 text-emerald-700',
 }
 
 export default function TrainingPage() {
