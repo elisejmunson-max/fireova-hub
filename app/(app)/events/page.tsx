@@ -940,6 +940,11 @@ function DrivingTab({
   const [photoError, setPhotoError] = useState<string | null>(null)
   const parkingInputRef = useRef<HTMLInputElement>(null)
 
+  const [permits, setPermits] = useState<{ path: string; url: string; name: string }[]>([])
+  const [uploadingPermit, setUploadingPermit] = useState(false)
+  const [permitError, setPermitError] = useState<string | null>(null)
+  const permitInputRef = useRef<HTMLInputElement>(null)
+
   // Keep a ref to the latest handleCalcDriveTime so the debounce effect can call it
   const calcDriveRef = useRef<(() => void) | null>(null)
 
@@ -987,6 +992,53 @@ function DrivingTab({
     const supabase = createClient()
     await supabase.storage.from('media').remove([path])
     setParkingPhotos((prev) => prev.filter((p) => p.path !== path))
+  }
+
+  // Permits
+  useEffect(() => {
+    if (!supabaseConfigured) return
+    async function loadPermits() {
+      const supabase = createClient()
+      const { data } = await supabase.storage.from('media').list(`events/${eventId}/permits`, { limit: 50 })
+      if (!data?.length) return
+      const files = data.map((f) => {
+        const path = `events/${eventId}/permits/${f.name}`
+        const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+        return { path, url, name: f.name }
+      })
+      setPermits(files)
+    }
+    loadPermits()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
+  async function handlePermitUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    if (!supabaseConfigured) { setPermitError('Supabase not configured'); return }
+    setUploadingPermit(true)
+    setPermitError(null)
+    const supabase = createClient()
+    const added: { path: string; url: string; name: string }[] = []
+    for (const file of files) {
+      const ext = file.name.split('.').pop()
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `events/${eventId}/permits/${Date.now()}-${safeName}`
+      const { error } = await supabase.storage.from('media').upload(path, file)
+      if (error) { setPermitError(`Failed to upload ${file.name}`); continue }
+      const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+      added.push({ path, url, name: file.name })
+    }
+    setPermits((prev) => [...prev, ...added])
+    setUploadingPermit(false)
+    if (permitInputRef.current) permitInputRef.current.value = ''
+  }
+
+  async function handleDeletePermit(path: string) {
+    if (!supabaseConfigured) { setPermits((prev) => prev.filter((p) => p.path !== path)); return }
+    const supabase = createClient()
+    await supabase.storage.from('media').remove([path])
+    setPermits((prev) => prev.filter((p) => p.path !== path))
   }
 
   async function handleCalcDriveTime() {
@@ -1226,6 +1278,54 @@ function DrivingTab({
             {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
           </div>
         </div>
+      </section>
+
+      {/* Permits */}
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Permits</h3>
+        <input ref={permitInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple className="hidden" onChange={handlePermitUpload} />
+
+        {permits.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {permits.map((permit) => (
+              <div key={permit.path} className="flex items-center gap-3 px-3 py-2.5 bg-white border border-stone-200 rounded-lg">
+                <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <a href={permit.url} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 text-sm text-stone-700 hover:text-ember-600 truncate transition-colors">
+                  {permit.name}
+                </a>
+                <button type="button" onClick={() => handleDeletePermit(permit.path)}
+                  className="w-5 h-5 flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors flex-shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => permitInputRef.current?.click()}
+          disabled={uploadingPermit}
+          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+        >
+          {uploadingPermit ? (
+            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          )}
+          {uploadingPermit ? 'Uploading...' : 'Upload Permit'}
+        </button>
+        {permitError && <p className="text-xs text-red-500 mt-2">{permitError}</p>}
       </section>
 
       <div className="pt-2">
