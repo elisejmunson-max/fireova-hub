@@ -701,6 +701,7 @@ export default function EventsPage() {
                   dirty={formDirty}
                   onChange={handleFormChange}
                   onSave={handleSaveDetails}
+                  eventId={selectedEvent.id}
                 />
               )}
               {activeTab === 'menu' && (
@@ -889,20 +890,72 @@ function DrivingTab({
   dirty,
   onChange,
   onSave,
+  eventId,
 }: {
   form: Partial<Event>
   dirty: boolean
   onChange: (field: keyof Event, value: string | number | boolean | null) => void
   onSave: () => void
+  eventId: string
 }) {
   const [fromAddress, setFromAddress] = useState(() =>
     typeof window !== 'undefined' ? (localStorage.getItem('fireova_base_address') || '3839 Market St Suite 107, Denton, TX 76209') : '3839 Market St Suite 107, Denton, TX 76209'
   )
   const [calculating, setCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
+  const [parkingPhotos, setParkingPhotos] = useState<{ path: string; url: string }[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const parkingInputRef = useRef<HTMLInputElement>(null)
 
   // Keep a ref to the latest handleCalcDriveTime so the debounce effect can call it
   const calcDriveRef = useRef<(() => void) | null>(null)
+
+  // Load existing parking photos on mount
+  useEffect(() => {
+    if (!supabaseConfigured) return
+    async function loadPhotos() {
+      const supabase = createClient()
+      const { data } = await supabase.storage.from('media').list(`events/${eventId}/parking`, { limit: 50 })
+      if (!data?.length) return
+      const photos = data.map((f) => {
+        const path = `events/${eventId}/parking/${f.name}`
+        const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+        return { path, url }
+      })
+      setParkingPhotos(photos)
+    }
+    loadPhotos()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
+  async function handleParkingUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    if (!supabaseConfigured) { setPhotoError('Supabase not configured'); return }
+    setUploadingPhoto(true)
+    setPhotoError(null)
+    const supabase = createClient()
+    const added: { path: string; url: string }[] = []
+    for (const file of files) {
+      const ext = file.name.split('.').pop()
+      const path = `events/${eventId}/parking/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from('media').upload(path, file)
+      if (error) { setPhotoError(`Failed to upload ${file.name}`); continue }
+      const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+      added.push({ path, url })
+    }
+    setParkingPhotos((prev) => [...prev, ...added])
+    setUploadingPhoto(false)
+    if (parkingInputRef.current) parkingInputRef.current.value = ''
+  }
+
+  async function handleDeleteParkingPhoto(path: string) {
+    if (!supabaseConfigured) { setParkingPhotos((prev) => prev.filter((p) => p.path !== path)); return }
+    const supabase = createClient()
+    await supabase.storage.from('media').remove([path])
+    setParkingPhotos((prev) => prev.filter((p) => p.path !== path))
+  }
 
   async function handleCalcDriveTime() {
     const toAddress = form.address as string | null
@@ -1083,15 +1136,63 @@ function DrivingTab({
       {/* Parking */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Parking</h3>
-        <div>
-          <label className="block text-xs font-medium text-stone-500 mb-1">Parking Notes</label>
-          <textarea
-            value={(form.special_notes as string) ?? ''}
-            onChange={(e) => onChange('special_notes', e.target.value || null)}
-            placeholder="Parking location, access code, load-in instructions, restrictions..."
-            rows={4}
-            className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
-          />
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">Parking Notes</label>
+            <textarea
+              value={(form.special_notes as string) ?? ''}
+              onChange={(e) => onChange('special_notes', e.target.value || null)}
+              placeholder="Parking location, access code, load-in instructions, restrictions..."
+              rows={4}
+              className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+            />
+          </div>
+
+          {/* Parking Photos */}
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-2">Parking Photos</label>
+            <input ref={parkingInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleParkingUpload} />
+
+            {parkingPhotos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                {parkingPhotos.map((photo) => (
+                  <div key={photo.path} className="relative group aspect-square rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt="Parking" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteParkingPhoto(photo.path)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => parkingInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+            >
+              {uploadingPhoto ? (
+                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              )}
+              {uploadingPhoto ? 'Uploading...' : 'Upload Photos'}
+            </button>
+            {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
+          </div>
         </div>
       </section>
 
