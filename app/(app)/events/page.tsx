@@ -309,8 +309,15 @@ export default function EventsPage() {
 
   // -- Create event
   async function handleCreateEvent() {
-    if (!userId) return
-    const newData = emptyEvent(userId)
+    let uid = userId
+    if (!uid && supabaseConfigured) {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      uid = data.user?.id ?? null
+      if (uid) setUserId(uid)
+    }
+    if (!uid) return
+    const newData = emptyEvent(uid)
 
     if (!supabaseConfigured || userId === 'dev') {
       const stub: Event = {
@@ -357,9 +364,16 @@ export default function EventsPage() {
 
   // -- Duplicate event
   async function handleDuplicateEvent(event: Event) {
-    if (!userId) return
+    let uid = userId
+    if (!uid && supabaseConfigured) {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      uid = data.user?.id ?? null
+      if (uid) setUserId(uid)
+    }
+    if (!uid) return
     const duped = {
-      ...emptyEvent(userId),
+      ...emptyEvent(uid),
       event_name: `${event.event_name} (Copy)`,
       event_date: event.event_date,
       leave_time: event.leave_time,
