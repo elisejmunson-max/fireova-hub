@@ -991,45 +991,77 @@ function DrivingTab({
 
   return (
     <div className="p-6 space-y-8">
-      {/* Timing — Drive & Leave at top */}
+      {/* Timing — vertical single column */}
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Drive Time — auto-calculated */}
-          <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Timing</h3>
+        <div className="space-y-0 divide-y divide-stone-100 border border-stone-200 rounded-xl overflow-hidden">
+          {/* Drive Time */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">
               Drive Time
-              {calculating && <span className="ml-2 text-[10px] text-ember-500 font-normal animate-pulse">Calculating...</span>}
-            </label>
-            <input
-              type="text"
-              value={(form.drive_time as string) ?? ''}
-              onChange={(e) => onChange('drive_time', e.target.value || null)}
-              placeholder="Auto-calculated from address"
-              className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-            />
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
-              <input type="text" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)}
-                placeholder="Your starting address"
-                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors" />
+              {calculating && <span className="ml-1.5 text-[10px] text-ember-500 animate-pulse">calculating...</span>}
+            </span>
+            <div className="flex-1 space-y-1.5">
+              <input
+                type="text"
+                value={(form.drive_time as string) ?? ''}
+                onChange={(e) => onChange('drive_time', e.target.value || null)}
+                placeholder="Auto-calculated"
+                className="w-full px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
+                <input type="text" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)}
+                  placeholder="Your starting address"
+                  className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors" />
+              </div>
             </div>
           </div>
 
-          {/* Leave Time — auto-calculated */}
-          <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1">Leave Time</label>
+          {/* Leave Time */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Leave Time</span>
             <input type="text" value={(form.leave_time as string) ?? ''}
               onChange={(e) => onChange('leave_time', e.target.value || null)}
-              placeholder="Auto-calculated from On-Site Time"
-              className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
-            <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
+              placeholder="Auto-calculated"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
           </div>
 
-          {field('On-Site Time', 'on_site_time', '4:00 PM')}
-          {field('Ceremony Time', 'ceremony_time', '5:00 PM')}
-          {field('Cocktail Hour Time', 'cocktail_time', '5:30 PM')}
-          {field('Dinner Service Time', 'dinner_time', '7:00 PM')}
+          {/* On-Site Time */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">On-Site Time</span>
+            <input type="text" value={(form.on_site_time as string) ?? ''}
+              onChange={(e) => onChange('on_site_time', e.target.value || null)}
+              placeholder="4:00 PM"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+          </div>
+
+          {/* Ceremony Time */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Ceremony Time</span>
+            <input type="text" value={(form.ceremony_time as string) ?? ''}
+              onChange={(e) => onChange('ceremony_time', e.target.value || null)}
+              placeholder="5:00 PM"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+          </div>
+
+          {/* Cocktail Hour */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Cocktail Hour</span>
+            <input type="text" value={(form.cocktail_time as string) ?? ''}
+              onChange={(e) => onChange('cocktail_time', e.target.value || null)}
+              placeholder="5:30 PM"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+          </div>
+
+          {/* Dinner Service */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Dinner Service</span>
+            <input type="text" value={(form.dinner_time as string) ?? ''}
+              onChange={(e) => onChange('dinner_time', e.target.value || null)}
+              placeholder="7:00 PM"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+          </div>
         </div>
         {calcError && <p className="text-xs text-red-500 mt-3">{calcError}</p>}
       </section>
