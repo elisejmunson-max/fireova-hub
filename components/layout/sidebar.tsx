@@ -19,6 +19,34 @@ function QuickPostIcon({ className }: { className?: string }) {
   )
 }
 
+const navGroups = [
+  {
+    label: 'CONTENT',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+      { href: '/quick-post', label: 'Quick Post', icon: QuickPostIcon },
+      { href: '/create', label: 'Create Post', icon: CreateIcon, badge: 'New' },
+      { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
+      { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    ],
+  },
+  {
+    label: 'LIBRARY',
+    items: [
+      { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
+      { href: '/recipes', label: 'Recipes', icon: RecipesIcon },
+      { href: '/training', label: 'Training Manuals', icon: TrainingIcon },
+    ],
+  },
+  {
+    label: 'SETTINGS',
+    items: [
+      { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
+      { href: '/settings', label: 'Settings', icon: SettingsIcon },
+    ],
+  },
+]
+
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -31,17 +59,6 @@ export default function Sidebar({ user }: SidebarProps) {
     await supabase.auth.signOut()
     router.push('/login')
   }
-
-  const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-    { href: '/create', label: 'Create Post', icon: CreateIcon },
-    { href: '/quick-post', label: 'Quick Post', icon: QuickPostIcon },
-    { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
-    { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
-    { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
-    { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
-    { href: '/settings', label: 'Settings', icon: SettingsIcon },
-  ]
 
   const displayName = user.email?.split('@')[0] ?? 'You'
   const initial = displayName.charAt(0).toUpperCase()
@@ -62,30 +79,39 @@ export default function Sidebar({ user }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto sidebar-nav">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-stone-800 text-white'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
-              }`}
-            >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ember-400' : 'text-stone-500'}`} />
-              {label}
-              {href === '/create' && (
-                <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
-                  New
-                </span>
-              )}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto sidebar-nav">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="text-stone-600 text-[10px] font-semibold tracking-wider px-3 pt-4 pb-1">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(({ href, label, icon: Icon, badge }: { href: string; label: string; icon: (p: { className?: string }) => JSX.Element; badge?: string }) => {
+                const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-stone-800 text-white'
+                        : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ember-400' : 'text-stone-500'}`} />
+                    {label}
+                    {badge && (
+                      <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User */}
@@ -175,7 +201,6 @@ function CreateIcon({ className }: { className?: string }) {
   )
 }
 
-
 function ContentIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -192,18 +217,27 @@ function MediaIcon({ className }: { className?: string }) {
   )
 }
 
-function CalendarIcon({ className }: { className?: string }) {
+function RecipesIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
     </svg>
   )
 }
 
-function CaptionsIcon({ className }: { className?: string }) {
+function TrainingIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  )
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   )
 }
