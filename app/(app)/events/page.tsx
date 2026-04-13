@@ -801,6 +801,8 @@ function DetailsTab({
           <div className="sm:col-span-2">
             {field('Address', 'address', 'text', '123 Main St, Dallas, TX')}
           </div>
+          {field('On-Site Time', 'on_site_time', 'text', '4:00 PM')}
+          {field('Food Service Time', 'food_service_time', 'text', '6:00 PM')}
           <div className="sm:col-span-2">
             {field('Onsite Contact', 'onsite_contact', 'text', 'Name + phone number')}
           </div>
