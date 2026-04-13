@@ -1001,21 +1001,13 @@ function DrivingTab({
               Drive Time
               {calculating && <span className="ml-1.5 text-[10px] text-ember-500 animate-pulse">calculating...</span>}
             </span>
-            <div className="flex-1 space-y-1.5">
-              <input
-                type="text"
-                value={(form.drive_time as string) ?? ''}
-                onChange={(e) => onChange('drive_time', e.target.value || null)}
-                placeholder="Auto-calculated"
-                className="w-full px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-              />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
-                <input type="text" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)}
-                  placeholder="Your starting address"
-                  className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors" />
-              </div>
-            </div>
+            <input
+              type="text"
+              value={(form.drive_time as string) ?? ''}
+              onChange={(e) => onChange('drive_time', e.target.value || null)}
+              placeholder="Auto-calculated"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
           </div>
 
           {/* Leave Time — highlighted */}
