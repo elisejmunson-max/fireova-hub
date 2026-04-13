@@ -927,11 +927,43 @@ function DetailsTab({
       {/* Team */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Team</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {field('Oven', 'team_oven', 'text')}
-          {field('Stretch / Top', 'team_stretch_top', 'text')}
-          {field('Expo', 'team_expo', 'text')}
-          {field('Buffet', 'team_buffet', 'text')}
+        <div className="space-y-0 divide-y divide-stone-100 border border-stone-200 rounded-xl overflow-hidden">
+          {([
+            { label: 'Oven', key: 'team_oven', members: ['Jarod', 'Devon', 'Sergei', 'Benji'] },
+            { label: 'Stretch / Top', key: 'team_stretch_top', members: ['Jose', 'Carlos', 'Arthur', 'Miguel', 'Maria'] },
+            { label: 'Expo', key: 'team_expo', members: ['Joel', 'Taylor', 'Bre', 'Elise'] },
+            { label: 'Buffet', key: 'team_buffet', members: [] },
+          ] as { label: string; key: keyof Event; members: string[] }[]).map(({ label, key, members }) => (
+            <div key={key as string} className="flex items-center gap-3 px-4 py-3 bg-white">
+              <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">{label}</span>
+              {members.length > 0 ? (
+                <div className="flex-1 flex flex-wrap gap-1.5">
+                  {members.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => onChange(key, (form[key] as string) === name ? null : name)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        (form[key] as string) === name
+                          ? 'bg-ember-600 text-white'
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={(form[key] as string) ?? ''}
+                  onChange={(e) => onChange(key, e.target.value || null)}
+                  placeholder="Assign team member"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+                />
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
