@@ -937,22 +937,16 @@ function DetailsTab({
             <div key={key as string} className="flex items-center gap-3 px-4 py-3 bg-white">
               <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">{label}</span>
               {members.length > 0 ? (
-                <div className="flex-1 flex flex-wrap gap-1.5">
+                <select
+                  value={(form[key] as string) ?? ''}
+                  onChange={(e) => onChange(key, e.target.value || null)}
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+                >
+                  <option value="">— Unassigned —</option>
                   {members.map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => onChange(key, (form[key] as string) === name ? null : name)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        (form[key] as string) === name
-                          ? 'bg-ember-600 text-white'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                      }`}
-                    >
-                      {name}
-                    </button>
+                    <option key={name} value={name}>{name}</option>
                   ))}
-                </div>
+                </select>
               ) : (
                 <input
                   type="text"
