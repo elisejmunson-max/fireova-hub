@@ -757,6 +757,41 @@ function DetailsTab({
     }
   }
 
+  function handleCalcLeaveTime() {
+    const onSiteTime = form.on_site_time as string | null
+    const driveTime = form.drive_time as string | null
+    if (!onSiteTime?.trim()) { setCalcError('Enter On-Site Time first'); return }
+    if (!driveTime?.trim()) { setCalcError('Calculate Drive Time first'); return }
+
+    // Parse on-site time (e.g. "4:00 PM", "3:30 PM")
+    const timeMatch = onSiteTime.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i)
+    if (!timeMatch) { setCalcError('On-Site Time format should be like "4:00 PM"'); return }
+    let hours = parseInt(timeMatch[1])
+    const mins = parseInt(timeMatch[2] ?? '0')
+    const ampm = timeMatch[3].toUpperCase()
+    if (ampm === 'PM' && hours !== 12) hours += 12
+    if (ampm === 'AM' && hours === 12) hours = 0
+    const onSiteMinutes = hours * 60 + mins
+
+    // Parse drive time (e.g. "45 min", "1 hr 15 min", "2 hr")
+    let driveMinutes = 0
+    const hrMatch = driveTime.match(/(\d+)\s*hr/)
+    const minMatch = driveTime.match(/(\d+)\s*min/)
+    if (hrMatch) driveMinutes += parseInt(hrMatch[1]) * 60
+    if (minMatch) driveMinutes += parseInt(minMatch[1])
+    if (driveMinutes === 0) { setCalcError('Could not read Drive Time value'); return }
+
+    // Subtract drive time from on-site time
+    const leaveMinutes = onSiteMinutes - driveMinutes
+    const leaveHour24 = ((leaveMinutes / 60) | 0 + 24) % 24
+    const leaveMins = ((leaveMinutes % 60) + 60) % 60
+    const leaveAmpm = leaveHour24 >= 12 ? 'PM' : 'AM'
+    const leaveHour12 = leaveHour24 % 12 || 12
+    const leaveTime = `${leaveHour12}:${leaveMins.toString().padStart(2, '0')} ${leaveAmpm}`
+    onChange('leave_time', leaveTime)
+    setCalcError(null)
+  }
+
   function field(label: string, key: keyof Event, type: 'text' | 'date' | 'number' = 'text', placeholder?: string) {
     return (
       <div>
@@ -839,7 +874,28 @@ function DetailsTab({
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {field('Leave Time', 'leave_time', 'text', '2:00 PM')}
+          {/* Leave Time with auto-calculate */}
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">Leave Time</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={(form.leave_time as string) ?? ''}
+                onChange={(e) => onChange('leave_time', e.target.value || null)}
+                placeholder="2:00 PM"
+                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleCalcLeaveTime}
+                title="Calculate leave time from On-Site Time minus Drive Time"
+                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors whitespace-nowrap"
+              >
+                Calculate
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-400 mt-1">On-Site Time minus Drive Time</p>
+          </div>
 
           {/* Drive Time with calculator */}
           <div>
