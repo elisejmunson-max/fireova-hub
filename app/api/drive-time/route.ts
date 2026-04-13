@@ -1,30 +1,36 @@
 import { NextRequest } from 'next/server'
 
 async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
-  // Expand Texas FM/CR road abbreviations for better geocoding
+  // Try Photon (komoot) first — better US street address support
+  try {
+    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=5&lang=en`
+    const res = await fetch(photonUrl, { headers: { 'User-Agent': 'FireovaHub/1.0' } })
+    const data = await res.json()
+    // Prefer results in the US
+    const usResult = data.features?.find((f: { properties: { country?: string }; geometry: { coordinates: number[] } }) =>
+      f.properties?.country === 'United States'
+    ) ?? data.features?.[0]
+    if (usResult) {
+      const [lon, lat] = usResult.geometry.coordinates
+      return { lat, lon }
+    }
+  } catch { /* fall through to Nominatim */ }
+
+  // Fallback to Nominatim with address normalization
   const normalized = address
     .replace(/\bFM\s*(\d+)/gi, 'Farm to Market Road $1')
     .replace(/\bCR\s*(\d+)/gi, 'County Road $1')
-    .replace(/\bDr\./gi, 'Drive')
-    .replace(/\bSt\./gi, 'Street')
-    .replace(/\bAve\./gi, 'Avenue')
-    .replace(/\bBlvd\./gi, 'Boulevard')
-
+    .replace(/\bDr\.\s/gi, 'Drive ')
+    .replace(/\bSt\.\s/gi, 'Street ')
   const attempts = Array.from(new Set([normalized, address]))
-
   for (const q of attempts) {
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`
       const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'FireovaHub/1.0 (catering@fireovapizza.com)',
-          'Accept-Language': 'en',
-        },
+        headers: { 'User-Agent': 'FireovaHub/1.0 (catering@fireovapizza.com)', 'Accept-Language': 'en' },
       })
       const results = await res.json()
-      if (results.length) {
-        return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
-      }
+      if (results.length) return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
     } catch { /* try next */ }
   }
   return null
