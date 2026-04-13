@@ -15,7 +15,9 @@ interface Event {
   leave_time: string | null
   drive_time: string | null
   on_site_time: string | null
-  food_service_time: string | null
+  ceremony_time: string | null
+  cocktail_time: string | null
+  dinner_time: string | null
   guest_count: number | null
   confirmed: boolean
   address: string | null
@@ -180,7 +182,9 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     leave_time: null,
     drive_time: null,
     on_site_time: null,
-    food_service_time: null,
+    ceremony_time: null,
+    cocktail_time: null,
+    dinner_time: null,
     guest_count: null,
     confirmed: false,
     address: null,
@@ -393,7 +397,9 @@ export default function EventsPage() {
       leave_time: event.leave_time,
       drive_time: event.drive_time,
       on_site_time: event.on_site_time,
-      food_service_time: event.food_service_time,
+      ceremony_time: event.ceremony_time,
+      cocktail_time: event.cocktail_time,
+      dinner_time: event.dinner_time,
       guest_count: event.guest_count,
       address: event.address,
       team_oven: event.team_oven,
@@ -802,7 +808,9 @@ function DetailsTab({
             {field('Address', 'address', 'text', '123 Main St, Dallas, TX')}
           </div>
           {field('On-Site Time', 'on_site_time', 'text', '4:00 PM')}
-          {field('Food Service Time', 'food_service_time', 'text', '6:00 PM')}
+          {field('Ceremony Time', 'ceremony_time', 'text', '5:00 PM')}
+          {field('Cocktail Hour Time', 'cocktail_time', 'text', '5:30 PM')}
+          {field('Dinner Service Time', 'dinner_time', 'text', '7:00 PM')}
           <div className="sm:col-span-2">
             {field('Onsite Contact', 'onsite_contact', 'text', 'Name + phone number')}
           </div>
@@ -1019,7 +1027,9 @@ function DrivingTab({
           </div>
 
           {field('On-Site Time', 'on_site_time', '4:00 PM')}
-          {field('Food Service Time', 'food_service_time', '6:00 PM')}
+          {field('Ceremony Time', 'ceremony_time', '5:00 PM')}
+          {field('Cocktail Hour Time', 'cocktail_time', '5:30 PM')}
+          {field('Dinner Service Time', 'dinner_time', '7:00 PM')}
         </div>
         {calcError && <p className="text-xs text-red-500 mt-3">{calcError}</p>}
       </section>
