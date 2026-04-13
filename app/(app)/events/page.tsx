@@ -709,6 +709,32 @@ export default function EventsPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Drive time calculator (OpenStreetMap Nominatim + OSRM — no API key needed)
+// ---------------------------------------------------------------------------
+
+async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
+  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+  const results = await res.json()
+  if (!results.length) return null
+  return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) }
+}
+
+async function calcDriveTime(fromAddress: string, toAddress: string): Promise<string | null> {
+  const [from, to] = await Promise.all([geocode(fromAddress), geocode(toAddress)])
+  if (!from || !to) return null
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (data.code !== 'Ok' || !data.routes?.length) return null
+  const seconds = data.routes[0].duration
+  const hrs = Math.floor(seconds / 3600)
+  const mins = Math.round((seconds % 3600) / 60)
+  if (hrs === 0) return `${mins} min`
+  return `${hrs} hr ${mins} min`
+}
+
+// ---------------------------------------------------------------------------
 // Details Tab
 // ---------------------------------------------------------------------------
 
@@ -723,6 +749,25 @@ function DetailsTab({
   onChange: (field: keyof Event, value: string | number | boolean | null) => void
   onSave: () => void
 }) {
+  const [fromAddress, setFromAddress] = useState('Denton, TX')
+  const [calculating, setCalculating] = useState(false)
+  const [calcError, setCalcError] = useState<string | null>(null)
+
+  async function handleCalcDriveTime() {
+    const toAddress = form.address as string | null
+    if (!toAddress?.trim()) { setCalcError('Enter an event address first'); return }
+    if (!fromAddress.trim()) { setCalcError('Enter your starting address'); return }
+    setCalculating(true)
+    setCalcError(null)
+    const result = await calcDriveTime(fromAddress, toAddress)
+    setCalculating(false)
+    if (result) {
+      onChange('drive_time', result)
+    } else {
+      setCalcError('Could not calculate. Check both addresses.')
+    }
+  }
+
   function field(label: string, key: keyof Event, type: 'text' | 'date' | 'number' = 'text', placeholder?: string) {
     return (
       <div>
@@ -806,7 +851,42 @@ function DetailsTab({
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Timing</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {field('Leave Time', 'leave_time', 'text', '2:00 PM')}
-          {field('Drive Time', 'drive_time', 'text', '45 min')}
+
+          {/* Drive Time with calculator */}
+          <div>
+            <label className="block text-xs font-medium text-stone-500 mb-1">Drive Time</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={(form.drive_time as string) ?? ''}
+                onChange={(e) => onChange('drive_time', e.target.value || null)}
+                placeholder="45 min"
+                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleCalcDriveTime}
+                disabled={calculating}
+                title="Calculate drive time from your starting address to the event address"
+                className="px-2.5 py-2 text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg border border-stone-200 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {calculating ? '...' : 'Calculate'}
+              </button>
+            </div>
+            {/* From address input */}
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className="text-[10px] text-stone-400 whitespace-nowrap">From:</span>
+              <input
+                type="text"
+                value={fromAddress}
+                onChange={(e) => setFromAddress(e.target.value)}
+                placeholder="Your starting address"
+                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400 transition-colors"
+              />
+            </div>
+            {calcError && <p className="text-[10px] text-red-500 mt-1">{calcError}</p>}
+          </div>
+
           {field('On-Site Time', 'on_site_time', 'text', '4:00 PM')}
           {field('Food Service Time', 'food_service_time', 'text', '6:00 PM')}
         </div>
