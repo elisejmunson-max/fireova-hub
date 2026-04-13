@@ -1018,22 +1018,22 @@ function DrivingTab({
             </div>
           </div>
 
-          {/* Leave Time */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-white">
-            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Leave Time</span>
+          {/* Leave Time — highlighted */}
+          <div className="flex items-center gap-3 px-4 py-3.5 bg-ember-50 border-l-4 border-l-ember-500">
+            <span className="text-xs font-bold text-ember-700 w-36 flex-shrink-0 uppercase tracking-wide">Leave Time</span>
             <input type="text" value={(form.leave_time as string) ?? ''}
               onChange={(e) => onChange('leave_time', e.target.value || null)}
               placeholder="Auto-calculated"
-              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              className="flex-1 px-2.5 py-1.5 text-sm font-semibold bg-white border border-ember-200 rounded-lg text-ember-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
           </div>
 
-          {/* On-Site Time */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-white">
-            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">On-Site Time</span>
+          {/* On-Site Time — highlighted */}
+          <div className="flex items-center gap-3 px-4 py-3.5 bg-ember-50 border-l-4 border-l-ember-500">
+            <span className="text-xs font-bold text-ember-700 w-36 flex-shrink-0 uppercase tracking-wide">On-Site Time</span>
             <input type="text" value={(form.on_site_time as string) ?? ''}
               onChange={(e) => onChange('on_site_time', e.target.value || null)}
               placeholder="4:00 PM"
-              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              className="flex-1 px-2.5 py-1.5 text-sm font-semibold bg-white border border-ember-200 rounded-lg text-ember-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
           </div>
 
           {/* Ceremony Time */}
