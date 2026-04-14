@@ -937,36 +937,20 @@ function DetailsTab({
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">Team</h3>
         <div className="space-y-0 divide-y divide-stone-100 border border-stone-200 rounded-xl overflow-hidden">
-          {([
-            { label: 'Oven', key: 'team_oven', members: ['Jarod', 'Devon', 'Sergei', 'Benji'] },
-            { label: 'Stretch / Top', key: 'team_stretch_top', members: ['Jose', 'Carlos', 'Arthur', 'Miguel', 'Maria'] },
-            { label: 'Expo', key: 'team_expo', members: ['Joel', 'Taylor', 'Bre', 'Elise'] },
-          ] as { label: string; key: keyof Event; members: string[] }[]).map(({ label, key, members }) => (
-            <div key={key as string} className="flex items-center gap-3 px-4 py-3 bg-white">
-              <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">{label}</span>
-              <select
-                value={(form[key] as string) ?? ''}
-                onChange={(e) => onChange(key, e.target.value || null)}
-                className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-              >
-                <option value="">— Unassigned —</option>
-                {members.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </div>
-          ))}
 
-          {/* Driver — with phone + call */}
+          {/* Oven / Driver — at top with phone + call */}
           <div className="flex items-center gap-3 px-4 py-3 bg-white">
-            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Driver</span>
-            <input
-              type="text"
-              value={(form.team_driver as string) ?? ''}
-              onChange={(e) => onChange('team_driver', e.target.value || null)}
-              placeholder="Name"
-              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-            />
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Oven / Driver</span>
+            <select
+              value={(form.team_oven as string) ?? ''}
+              onChange={(e) => onChange('team_oven', e.target.value || null)}
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            >
+              <option value="">— Unassigned —</option>
+              {['Jarod', 'Devon', 'Sergei', 'Benji'].map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
             <input
               type="tel"
               value={(form.team_driver_phone as string) ?? ''}
@@ -986,6 +970,25 @@ function DetailsTab({
               </a>
             )}
           </div>
+
+          {([
+            { label: 'Stretch / Top', key: 'team_stretch_top', members: ['Jose', 'Carlos', 'Arthur', 'Miguel', 'Maria'] },
+            { label: 'Expo', key: 'team_expo', members: ['Joel', 'Taylor', 'Bre', 'Elise'] },
+          ] as { label: string; key: keyof Event; members: string[] }[]).map(({ label, key, members }) => (
+            <div key={key as string} className="flex items-center gap-3 px-4 py-3 bg-white">
+              <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">{label}</span>
+              <select
+                value={(form[key] as string) ?? ''}
+                onChange={(e) => onChange(key, e.target.value || null)}
+                className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              >
+                <option value="">— Unassigned —</option>
+                {members.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+          ))}
 
           {/* Buffet — with phone + call */}
           <div className="flex items-center gap-3 px-4 py-3 bg-white">
