@@ -1331,24 +1331,42 @@ function DrivingTab({
       </div>
 
       {/* Event address display */}
-      {form.address && (
-        <div className="flex items-start gap-2 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
-          <svg className="w-4 h-4 text-stone-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-stone-500 font-medium mb-0.5">Event Address</p>
-            <p className="text-sm text-stone-800">{form.address as string}</p>
+      {form.address ? (
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
+            <svg className="w-4 h-4 text-stone-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-stone-500 font-medium mb-0.5">Event Address</p>
+              <p className="text-sm text-stone-800">{form.address as string}</p>
+            </div>
+            <a
+              href={`https://maps.google.com/?q=${encodeURIComponent(form.address as string)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-ember-600 hover:text-ember-700 font-medium whitespace-nowrap mt-0.5"
+            >
+              Open in Maps
+            </a>
           </div>
           <a
-            href={`https://maps.google.com/?q=${encodeURIComponent(form.address as string)}`}
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(form.address as string)}&travelmode=driving`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-ember-600 hover:text-ember-700 font-medium whitespace-nowrap mt-0.5"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-ember-600 hover:bg-ember-700 text-white text-sm font-medium rounded-xl transition-colors"
           >
-            Open in Maps
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            Start Drive
           </a>
+          <p className="text-[10px] text-stone-400 text-center">Opens Google Maps. Tap Share trip progress to let others track you.</p>
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
+          <p className="text-xs text-stone-400">No address set — add it in Event Details.</p>
         </div>
       )}
 
