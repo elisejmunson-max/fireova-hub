@@ -345,6 +345,9 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [formDirty, setFormDirty] = useState(false)
+  const [showNewModal, setShowNewModal] = useState(false)
+  const [newEventName, setNewEventName] = useState('')
+  const [newEventDate, setNewEventDate] = useState('')
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -439,7 +442,13 @@ export default function EventsPage() {
   }
 
   // -- Create event
-  async function handleCreateEvent() {
+  function openNewModal() {
+    setNewEventName('')
+    setNewEventDate('')
+    setShowNewModal(true)
+  }
+
+  async function handleCreateEvent(name?: string, date?: string) {
     let uid = userId
     if (!uid && supabaseConfigured) {
       const supabase = createClient()
@@ -448,7 +457,11 @@ export default function EventsPage() {
       if (uid) setUserId(uid)
     }
     if (!uid) return
-    const newData = emptyEvent(uid)
+    const newData = {
+      ...emptyEvent(uid),
+      event_name: name?.trim() || 'New Event',
+      event_date: date || null,
+    }
 
     if (!supabaseConfigured || userId === 'dev') {
       const stub: Event = {
@@ -663,7 +676,7 @@ export default function EventsPage() {
         <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between flex-shrink-0">
           <h2 className="text-sm font-semibold text-stone-900">Events</h2>
           <button
-            onClick={handleCreateEvent}
+            onClick={openNewModal}
             className="flex items-center gap-1 text-xs font-medium text-ember-600 hover:text-ember-700 bg-ember-50 hover:bg-ember-100 px-2.5 py-1.5 rounded-lg transition-colors"
           >
             <PlusIcon className="w-3.5 h-3.5" />
@@ -676,7 +689,7 @@ export default function EventsPage() {
             events={events}
             selectedId={selectedId}
             onSelect={(id) => { setSelectedId(id); setActiveTab('details') }}
-            onCreateEvent={handleCreateEvent}
+            onCreateEvent={openNewModal}
           />
         </div>
       </div>
@@ -835,6 +848,63 @@ export default function EventsPage() {
         )}
       </div>
     </div>
+
+    {/* New Event Modal */}
+    {showNewModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-stone-900 mb-4">New Event</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-stone-500 mb-1">Event Date</label>
+              <input
+                type="date"
+                value={newEventDate}
+                onChange={(e) => setNewEventDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-500 mb-1">Event Name</label>
+              <input
+                type="text"
+                autoFocus
+                value={newEventName}
+                onChange={(e) => setNewEventName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setShowNewModal(false)
+                    handleCreateEvent(newEventName, newEventDate)
+                  }
+                  if (e.key === 'Escape') setShowNewModal(false)
+                }}
+                placeholder="e.g. Johnson Wedding"
+                className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-6">
+            <button
+              type="button"
+              onClick={() => setShowNewModal(false)}
+              className="flex-1 px-4 py-2 text-sm text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNewModal(false)
+                handleCreateEvent(newEventName, newEventDate)
+              }}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-xl transition-colors"
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
 
