@@ -38,6 +38,7 @@ interface Event {
   dinner_service: string | null
   dessert_notes: string | null
   special_notes: string | null
+  cocktail_hour_items: { name: string; qty: string }[]
   selected_menu_items: string[]
   checked_pack_items: string[]
   created_at: string
@@ -206,6 +207,7 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     checkin_contact: null,
     checkin_phone: null,
     cocktail_hour: null,
+    cocktail_hour_items: [],
     dietary_meals: null,
     couples_meal: null,
     dinner_service: null,
@@ -426,6 +428,7 @@ export default function EventsPage() {
       checkin_contact: event.checkin_contact,
       checkin_phone: event.checkin_phone,
       cocktail_hour: event.cocktail_hour,
+      cocktail_hour_items: event.cocktail_hour_items ?? [],
       dietary_meals: event.dietary_meals,
       couples_meal: event.couples_meal,
       dinner_service: event.dinner_service,
@@ -1583,6 +1586,162 @@ function DrivingTab({
 }
 
 // ---------------------------------------------------------------------------
+// Cocktail Hour Builder
+// ---------------------------------------------------------------------------
+
+const COCKTAIL_ITEMS: { name: string; sizes?: string[] }[] = [
+  { name: 'Grazing Table', sizes: ['3ft', '4ft', '5ft', '6ft'] },
+  { name: 'Charcuterie Board', sizes: ['Small', 'Medium', 'Large'] },
+  { name: 'Charcuterie Cups' },
+  { name: 'Prosciutto Wrapped Shrimp' },
+  { name: 'Stuffed Mushrooms' },
+  { name: 'Caprese Skewers' },
+  { name: 'Caprese Platter' },
+  { name: 'Roasted Tomato Crostini' },
+  { name: 'Arugula Prosciutto Crostini' },
+  { name: 'Smoked Salmon Bites' },
+  { name: 'Smoked Salmon Dip' },
+  { name: 'Lamb Lollipops' },
+  { name: 'Meatballs' },
+  { name: 'BBQ Wings' },
+  { name: 'Custom' },
+]
+
+function CocktailHourBuilder({
+  items,
+  onChange,
+}: {
+  items: { name: string; qty: string }[]
+  onChange: (items: { name: string; qty: string }[]) => void
+}) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newQty, setNewQty] = useState('')
+  const [customName, setCustomName] = useState('')
+
+  const selectedDef = COCKTAIL_ITEMS.find((i) => i.name === newName)
+
+  function addItem() {
+    const name = newName === 'Custom' ? customName.trim() : newName
+    if (!name) return
+    onChange([...items, { name, qty: newQty.trim() }])
+    setNewName('')
+    setNewQty('')
+    setCustomName('')
+    setShowAdd(false)
+  }
+
+  function removeItem(idx: number) {
+    onChange(items.filter((_, i) => i !== idx))
+  }
+
+  function updateQty(idx: number, qty: string) {
+    onChange(items.map((item, i) => i === idx ? { ...item, qty } : item))
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.length > 0 && (
+        <div className="bg-white border border-stone-200 rounded-xl divide-y divide-stone-100">
+          {items.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="flex-1 text-sm text-stone-800">{item.name}</span>
+              <input
+                type="text"
+                value={item.qty}
+                onChange={(e) => updateQty(idx, e.target.value)}
+                placeholder="qty / size"
+                className="w-24 px-2 py-1 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400"
+              />
+              <button type="button" onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd ? (
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2">
+          <div className="flex gap-2">
+            <select
+              value={newName}
+              onChange={(e) => { setNewName(e.target.value); setNewQty('') }}
+              className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+            >
+              <option value="">— Select item —</option>
+              {COCKTAIL_ITEMS.map((i) => (
+                <option key={i.name} value={i.name}>{i.name}</option>
+              ))}
+            </select>
+            {newName === 'Custom' && (
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Item name"
+                className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+              />
+            )}
+          </div>
+          {newName && (
+            <div className="flex gap-2">
+              {selectedDef?.sizes ? (
+                <select
+                  value={newQty}
+                  onChange={(e) => setNewQty(e.target.value)}
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                >
+                  <option value="">— Size —</option>
+                  {selectedDef.sizes.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={newQty}
+                  onChange={(e) => setNewQty(e.target.value)}
+                  placeholder="Quantity (e.g. 50)"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                />
+              )}
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-lg transition-colors"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowAdd(false); setNewName(''); setNewQty(''); setCustomName('') }}
+                className="px-3 py-1.5 text-sm text-stone-500 hover:text-stone-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-ember-600 hover:text-ember-700 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add item
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Menu Notes Tab
 // ---------------------------------------------------------------------------
 
@@ -1694,12 +1853,16 @@ function MenuNotesTab({
 
       <div>
         {timeLabel('Cocktail Hour', form.cocktail_time as string | null)}
+        <CocktailHourBuilder
+          items={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
+          onChange={(items) => onChange('cocktail_hour_items', items as unknown as string)}
+        />
         <textarea
           value={(form.cocktail_hour as string) ?? ''}
           onChange={(e) => onChange('cocktail_hour', e.target.value || null)}
-          placeholder="What is being served during cocktail hour?"
-          rows={3}
-          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+          placeholder="Additional cocktail hour notes..."
+          rows={2}
+          className="mt-2 w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
         />
       </div>
       {textarea('Dietary Meals', 'dietary_meals', 'GF, dairy-free, vegetarian, etc.')}
