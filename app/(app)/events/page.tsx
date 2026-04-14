@@ -45,7 +45,7 @@ interface Event {
   updated_at: string
 }
 
-type Tab = 'details' | 'driving' | 'notes' | 'packlist'
+type Tab = 'details' | 'driving' | 'notes'
 
 // ---------------------------------------------------------------------------
 // Menu data
@@ -759,7 +759,7 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'driving', 'notes', 'packlist'] as Tab[]).map((tab) => (
+                {(['details', 'driving', 'notes'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -771,19 +771,7 @@ export default function EventsPage() {
                   >
                     {tab === 'details' ? 'Event Details'
                       : tab === 'driving' ? 'Driving & Parking'
-                      : tab === 'notes' ? 'Menu'
-                      : (
-                      <span className="flex items-center gap-1.5">
-                        Pack List
-                        {progress.total > 0 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                            activeTab === 'packlist' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'
-                          }`}>
-                            {progress.checked}/{progress.total}
-                          </span>
-                        )}
-                      </span>
-                    )}
+                      : 'Menu'}
                   </button>
                 ))}
               </div>
@@ -816,14 +804,6 @@ export default function EventsPage() {
                   onSave={handleSaveDetails}
                   selectedMenuItems={selectedEvent.selected_menu_items ?? []}
                   onToggleMenu={handleMenuToggle}
-                />
-              )}
-              {activeTab === 'packlist' && (
-                <PackListTab
-                  selectedMenu={selectedEvent.selected_menu_items ?? []}
-                  checkedItems={selectedEvent.checked_pack_items ?? []}
-                  onToggle={handlePackToggle}
-                  progress={progress}
                 />
               )}
             </div>
