@@ -228,19 +228,20 @@ function EventSidebar({
   events,
   selectedId,
   onSelect,
-  onCreateEvent,
 }: {
   events: Event[]
   selectedId: string | null
   onSelect: (id: string) => void
   onCreateEvent: () => void
 }) {
-  // Group by year → month
+  // Only group dated events; collect undated separately
   const grouped: Record<string, Record<string, Event[]>> = {}
+  const undated: Event[] = []
   for (const event of events) {
-    const year = event.event_date ? event.event_date.slice(0, 4) : 'No Date'
-    const monthIdx = event.event_date ? parseInt(event.event_date.slice(5, 7)) - 1 : -1
-    const month = monthIdx >= 0 ? MONTHS[monthIdx] : 'No Date'
+    if (!event.event_date) { undated.push(event); continue }
+    const year = event.event_date.slice(0, 4)
+    const monthIdx = parseInt(event.event_date.slice(5, 7)) - 1
+    const month = MONTHS[monthIdx]
     if (!grouped[year]) grouped[year] = {}
     if (!grouped[year][month]) grouped[year][month] = []
     grouped[year][month].push(event)
@@ -253,60 +254,60 @@ function EventSidebar({
     return years.includes(cur) ? cur : (years[0] ?? null)
   })
   const [selMonth, setSelMonth] = useState<string | null>(() => {
-    const cur = String(now.getFullYear())
-    const m = MONTHS[now.getMonth()]
-    const y = years.includes(cur) ? cur : years[0]
+    const y = years.includes(String(now.getFullYear())) ? String(now.getFullYear()) : years[0]
     if (!y) return null
-    const months = Object.keys(grouped[y] ?? {})
-    return months.includes(m) ? m : (months[0] ?? null)
+    const ms = Object.keys(grouped[y] ?? {}).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b))
+    const cur = MONTHS[now.getMonth()]
+    return ms.includes(cur) ? cur : (ms[0] ?? null)
   })
 
-  const months = selYear ? Object.keys(grouped[selYear] ?? {}).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b)) : []
+  const months = selYear
+    ? Object.keys(grouped[selYear] ?? {}).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b))
+    : []
   const monthEvents = (selYear && selMonth) ? (grouped[selYear]?.[selMonth] ?? []) : []
 
+  const colBtn = (active: boolean) =>
+    `w-full text-left px-3 py-2 transition-colors ${active ? 'bg-blue-600 text-white' : 'text-stone-700 hover:bg-stone-100'}`
+
   return (
-    <div className="flex h-full">
+    <div className="flex h-full text-xs">
       {/* Column 1 — Years */}
-      <div className="w-20 flex-shrink-0 border-r border-stone-200 overflow-y-auto">
+      <div className="w-[68px] flex-shrink-0 border-r border-stone-200 overflow-y-auto bg-stone-50">
         {years.map((year) => (
-          <button
-            key={year}
-            type="button"
+          <button key={year} type="button"
             onClick={() => { setSelYear(year); setSelMonth(null) }}
-            className={`w-full text-left px-3 py-2.5 flex items-center gap-1.5 transition-colors ${selYear === year ? 'bg-blue-600 text-white' : 'text-stone-700 hover:bg-stone-50'}`}
-          >
-            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-            </svg>
-            <span className="text-xs font-semibold">{year}</span>
+            className={colBtn(selYear === year)}>
+            <span className="font-semibold">{year}</span>
           </button>
         ))}
-        {years.length === 0 && (
-          <div className="px-3 py-4 text-center">
-            <button onClick={onCreateEvent} className="text-[11px] text-ember-600 hover:text-ember-700 font-medium">+ New</button>
-          </div>
+        {undated.length > 0 && (
+          <button type="button"
+            onClick={() => { setSelYear('undated'); setSelMonth(null) }}
+            className={colBtn(selYear === 'undated')}>
+            <span className="font-medium text-[11px]">No date</span>
+          </button>
         )}
       </div>
 
-      {/* Column 2 — Months */}
-      <div className="w-36 flex-shrink-0 border-r border-stone-200 overflow-y-auto">
-        {selYear && months.map((month, i) => {
-          const num = String(MONTHS.indexOf(month) + 1).padStart(2, '0')
-          const active = selMonth === month
-          return (
-            <button
-              key={month}
-              type="button"
-              onClick={() => setSelMonth(month)}
-              className={`w-full text-left px-3 py-2.5 flex items-center gap-1.5 transition-colors ${active ? 'bg-blue-600 text-white' : 'text-stone-700 hover:bg-stone-50'}`}
-            >
-              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-              </svg>
-              <span className="text-xs font-medium">{num} {month}</span>
-            </button>
-          )
-        })}
+      {/* Column 2 — Months (or undated events) */}
+      <div className="w-[108px] flex-shrink-0 border-r border-stone-200 overflow-y-auto bg-stone-50">
+        {selYear === 'undated'
+          ? undated.map((event) => (
+              <button key={event.id} type="button" onClick={() => onSelect(event.id)}
+                className={colBtn(selectedId === event.id)}>
+                <span className="truncate block font-medium">{event.event_name}</span>
+              </button>
+            ))
+          : months.map((month) => {
+              const num = String(MONTHS.indexOf(month) + 1).padStart(2, '0')
+              return (
+                <button key={month} type="button" onClick={() => setSelMonth(month)}
+                  className={colBtn(selMonth === month)}>
+                  <span className="font-medium">{num} {month}</span>
+                </button>
+              )
+            })
+        }
       </div>
 
       {/* Column 3 — Events */}
@@ -314,12 +315,8 @@ function EventSidebar({
         {monthEvents.map((event) => {
           const active = selectedId === event.id
           return (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => onSelect(event.id)}
-              className={`w-full text-left px-3 py-2.5 border-b border-stone-100 transition-colors ${active ? 'bg-blue-600 text-white' : 'hover:bg-stone-50'}`}
-            >
+            <button key={event.id} type="button" onClick={() => onSelect(event.id)}
+              className={`w-full text-left px-3 py-2.5 border-b border-stone-100 transition-colors ${active ? 'bg-blue-600' : 'hover:bg-stone-50'}`}>
               <p className={`text-xs font-medium truncate ${active ? 'text-white' : 'text-stone-800'}`}>{event.event_name}</p>
               {event.event_date && (
                 <p className={`text-[11px] mt-0.5 ${active ? 'text-blue-100' : 'text-stone-400'}`}>{formatDateDisplay(event.event_date)}</p>
@@ -328,7 +325,7 @@ function EventSidebar({
           )
         })}
         {selMonth && monthEvents.length === 0 && (
-          <p className="px-3 py-4 text-[11px] text-stone-400">No events</p>
+          <p className="px-3 py-4 text-[11px] text-stone-400 italic">No events</p>
         )}
       </div>
     </div>
