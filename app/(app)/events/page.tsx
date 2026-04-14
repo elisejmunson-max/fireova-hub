@@ -1702,16 +1702,17 @@ function CocktailHourBuilder({
                 {sectionItems.map((item, i) => {
                   const idx = items.indexOf(item)
                   return (
-                    <div key={i} className="flex items-center gap-2 py-1.5">
-                      <span className="flex-1 text-sm text-stone-800">{item.name}</span>
+                    <div key={i} className="flex items-center gap-3 py-1.5">
+                      <span className="text-sm text-stone-800">{item.name}</span>
                       <input
                         type="text"
                         value={item.qty}
                         onChange={(e) => updateQty(idx, e.target.value)}
-                        placeholder="—"
-                        className="w-20 text-sm text-right text-stone-600 bg-transparent border-none outline-none placeholder-stone-300 focus:bg-stone-50 focus:rounded px-1"
+                        placeholder="qty"
+                        className="w-16 text-sm text-stone-500 bg-transparent border-none outline-none placeholder-stone-300 focus:bg-stone-50 focus:rounded px-1"
                       />
-                      <button type="button" onClick={() => removeItem(idx)} className="text-stone-200 hover:text-red-400 transition-colors ml-1">
+                      <div className="flex-1" />
+                      <button type="button" onClick={() => removeItem(idx)} className="text-stone-200 hover:text-red-400 transition-colors">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
