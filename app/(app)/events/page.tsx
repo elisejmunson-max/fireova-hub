@@ -1714,7 +1714,7 @@ const COCKTAIL_SECTIONS: {
     unit: 'size',
     items: [
       { name: 'Grazing Table', sizes: ['3ft', '4ft', '5ft', '6ft'] },
-      { name: 'Charcuterie Board', sizes: ['Small', 'Medium', 'Large'] },
+      { name: 'Charcuterie Board' },
       { name: 'Charcuterie Cups' },
       { name: 'Custom' },
     ],
