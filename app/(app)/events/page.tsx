@@ -1994,6 +1994,25 @@ const PACK_LISTS: Record<string, string[]> = {
   ],
 }
 
+const PACK_LISTS_ES: Record<string, string[]> = {
+  'Grazing Table': [
+    'Papel de carnicero / cinta / tijeras',
+    'Carne',
+    'Queso',
+    'Fruta',
+    'Fruta seca',
+    'Nueces',
+    'Galletas',
+    'Romero',
+    'Parmesano rallado',
+    'Bases circulares para brie',
+    'Base escalonada',
+    '2 tablas rectangulares para galletas / focaccia',
+    'Decoración floral / flores',
+    'Platos / servilletas / pinzas / copa de rosa',
+  ],
+}
+
 // ---------------------------------------------------------------------------
 // Prep Checklist
 // ---------------------------------------------------------------------------
@@ -2203,6 +2222,7 @@ function CocktailPackTab({
     } catch { return null }
   })
 
+  const [lang, setLang] = useState<'en' | 'es'>('en')
   const [initialsInput, setInitialsInput] = useState('')
 
   function toggle(key: string) {
@@ -2231,10 +2251,11 @@ function CocktailPackTab({
   }
 
   // Build sections from cocktail items
+  const activeLists = lang === 'es' ? PACK_LISTS_ES : PACK_LISTS
   const sections: { heading: string; qty: string; items: string[] }[] = []
   const seen = new Set<string>()
   cocktailItems.forEach((item) => {
-    const packItems = PACK_LISTS[item.name]
+    const packItems = activeLists[item.name] ?? PACK_LISTS[item.name]
     if (packItems && !seen.has(item.name)) {
       seen.add(item.name)
       const label = item.qty ? `${item.qty} × ${item.name}` : item.name
@@ -2268,7 +2289,24 @@ function CocktailPackTab({
       <div className="bg-white rounded-xl border border-stone-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-stone-900">Pack Progress</span>
-          <span className="text-sm font-semibold text-stone-700">{checkedCount} / {totalItems}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-stone-700">{checkedCount} / {totalItems}</span>
+            {/* Language toggle */}
+            <div className="flex items-center bg-stone-100 rounded-lg p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2.5 py-1 rounded-md transition-colors ${lang === 'en' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLang('es')}
+                className={`px-2.5 py-1 rounded-md transition-colors ${lang === 'es' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+              >
+                ES
+              </button>
+            </div>
+          </div>
         </div>
         <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
           <div
