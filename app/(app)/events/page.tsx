@@ -234,14 +234,12 @@ function EventSidebar({
   onSelect: (id: string) => void
   onCreateEvent: () => void
 }) {
-  // Only group dated events; collect undated separately
   const grouped: Record<string, Record<string, Event[]>> = {}
   const undated: Event[] = []
   for (const event of events) {
     if (!event.event_date) { undated.push(event); continue }
     const year = event.event_date.slice(0, 4)
-    const monthIdx = parseInt(event.event_date.slice(5, 7)) - 1
-    const month = MONTHS[monthIdx]
+    const month = MONTHS[parseInt(event.event_date.slice(5, 7)) - 1]
     if (!grouped[year]) grouped[year] = {}
     if (!grouped[year][month]) grouped[year][month] = []
     grouped[year][month].push(event)
@@ -249,85 +247,80 @@ function EventSidebar({
 
   const years = Object.keys(grouped).sort()
   const now = new Date()
-  const [selYear, setSelYear] = useState<string | null>(() => {
-    const cur = String(now.getFullYear())
-    return years.includes(cur) ? cur : (years[0] ?? null)
-  })
-  const [selMonth, setSelMonth] = useState<string | null>(() => {
-    const y = years.includes(String(now.getFullYear())) ? String(now.getFullYear()) : years[0]
-    if (!y) return null
-    const ms = Object.keys(grouped[y] ?? {}).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b))
-    const cur = MONTHS[now.getMonth()]
-    return ms.includes(cur) ? cur : (ms[0] ?? null)
+  const [openYears, setOpenYears] = useState<Set<string>>(() => new Set(years))
+  const [openMonths, setOpenMonths] = useState<Set<string>>(() => {
+    const s = new Set<string>()
+    years.forEach((y) => Object.keys(grouped[y]).forEach((m) => s.add(`${y}-${m}`)))
+    return s
   })
 
-  const months = selYear
-    ? Object.keys(grouped[selYear] ?? {}).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b))
-    : []
-  const monthEvents = (selYear && selMonth) ? (grouped[selYear]?.[selMonth] ?? []) : []
-
-  const colBtn = (active: boolean) =>
-    `w-full text-left px-3 py-2 transition-colors ${active ? 'bg-blue-600 text-white' : 'text-stone-700 hover:bg-stone-100'}`
+  function toggleYear(y: string) {
+    setOpenYears((p) => { const n = new Set(p); n.has(y) ? n.delete(y) : n.add(y); return n })
+  }
+  function toggleMonth(k: string) {
+    setOpenMonths((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n })
+  }
 
   return (
-    <div className="flex h-full text-xs">
-      {/* Column 1 — Years */}
-      <div className="w-[68px] flex-shrink-0 border-r border-stone-200 overflow-y-auto bg-stone-50">
-        {years.map((year) => (
-          <button key={year} type="button"
-            onClick={() => { setSelYear(year); setSelMonth(null) }}
-            className={colBtn(selYear === year)}>
-            <span className="font-semibold">{year}</span>
-          </button>
-        ))}
-        {undated.length > 0 && (
-          <button type="button"
-            onClick={() => { setSelYear('undated'); setSelMonth(null) }}
-            className={colBtn(selYear === 'undated')}>
-            <span className="font-medium text-[11px]">No date</span>
-          </button>
-        )}
-      </div>
+    <div className="flex-1 overflow-y-auto py-1">
+      {years.map((year) => {
+        const yOpen = openYears.has(year)
+        const months = Object.keys(grouped[year]).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b))
+        return (
+          <div key={year}>
+            <button type="button" onClick={() => toggleYear(year)}
+              className="w-full flex items-center gap-1.5 px-3 py-2 hover:bg-stone-50 transition-colors">
+              <svg className={`w-2.5 h-2.5 text-stone-400 flex-shrink-0 transition-transform ${yOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="text-xs font-bold text-stone-700">{year}</span>
+            </button>
 
-      {/* Column 2 — Months (or undated events) */}
-      <div className="w-[108px] flex-shrink-0 border-r border-stone-200 overflow-y-auto bg-stone-50">
-        {selYear === 'undated'
-          ? undated.map((event) => (
-              <button key={event.id} type="button" onClick={() => onSelect(event.id)}
-                className={colBtn(selectedId === event.id)}>
-                <span className="truncate block font-medium">{event.event_name}</span>
-              </button>
-            ))
-          : months.map((month) => {
+            {yOpen && months.map((month) => {
+              const key = `${year}-${month}`
+              const mOpen = openMonths.has(key)
               const num = String(MONTHS.indexOf(month) + 1).padStart(2, '0')
               return (
-                <button key={month} type="button" onClick={() => setSelMonth(month)}
-                  className={colBtn(selMonth === month)}>
-                  <span className="font-medium">{num} {month}</span>
-                </button>
-              )
-            })
-        }
-      </div>
+                <div key={key}>
+                  <button type="button" onClick={() => toggleMonth(key)}
+                    className="w-full flex items-center gap-1.5 pl-6 pr-3 py-1.5 hover:bg-stone-50 transition-colors">
+                    <svg className={`w-2 h-2 text-stone-400 flex-shrink-0 transition-transform ${mOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-xs font-medium text-stone-500">{num} {month}</span>
+                    <span className="ml-auto text-[10px] text-stone-300">{grouped[year][month].length}</span>
+                  </button>
 
-      {/* Column 3 — Events */}
-      <div className="flex-1 overflow-y-auto">
-        {monthEvents.map((event) => {
-          const active = selectedId === event.id
-          return (
+                  {mOpen && grouped[year][month].map((event) => {
+                    const active = selectedId === event.id
+                    return (
+                      <button key={event.id} type="button" onClick={() => onSelect(event.id)}
+                        className={`w-full text-left pl-10 pr-3 py-2 border-b border-stone-100 transition-colors ${active ? 'bg-ember-50 border-l-2 border-l-ember-500' : 'hover:bg-stone-50'}`}>
+                        <p className={`text-xs font-medium truncate ${active ? 'text-ember-700' : 'text-stone-800'}`}>{event.event_name}</p>
+                        {event.event_date && (
+                          <p className="text-[11px] text-stone-400 mt-0.5">{formatDateDisplay(event.event_date)}</p>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+
+      {undated.length > 0 && (
+        <div className="mt-1 border-t border-stone-100 pt-1">
+          <p className="px-3 py-1 text-[11px] text-stone-400 uppercase tracking-wide">No date</p>
+          {undated.map((event) => (
             <button key={event.id} type="button" onClick={() => onSelect(event.id)}
-              className={`w-full text-left px-3 py-2.5 border-b border-stone-100 transition-colors ${active ? 'bg-blue-600' : 'hover:bg-stone-50'}`}>
-              <p className={`text-xs font-medium truncate ${active ? 'text-white' : 'text-stone-800'}`}>{event.event_name}</p>
-              {event.event_date && (
-                <p className={`text-[11px] mt-0.5 ${active ? 'text-blue-100' : 'text-stone-400'}`}>{formatDateDisplay(event.event_date)}</p>
-              )}
+              className={`w-full text-left px-4 py-2 border-b border-stone-100 transition-colors ${selectedId === event.id ? 'bg-ember-50 border-l-2 border-l-ember-500' : 'hover:bg-stone-50'}`}>
+              <p className={`text-xs font-medium truncate ${selectedId === event.id ? 'text-ember-700' : 'text-stone-800'}`}>{event.event_name}</p>
             </button>
-          )
-        })}
-        {selMonth && monthEvents.length === 0 && (
-          <p className="px-3 py-4 text-[11px] text-stone-400 italic">No events</p>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -669,7 +662,7 @@ export default function EventsPage() {
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden relative">
       {/* Left panel — Finder-style column browser */}
-      <div className="w-80 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
+      <div className="w-56 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between flex-shrink-0">
           <h2 className="text-sm font-semibold text-stone-900">Events</h2>
           <button
