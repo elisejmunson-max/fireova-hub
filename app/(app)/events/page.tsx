@@ -1276,6 +1276,41 @@ function DrivingTab({
 
   return (
     <div className="p-6 space-y-8">
+      {/* Driver banner */}
+      {(form.team_oven || form.team_driver_phone) && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl">
+          <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wide mb-0.5">Driver</p>
+            <p className="text-sm font-medium text-stone-800">{(form.team_oven as string) || 'Unassigned'}</p>
+          </div>
+          {(form.team_driver_phone as string)?.trim() && (
+            <div className="flex items-center gap-1.5">
+              <a
+                href={`tel:${(form.team_driver_phone as string).replace(/\D/g, '')}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                Call
+              </a>
+              <a
+                href={`sms:${(form.team_driver_phone as string).replace(/\D/g, '')}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                Text
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Timing — vertical single column */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Timing</h3>
