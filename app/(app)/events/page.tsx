@@ -1841,9 +1841,11 @@ function CocktailHourBuilder({
 function PrepChecklist({
   cocktailItems,
   menuItems,
+  cocktailTime,
 }: {
   cocktailItems: { name: string; qty: string; section?: string }[]
   menuItems: string[]
+  cocktailTime?: string | null
 }) {
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
@@ -1868,7 +1870,12 @@ function PrepChecklist({
       <div className="divide-y divide-stone-100">
         {hasCocktail && (
           <div className="px-4 py-3 space-y-1.5">
-            <p className="text-xs font-semibold text-stone-700 mb-2">Cocktail Hour</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-semibold text-stone-700">Cocktail Hour</p>
+              {cocktailTime && (
+                <span className="px-2 py-0.5 text-[11px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">{cocktailTime}</span>
+              )}
+            </div>
             {cocktailItems.map((item, i) => {
               const key = `cocktail-${i}`
               const label = item.qty ? `${item.qty} × ${item.name}` : item.name
@@ -1969,6 +1976,7 @@ function MenuNotesTab({
       <PrepChecklist
         cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
         menuItems={[]}
+        cocktailTime={form.cocktail_time as string | null}
       />
 
       <div>
