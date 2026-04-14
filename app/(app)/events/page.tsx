@@ -1589,46 +1589,72 @@ function DrivingTab({
 // Cocktail Hour Builder
 // ---------------------------------------------------------------------------
 
-const COCKTAIL_ITEMS: { name: string; sizes?: string[] }[] = [
-  { name: 'Grazing Table', sizes: ['3ft', '4ft', '5ft', '6ft'] },
-  { name: 'Charcuterie Board', sizes: ['Small', 'Medium', 'Large'] },
-  { name: 'Charcuterie Cups' },
-  { name: 'Prosciutto Wrapped Shrimp' },
-  { name: 'Stuffed Mushrooms' },
-  { name: 'Caprese Skewers' },
-  { name: 'Caprese Platter' },
-  { name: 'Roasted Tomato Crostini' },
-  { name: 'Arugula Prosciutto Crostini' },
-  { name: 'Smoked Salmon Bites' },
-  { name: 'Smoked Salmon Dip' },
-  { name: 'Lamb Lollipops' },
-  { name: 'Meatballs' },
-  { name: 'BBQ Wings' },
-  { name: 'Custom' },
+const COCKTAIL_SECTIONS: {
+  label: string
+  unit: string
+  items: { name: string; sizes?: string[] }[]
+}[] = [
+  {
+    label: 'Charcuterie',
+    unit: 'size',
+    items: [
+      { name: 'Grazing Table', sizes: ['3ft', '4ft', '5ft', '6ft'] },
+      { name: 'Charcuterie Board', sizes: ['Small', 'Medium', 'Large'] },
+      { name: 'Charcuterie Cups' },
+      { name: 'Custom' },
+    ],
+  },
+  {
+    label: 'Small Bites',
+    unit: 'dozens',
+    items: [
+      { name: 'Prosciutto Wrapped Shrimp' },
+      { name: 'Stuffed Mushrooms' },
+      { name: 'Caprese Skewers' },
+      { name: 'Roasted Tomato Crostini' },
+      { name: 'Arugula Prosciutto Crostini' },
+      { name: 'Smoked Salmon Bites' },
+      { name: 'Smoked Salmon Dip' },
+      { name: 'Caprese Platter' },
+      { name: 'Custom' },
+    ],
+  },
+  {
+    label: 'Hot Sides',
+    unit: 'pans',
+    items: [
+      { name: 'Meatballs' },
+      { name: 'BBQ Wings' },
+      { name: 'Lamb Lollipops' },
+      { name: 'Ahi Tuna' },
+      { name: 'Custom' },
+    ],
+  },
 ]
 
 function CocktailHourBuilder({
   items,
   onChange,
 }: {
-  items: { name: string; qty: string }[]
-  onChange: (items: { name: string; qty: string }[]) => void
+  items: { name: string; qty: string; section?: string }[]
+  onChange: (items: { name: string; qty: string; section?: string }[]) => void
 }) {
-  const [showAdd, setShowAdd] = useState(false)
+  const [openSection, setOpenSection] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [newQty, setNewQty] = useState('')
   const [customName, setCustomName] = useState('')
 
-  const selectedDef = COCKTAIL_ITEMS.find((i) => i.name === newName)
-
-  function addItem() {
+  function addItem(sectionLabel: string, unit: string) {
+    const sectionDef = COCKTAIL_SECTIONS.find((s) => s.label === sectionLabel)
+    const itemDef = sectionDef?.items.find((i) => i.name === newName)
     const name = newName === 'Custom' ? customName.trim() : newName
     if (!name) return
-    onChange([...items, { name, qty: newQty.trim() }])
+    const qty = newQty.trim() ? (itemDef?.sizes ? newQty : `${newQty} ${unit}`.trim()) : ''
+    onChange([...items, { name, qty, section: sectionLabel }])
     setNewName('')
     setNewQty('')
     setCustomName('')
-    setShowAdd(false)
+    setOpenSection(null)
   }
 
   function removeItem(idx: number) {
@@ -1640,103 +1666,119 @@ function CocktailHourBuilder({
   }
 
   return (
-    <div className="space-y-2">
-      {items.length > 0 && (
-        <div className="bg-white border border-stone-200 rounded-xl divide-y divide-stone-100">
-          {items.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="flex-1 text-sm text-stone-800">{item.name}</span>
-              <input
-                type="text"
-                value={item.qty}
-                onChange={(e) => updateQty(idx, e.target.value)}
-                placeholder="qty / size"
-                className="w-24 px-2 py-1 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400"
-              />
-              <button type="button" onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="space-y-3">
+      {COCKTAIL_SECTIONS.map((section) => {
+        const sectionItems = items.filter((i) => i.section === section.label)
+        const isOpen = openSection === section.label
+        const selectedDef = section.items.find((i) => i.name === newName)
 
-      {showAdd ? (
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2">
-          <div className="flex gap-2">
-            <select
-              value={newName}
-              onChange={(e) => { setNewName(e.target.value); setNewQty('') }}
-              className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-            >
-              <option value="">— Select item —</option>
-              {COCKTAIL_ITEMS.map((i) => (
-                <option key={i.name} value={i.name}>{i.name}</option>
-              ))}
-            </select>
-            {newName === 'Custom' && (
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Item name"
-                className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-              />
-            )}
-          </div>
-          {newName && (
-            <div className="flex gap-2">
-              {selectedDef?.sizes ? (
-                <select
-                  value={newQty}
-                  onChange={(e) => setNewQty(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-                >
-                  <option value="">— Size —</option>
-                  {selectedDef.sizes.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={newQty}
-                  onChange={(e) => setNewQty(e.target.value)}
-                  placeholder="Quantity (e.g. 50)"
-                  className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-                />
-              )}
+        return (
+          <div key={section.label} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-stone-700">{section.label}</span>
+                <span className="text-[10px] text-stone-400">by {section.unit}</span>
+                {sectionItems.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">
+                    {sectionItems.length}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
-                onClick={addItem}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-lg transition-colors"
+                onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
+                className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
               >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
                 Add
               </button>
-              <button
-                type="button"
-                onClick={() => { setShowAdd(false); setNewName(''); setNewQty(''); setCustomName('') }}
-                className="px-3 py-1.5 text-sm text-stone-500 hover:text-stone-700 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
             </div>
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-ember-600 hover:text-ember-700 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Add item
-        </button>
-      )}
+
+            {sectionItems.length > 0 && (
+              <div className="divide-y divide-stone-100">
+                {sectionItems.map((item, i) => {
+                  const idx = items.indexOf(item)
+                  return (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="flex-1 text-sm text-stone-800">{item.name}</span>
+                      <input
+                        type="text"
+                        value={item.qty}
+                        onChange={(e) => updateQty(idx, e.target.value)}
+                        placeholder={section.unit}
+                        className="w-28 px-2 py-1 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400"
+                      />
+                      <button type="button" onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {isOpen && (
+              <div className="px-4 py-3 bg-stone-50 border-t border-stone-100 space-y-2">
+                <div className="flex gap-2">
+                  <select
+                    value={newName}
+                    onChange={(e) => { setNewName(e.target.value); setNewQty('') }}
+                    className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                  >
+                    <option value="">— Select item —</option>
+                    {section.items.map((i) => (
+                      <option key={i.name} value={i.name}>{i.name}</option>
+                    ))}
+                  </select>
+                  {newName === 'Custom' && (
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Item name"
+                      className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                    />
+                  )}
+                </div>
+                {newName && (
+                  <div className="flex gap-2">
+                    {selectedDef?.sizes ? (
+                      <select
+                        value={newQty}
+                        onChange={(e) => setNewQty(e.target.value)}
+                        className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                      >
+                        <option value="">— Size —</option>
+                        {selectedDef.sizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={newQty}
+                        onChange={(e) => setNewQty(e.target.value)}
+                        placeholder={`# of ${section.unit}`}
+                        className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                      />
+                    )}
+                    <button type="button" onClick={() => addItem(section.label, section.unit)}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-lg transition-colors">
+                      Add
+                    </button>
+                    <button type="button" onClick={() => { setOpenSection(null); setNewName(''); setNewQty(''); setCustomName('') }}
+                      className="px-3 py-1.5 text-sm text-stone-500 hover:text-stone-700 rounded-lg transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
