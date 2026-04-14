@@ -1654,7 +1654,6 @@ function CocktailHourBuilder({
     setNewName('')
     setNewQty('')
     setCustomName('')
-    setOpenSection(null)
   }
 
   function removeItem(idx: number) {
