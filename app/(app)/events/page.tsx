@@ -1640,9 +1640,16 @@ function CocktailHourBuilder({
   onChange: (items: { name: string; qty: string; section?: string }[]) => void
 }) {
   const [openSection, setOpenSection] = useState<string | null>(null)
+  const [hiddenSections, setHiddenSections] = useState<string[]>([])
   const [newName, setNewName] = useState('')
   const [newQty, setNewQty] = useState('')
   const [customName, setCustomName] = useState('')
+
+  function toggleHidden(label: string) {
+    setHiddenSections((prev) =>
+      prev.includes(label) ? prev.filter((s) => s !== label) : [...prev, label]
+    )
+  }
 
   function addItem(sectionLabel: string, unit: string) {
     const sectionDef = COCKTAIL_SECTIONS.find((s) => s.label === sectionLabel)
@@ -1669,27 +1676,42 @@ function CocktailHourBuilder({
       {COCKTAIL_SECTIONS.map((section) => {
         const sectionItems = items.filter((i) => i.section === section.label)
         const isOpen = openSection === section.label
+        const isHidden = hiddenSections.includes(section.label)
         const selectedDef = section.items.find((i) => i.name === newName)
 
         return (
           <div key={section.label}>
             {/* Section header */}
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
               <button
                 type="button"
-                onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
-                className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
+                onClick={() => toggleHidden(section.label)}
+                className="flex items-center gap-1.5 group"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                <svg className={`w-3 h-3 text-stone-400 transition-transform ${isHidden ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-                Add
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-500 group-hover:text-stone-700 transition-colors">{section.label}</span>
+                {sectionItems.length > 0 && (
+                  <span className="text-xs text-stone-400">({sectionItems.length})</span>
+                )}
               </button>
+              {!isHidden && (
+                <button
+                  type="button"
+                  onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
+                  className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add
+                </button>
+              )}
             </div>
 
-            {/* Selected items — clean plain list */}
-            {sectionItems.length > 0 && (
+            {/* Selected items — only show when not hidden */}
+            {!isHidden && sectionItems.length > 0 && (
               <div className="px-4 pb-2 divide-y divide-stone-100">
                 {sectionItems.map((item, i) => {
                   const idx = items.indexOf(item)
@@ -1717,7 +1739,7 @@ function CocktailHourBuilder({
               </div>
             )}
 
-            {isOpen && (
+            {!isHidden && isOpen && (
               <div className="px-4 py-3 bg-stone-50 border-t border-stone-100 space-y-2">
                 <div className="flex gap-2">
                   <select
