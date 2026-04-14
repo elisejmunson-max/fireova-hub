@@ -1711,7 +1711,7 @@ const COCKTAIL_SECTIONS: {
 }[] = [
   {
     label: 'Charcuterie',
-    unit: 'size',
+    unit: '',
     items: [
       { name: 'Grazing Table', sizes: ['3ft', '4ft', '6ft', '8ft'] },
       { name: 'Charcuterie Board' },
@@ -1781,7 +1781,7 @@ function CocktailHourBuilder({
     const itemDef = sectionDef?.items.find((i) => i.name === newName)
     const name = newName === 'Custom' ? customName.trim() : newName
     if (!name) return
-    const qty = newQty.trim() ? (itemDef?.sizes ? newQty : `${newQty} ${unit}`.trim()) : ''
+    const qty = newQty.trim() ? (itemDef?.sizes ? newQty : unit ? `${newQty} ${unit}` : newQty) : ''
     onChange([...items, { name, qty, section: sectionLabel }])
     setNewName('')
     setNewQty('')
@@ -1907,7 +1907,7 @@ function CocktailHourBuilder({
                         type="text"
                         value={newQty}
                         onChange={(e) => setNewQty(e.target.value)}
-                        placeholder={`# of ${section.unit}`}
+                        placeholder={section.unit ? `# of ${section.unit}` : 'Qty'}
                         className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
                       />
                     )}
