@@ -2011,6 +2011,13 @@ const PACK_LISTS: Record<string, string[]> = {
     'Floral decor / flowers',
     'App plates / napkins / tongs / rose cup',
   ],
+  'Prosciutto Wrapped Shrimp': [
+    'Lemon',
+    'Fresno aioli',
+    'Bowl / spoon',
+    'Parsley',
+    'Rectangle platter',
+  ],
 }
 
 const PACK_LISTS_ES: Record<string, string[]> = {
@@ -2029,6 +2036,13 @@ const PACK_LISTS_ES: Record<string, string[]> = {
     '2 tablas rectangulares para galletas / focaccia',
     'Decoración floral / flores',
     'Platos / servilletas / pinzas / copa de rosa',
+  ],
+  'Prosciutto Wrapped Shrimp': [
+    'Limón',
+    'Aioli de Fresno',
+    'Tazón / cuchara',
+    'Perejil',
+    'Bandeja rectangular',
   ],
 }
 
