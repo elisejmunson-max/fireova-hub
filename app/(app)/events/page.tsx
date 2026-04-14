@@ -1965,6 +1965,29 @@ function CocktailHourBuilder({
 }
 
 // ---------------------------------------------------------------------------
+// Pack Lists — auto-populated when items are added to cocktail hour
+// ---------------------------------------------------------------------------
+
+const PACK_LISTS: Record<string, string[]> = {
+  'Grazing Table': [
+    'Butcher paper / tape / scissors',
+    'Meat',
+    'Cheese',
+    'Fruit',
+    'Dried fruit',
+    'Nuts',
+    'Crackers',
+    'Rosemary',
+    'Shaved parmesan',
+    'Circle brie stands',
+    'Tiered stand',
+    '2 rectangle boards for crackers / focaccia',
+    'Floral decor / flowers',
+    'App plates / napkins / tongs / rose cup',
+  ],
+}
+
+// ---------------------------------------------------------------------------
 // Prep Checklist
 // ---------------------------------------------------------------------------
 
@@ -1987,10 +2010,39 @@ function PrepChecklist({
     })
   }
 
+  // Build pack list: collect unique pack items from all cocktail items that have a defined pack list
+  const packSections: { heading: string; items: string[] }[] = []
+  const seenPackHeadings = new Set<string>()
+  cocktailItems.forEach((item) => {
+    const packItems = PACK_LISTS[item.name]
+    if (packItems && !seenPackHeadings.has(item.name)) {
+      seenPackHeadings.add(item.name)
+      packSections.push({ heading: item.name, items: packItems })
+    }
+  })
+
   const hasCocktail = cocktailItems.length > 0
   const hasMenu = menuItems.length > 0
+  const hasPack = packSections.length > 0
 
   if (!hasCocktail && !hasMenu) return null
+
+  function CheckRow({ label, checkKey }: { label: string; checkKey: string }) {
+    const done = checked.has(checkKey)
+    return (
+      <label className="flex items-center gap-3 cursor-pointer group">
+        <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 group-hover:border-ember-400'}`}>
+          {done && (
+            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </div>
+        <span className="text-sm text-stone-800">{label}</span>
+        <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(checkKey)} />
+      </label>
+    )
+  }
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
@@ -2007,47 +2059,30 @@ function PrepChecklist({
               )}
             </div>
             {cocktailItems.map((item, i) => {
-              const key = `cocktail-${i}`
               const label = item.qty ? `${item.qty} × ${item.name}` : item.name
-              const done = checked.has(key)
-              return (
-                <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 group-hover:border-ember-400'}`}>
-                    {done && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`text-sm text-stone-800`}>{label}</span>
-                  <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
-                </label>
-              )
+              return <CheckRow key={`cocktail-${i}`} label={label} checkKey={`cocktail-${i}`} />
             })}
           </div>
         )}
         {hasMenu && (
           <div className="px-4 py-3 space-y-1.5">
             <p className="text-xs font-semibold text-stone-700 mb-2">Food Service</p>
-            {menuItems.map((item, i) => {
-              const key = `menu-${i}`
-              const done = checked.has(key)
-              return (
-                <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 group-hover:border-ember-400'}`}>
-                    {done && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`text-sm text-stone-800`}>{item}</span>
-                  <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
-                </label>
-              )
-            })}
+            {menuItems.map((item, i) => (
+              <CheckRow key={`menu-${i}`} label={item} checkKey={`menu-${i}`} />
+            ))}
           </div>
         )}
+        {hasPack && packSections.map((section) => (
+          <div key={`pack-${section.heading}`} className="px-4 py-3 space-y-1.5">
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-semibold text-stone-700">Pack List</p>
+              <span className="px-2 py-0.5 text-[11px] font-medium text-stone-500 bg-stone-100 rounded-full">{section.heading}</span>
+            </div>
+            {section.items.map((packItem, j) => (
+              <CheckRow key={`pack-${section.heading}-${j}`} label={packItem} checkKey={`pack-${section.heading}-${j}`} />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   )
