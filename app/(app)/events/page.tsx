@@ -1696,18 +1696,15 @@ function CocktailHourBuilder({
                   const idx = items.indexOf(item)
                   return (
                     <div key={i} className="flex items-center gap-0 bg-stone-50 border border-stone-200 rounded-lg overflow-hidden">
-                      <span className="px-2.5 py-1 text-xs font-medium text-stone-700">{item.name}</span>
-                      {item.qty && (
-                        <span className="px-2 py-1 text-xs font-semibold text-ember-700 bg-ember-50 border-l border-ember-200">{item.qty}</span>
-                      )}
+                      <span className="px-2.5 py-1 text-xs font-medium text-stone-700 whitespace-nowrap">{item.name}</span>
                       <input
                         type="text"
                         value={item.qty}
                         onChange={(e) => updateQty(idx, e.target.value)}
                         placeholder={section.unit}
-                        className="w-16 px-2 py-1 text-xs bg-transparent border-l border-stone-200 text-stone-600 placeholder-stone-300 focus:outline-none focus:bg-stone-100"
+                        className="w-16 px-2 py-1 text-xs font-semibold text-ember-700 bg-ember-50 border-l border-ember-200 placeholder-stone-300 focus:outline-none focus:bg-white"
                       />
-                      <button type="button" onClick={() => removeItem(idx)} className="px-1.5 py-1 text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors">
+                      <button type="button" onClick={() => removeItem(idx)} className="px-1.5 py-1 text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors border-l border-stone-200">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
