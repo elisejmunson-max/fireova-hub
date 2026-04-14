@@ -296,10 +296,10 @@ function EventSidebar({
                     return (
                       <button key={event.id} type="button" onClick={() => onSelect(event.id)}
                         className={`w-full text-left pl-10 pr-3 py-2 border-b border-stone-100 transition-colors ${active ? 'bg-ember-50 border-l-2 border-l-ember-500' : 'hover:bg-stone-50'}`}>
-                        <p className={`text-xs font-medium truncate ${active ? 'text-ember-700' : 'text-stone-800'}`}>{event.event_name}</p>
                         {event.event_date && (
-                          <p className="text-[11px] text-stone-400 mt-0.5">{formatDateDisplay(event.event_date)}</p>
+                          <p className="text-[11px] text-stone-400">{formatDateDisplay(event.event_date)}</p>
                         )}
+                        <p className={`text-xs font-medium truncate ${active ? 'text-ember-700' : 'text-stone-800'}`}>{event.event_name}</p>
                       </button>
                     )
                   })}
