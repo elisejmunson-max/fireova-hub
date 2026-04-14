@@ -45,7 +45,7 @@ interface Event {
   updated_at: string
 }
 
-type Tab = 'details' | 'driving' | 'notes' | 'menu' | 'packlist'
+type Tab = 'details' | 'driving' | 'notes' | 'packlist'
 
 // ---------------------------------------------------------------------------
 // Menu data
@@ -759,7 +759,7 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'driving', 'notes', 'menu', 'packlist'] as Tab[]).map((tab) => (
+                {(['details', 'driving', 'notes', 'packlist'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -772,7 +772,6 @@ export default function EventsPage() {
                     {tab === 'details' ? 'Event Details'
                       : tab === 'driving' ? 'Driving & Parking'
                       : tab === 'notes' ? 'Menu Notes'
-                      : tab === 'menu' ? 'Menu'
                       : (
                       <span className="flex items-center gap-1.5">
                         Pack List
@@ -817,12 +816,6 @@ export default function EventsPage() {
                   onSave={handleSaveDetails}
                   selectedMenuItems={selectedEvent.selected_menu_items ?? []}
                   onToggleMenu={handleMenuToggle}
-                />
-              )}
-              {activeTab === 'menu' && (
-                <MenuTab
-                  selected={selectedEvent.selected_menu_items ?? []}
-                  onToggle={handleMenuToggle}
                 />
               )}
               {activeTab === 'packlist' && (
