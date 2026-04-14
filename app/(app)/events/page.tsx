@@ -26,6 +26,9 @@ interface Event {
   team_stretch_top: string | null
   team_expo: string | null
   team_buffet: string | null
+  team_buffet_phone: string | null
+  team_driver: string | null
+  team_driver_phone: string | null
   checkin_contact: string | null
   checkin_phone: string | null
   cocktail_hour: string | null
@@ -195,6 +198,9 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     team_stretch_top: null,
     team_expo: null,
     team_buffet: null,
+    team_buffet_phone: null,
+    team_driver: null,
+    team_driver_phone: null,
     checkin_contact: null,
     checkin_phone: null,
     cocktail_hour: null,
@@ -411,6 +417,9 @@ export default function EventsPage() {
       team_stretch_top: event.team_stretch_top,
       team_expo: event.team_expo,
       team_buffet: event.team_buffet,
+      team_buffet_phone: event.team_buffet_phone,
+      team_driver: event.team_driver,
+      team_driver_phone: event.team_driver_phone,
       checkin_contact: event.checkin_contact,
       checkin_phone: event.checkin_phone,
       cocktail_hour: event.cocktail_hour,
@@ -932,32 +941,81 @@ function DetailsTab({
             { label: 'Oven', key: 'team_oven', members: ['Jarod', 'Devon', 'Sergei', 'Benji'] },
             { label: 'Stretch / Top', key: 'team_stretch_top', members: ['Jose', 'Carlos', 'Arthur', 'Miguel', 'Maria'] },
             { label: 'Expo', key: 'team_expo', members: ['Joel', 'Taylor', 'Bre', 'Elise'] },
-            { label: 'Buffet', key: 'team_buffet', members: [] },
           ] as { label: string; key: keyof Event; members: string[] }[]).map(({ label, key, members }) => (
             <div key={key as string} className="flex items-center gap-3 px-4 py-3 bg-white">
               <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">{label}</span>
-              {members.length > 0 ? (
-                <select
-                  value={(form[key] as string) ?? ''}
-                  onChange={(e) => onChange(key, e.target.value || null)}
-                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-                >
-                  <option value="">— Unassigned —</option>
-                  {members.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={(form[key] as string) ?? ''}
-                  onChange={(e) => onChange(key, e.target.value || null)}
-                  placeholder="Assign team member"
-                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
-                />
-              )}
+              <select
+                value={(form[key] as string) ?? ''}
+                onChange={(e) => onChange(key, e.target.value || null)}
+                className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+              >
+                <option value="">— Unassigned —</option>
+                {members.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
           ))}
+
+          {/* Driver — with phone + call */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Driver</span>
+            <input
+              type="text"
+              value={(form.team_driver as string) ?? ''}
+              onChange={(e) => onChange('team_driver', e.target.value || null)}
+              placeholder="Name"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
+            <input
+              type="tel"
+              value={(form.team_driver_phone as string) ?? ''}
+              onChange={(e) => onChange('team_driver_phone', e.target.value || null)}
+              placeholder="Phone"
+              className="w-28 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
+            {(form.team_driver_phone as string)?.trim() && (
+              <a
+                href={`tel:${(form.team_driver_phone as string).replace(/\D/g, '')}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                Call
+              </a>
+            )}
+          </div>
+
+          {/* Buffet — with phone + call */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Buffet</span>
+            <input
+              type="text"
+              value={(form.team_buffet as string) ?? ''}
+              onChange={(e) => onChange('team_buffet', e.target.value || null)}
+              placeholder="Name"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
+            <input
+              type="tel"
+              value={(form.team_buffet_phone as string) ?? ''}
+              onChange={(e) => onChange('team_buffet_phone', e.target.value || null)}
+              placeholder="Phone"
+              className="w-28 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors"
+            />
+            {(form.team_buffet_phone as string)?.trim() && (
+              <a
+                href={`tel:${(form.team_buffet_phone as string).replace(/\D/g, '')}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                Call
+              </a>
+            )}
+          </div>
         </div>
       </section>
 
