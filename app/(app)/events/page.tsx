@@ -1683,31 +1683,33 @@ function CocktailHourBuilder({
           <div key={section.label}>
             {/* Section header */}
             <div className="flex items-center justify-between px-4 py-2.5">
-              <button
-                type="button"
-                onClick={() => toggleHidden(section.label)}
-                className="flex items-center gap-1.5 group"
-              >
-                <svg className={`w-3 h-3 text-stone-400 transition-transform ${isHidden ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                <span className="text-xs font-semibold uppercase tracking-wide text-stone-500 group-hover:text-stone-700 transition-colors">{section.label}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
                 {sectionItems.length > 0 && (
                   <span className="text-xs text-stone-400">({sectionItems.length})</span>
                 )}
-              </button>
-              {!isHidden && (
+              </div>
+              <div className="flex items-center gap-3">
+                {!isHidden && (
+                  <button
+                    type="button"
+                    onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
+                    className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
-                  className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
+                  onClick={() => toggleHidden(section.label)}
+                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add
+                  {isHidden ? 'Show' : 'Hide'}
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Selected items — only show when not hidden */}
