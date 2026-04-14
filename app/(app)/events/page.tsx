@@ -417,7 +417,24 @@ export default function EventsPage() {
   }, [selectedId])
 
   function handleFormChange(field: keyof Event, value: string | number | boolean | null) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      // Auto-save cocktail_hour_items immediately (debounced)
+      if (field === 'cocktail_hour_items' && selectedId) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = setTimeout(async () => {
+          if (!supabaseConfigured || userId === 'dev') { flashSave(); return }
+          const supabase = createClient()
+          await supabase
+            .from('events')
+            .update({ cocktail_hour_items: value, updated_at: new Date().toISOString() })
+            .eq('id', selectedId)
+          setEvents((prev) => prev.map((e) => e.id === selectedId ? { ...e, cocktail_hour_items: value as unknown as { name: string; qty: string }[] } : e))
+          flashSave()
+        }, 600)
+      }
+      return next
+    })
     setFormDirty(true)
   }
 
