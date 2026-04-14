@@ -1835,6 +1835,88 @@ function CocktailHourBuilder({
 }
 
 // ---------------------------------------------------------------------------
+// Prep Checklist
+// ---------------------------------------------------------------------------
+
+function PrepChecklist({
+  cocktailItems,
+  menuItems,
+}: {
+  cocktailItems: { name: string; qty: string; section?: string }[]
+  menuItems: string[]
+}) {
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+
+  function toggle(key: string) {
+    setChecked((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const hasCocktail = cocktailItems.length > 0
+  const hasMenu = menuItems.length > 0
+
+  if (!hasCocktail && !hasMenu) return null
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-stone-100">
+        <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Prep Checklist</span>
+      </div>
+      <div className="divide-y divide-stone-100">
+        {hasCocktail && (
+          <div className="px-4 py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-stone-700 mb-2">Cocktail Hour</p>
+            {cocktailItems.map((item, i) => {
+              const key = `cocktail-${i}`
+              const label = item.qty ? `${item.qty} × ${item.name}` : item.name
+              const done = checked.has(key)
+              return (
+                <label key={key} className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 group-hover:border-ember-400'}`}>
+                    {done && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm transition-colors ${done ? 'line-through text-stone-400' : 'text-stone-800'}`}>{label}</span>
+                  <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
+                </label>
+              )
+            })}
+          </div>
+        )}
+        {hasMenu && (
+          <div className="px-4 py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-stone-700 mb-2">Food Service</p>
+            {menuItems.map((item, i) => {
+              const key = `menu-${i}`
+              const done = checked.has(key)
+              return (
+                <label key={key} className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 group-hover:border-ember-400'}`}>
+                    {done && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm transition-colors ${done ? 'line-through text-stone-400' : 'text-stone-800'}`}>{item}</span>
+                  <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
+                </label>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Menu Notes Tab
 // ---------------------------------------------------------------------------
 
@@ -1883,6 +1965,11 @@ function MenuNotesTab({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
+
+      <PrepChecklist
+        cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
+        menuItems={selectedMenuItems}
+      />
 
       <div>
         {timeLabel('Cocktail Hour', form.cocktail_time as string | null)}
