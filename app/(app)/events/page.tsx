@@ -1753,6 +1753,17 @@ const COCKTAIL_SECTIONS: {
   },
 ]
 
+// Formats "qty · color · style" + name as: "qty · Name · color · style"
+// The first segment of qty (count/size) always leads; modifiers trail the name.
+function formatCocktailLabel(name: string, qty: string): string {
+  if (!qty) return name
+  const parts = qty.split(' · ')
+  const base = parts[0]
+  const modifiers = parts.slice(1).join(' · ')
+  const withBase = base ? `${base} · ${name}` : name
+  return modifiers ? `${withBase} · ${modifiers}` : withBase
+}
+
 function CocktailHourBuilder({
   items,
   onChange,
@@ -1859,17 +1870,8 @@ function CocktailHourBuilder({
                   const idx = items.indexOf(item)
                   return (
                     <div key={i} className="flex items-center justify-between py-1.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm text-stone-800">{item.name}</span>
-                        {item.qty && <span className="text-sm text-stone-400">·</span>}
-                        <input
-                          type="text"
-                          value={item.qty}
-                          onChange={(e) => updateQty(idx, e.target.value)}
-                          placeholder="qty"
-                          className="text-sm text-stone-500 bg-transparent border-none outline-none placeholder-stone-300 focus:bg-stone-50 focus:rounded px-1 min-w-0 w-auto"
-                          style={{ width: `${Math.max((item.qty?.length ?? 0) + 1, 3)}ch` }}
-                        />
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <span className="text-sm text-stone-800">{formatCocktailLabel(item.name, item.qty)}</span>
                       </div>
                       <button type="button" onClick={() => removeItem(idx)} className="text-stone-200 hover:text-red-400 transition-colors ml-3">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -2090,7 +2092,7 @@ function PrepChecklist({
               )}
             </div>
             {cocktailItems.map((item, i) => {
-              const label = item.qty ? `${item.name} · ${item.qty}` : item.name
+              const label = formatCocktailLabel(item.name, item.qty)
               return <CheckRow key={`cocktail-${i}`} label={label} checkKey={`cocktail-${i}`} />
             })}
           </div>
