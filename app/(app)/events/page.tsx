@@ -1980,7 +1980,7 @@ function MenuNotesTab({
       />
 
       <div>
-        {timeLabel('Cocktail Hour', form.cocktail_time as string | null)}
+        <label className="block text-xs font-medium text-stone-500 mb-1">Cocktail Build</label>
         <CocktailHourBuilder
           items={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
           onChange={(items) => onChange('cocktail_hour_items', items as unknown as string)}
