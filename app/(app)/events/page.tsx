@@ -1705,7 +1705,7 @@ function CocktailHourBuilder({
                 <button
                   type="button"
                   onClick={() => toggleHidden(section.label)}
-                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                  className={`text-xs font-medium px-2 py-0.5 rounded transition-colors ${isHidden ? 'text-ember-600 hover:text-ember-700' : 'text-stone-500 hover:text-stone-700 bg-stone-100 hover:bg-stone-200'}`}
                 >
                   {isHidden ? 'Show' : 'Hide'}
                 </button>
