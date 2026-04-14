@@ -1968,7 +1968,7 @@ function MenuNotesTab({
 
       <PrepChecklist
         cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
-        menuItems={selectedMenuItems}
+        menuItems={[]}
       />
 
       <div>
