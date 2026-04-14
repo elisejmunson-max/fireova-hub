@@ -2291,7 +2291,7 @@ function CocktailPackTab({
     const packItems = activeLists[item.name] ?? PACK_LISTS[item.name]
     if (packItems && !seen.has(item.name)) {
       seen.add(item.name)
-      const label = item.qty ? `${item.qty} × ${item.name}` : item.name
+      const label = formatCocktailLabel(item.name, item.qty)
       sections.push({ heading: label, qty: item.qty, items: packItems })
     }
   })
