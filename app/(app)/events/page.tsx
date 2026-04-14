@@ -1981,13 +1981,6 @@ function MenuNotesTab({
 
       <div>
         <label className="block text-xs font-medium text-stone-500 mb-1">Appetizers</label>
-        <textarea
-          value={(form.cocktail_hour as string) ?? ''}
-          onChange={(e) => onChange('cocktail_hour', e.target.value || null)}
-          placeholder="Cocktail hour notes..."
-          rows={2}
-          className="mb-2 w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
-        />
         <CocktailHourBuilder
           items={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
           onChange={(items) => onChange('cocktail_hour_items', items as unknown as string)}
