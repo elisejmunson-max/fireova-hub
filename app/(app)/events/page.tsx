@@ -1666,7 +1666,7 @@ function CocktailHourBuilder({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {COCKTAIL_SECTIONS.map((section) => {
         const sectionItems = items.filter((i) => i.section === section.label)
         const isOpen = openSection === section.label
@@ -1674,44 +1674,41 @@ function CocktailHourBuilder({
 
         return (
           <div key={section.label} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-stone-700">{section.label}</span>
-                <span className="text-[10px] text-stone-400">by {section.unit}</span>
-                {sectionItems.length > 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">
-                    {sectionItems.length}
-                  </span>
-                )}
-              </div>
+            {/* Section header */}
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
               <button
                 type="button"
                 onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
                 className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
                 Add
               </button>
             </div>
 
+            {/* Selected items as compact chips */}
             {sectionItems.length > 0 && (
-              <div className="divide-y divide-stone-100">
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
                 {sectionItems.map((item, i) => {
                   const idx = items.indexOf(item)
                   return (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="flex-1 text-sm text-stone-800">{item.name}</span>
+                    <div key={i} className="flex items-center gap-0 bg-stone-50 border border-stone-200 rounded-lg overflow-hidden">
+                      <span className="px-2.5 py-1 text-xs font-medium text-stone-700">{item.name}</span>
+                      {item.qty && (
+                        <span className="px-2 py-1 text-xs font-semibold text-ember-700 bg-ember-50 border-l border-ember-200">{item.qty}</span>
+                      )}
                       <input
                         type="text"
                         value={item.qty}
                         onChange={(e) => updateQty(idx, e.target.value)}
                         placeholder={section.unit}
-                        className="w-28 px-2 py-1 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 placeholder-stone-300 focus:outline-none focus:ring-1 focus:ring-ember-400"
+                        className="w-16 px-2 py-1 text-xs bg-transparent border-l border-stone-200 text-stone-600 placeholder-stone-300 focus:outline-none focus:bg-stone-100"
                       />
-                      <button type="button" onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <button type="button" onClick={() => removeItem(idx)} className="px-1.5 py-1 text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
