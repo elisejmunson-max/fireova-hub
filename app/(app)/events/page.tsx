@@ -1606,7 +1606,7 @@ const COCKTAIL_SECTIONS: {
   },
   {
     label: 'Small Bites',
-    unit: 'dozens',
+    unit: 'dz',
     items: [
       { name: 'Prosciutto Wrapped Shrimp' },
       { name: 'Stuffed Mushrooms' },
@@ -1695,14 +1695,15 @@ function CocktailHourBuilder({
                   const idx = items.indexOf(item)
                   return (
                     <div key={i} className="flex items-center justify-between py-1.5">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <input
                           type="text"
                           value={item.qty}
                           onChange={(e) => updateQty(idx, e.target.value)}
                           placeholder="qty"
-                          className="w-14 text-sm text-stone-500 bg-transparent border-none outline-none placeholder-stone-300 focus:bg-stone-50 focus:rounded px-1"
+                          className="w-12 text-sm text-stone-700 font-medium bg-transparent border-none outline-none placeholder-stone-300 focus:bg-stone-50 focus:rounded px-1"
                         />
+                        <span className="text-sm text-stone-400">×</span>
                         <span className="text-sm text-stone-800">{item.name}</span>
                       </div>
                       <button type="button" onClick={() => removeItem(idx)} className="text-stone-200 hover:text-red-400 transition-colors ml-3">
