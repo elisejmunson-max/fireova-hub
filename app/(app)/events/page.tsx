@@ -1711,6 +1711,7 @@ function DrivingTab({
 const COCKTAIL_SECTIONS: {
   label: string
   unit: string
+  styles?: string[]
   items: { name: string; sizes?: string[]; colors?: string[] }[]
 }[] = [
   {
@@ -1726,6 +1727,7 @@ const COCKTAIL_SECTIONS: {
   {
     label: 'Small Bites',
     unit: 'dz',
+    styles: ['Plated', 'Passed', 'Add into Grazing Table'],
     items: [
       { name: 'Prosciutto Wrapped Shrimp' },
       { name: 'Stuffed Mushrooms' },
@@ -1766,6 +1768,7 @@ function CocktailHourBuilder({
   const [newName, setNewName] = useState('')
   const [newQty, setNewQty] = useState('')
   const [newColor, setNewColor] = useState('')
+  const [newStyle, setNewStyle] = useState('')
   const [customName, setCustomName] = useState('')
 
   function expandSection(label: string) {
@@ -1774,6 +1777,7 @@ function CocktailHourBuilder({
     setNewName('')
     setNewQty('')
     setNewColor('')
+    setNewStyle('')
     setCustomName('')
   }
 
@@ -1788,11 +1792,13 @@ function CocktailHourBuilder({
     const name = newName === 'Custom' ? customName.trim() : newName
     if (!name) return
     const baseQty = newQty.trim() ? (itemDef?.sizes ? newQty : unit ? `${newQty} ${unit}` : newQty) : ''
-    const qty = baseQty && newColor ? `${baseQty} · ${newColor}` : baseQty
+    const withColor = baseQty && newColor ? `${baseQty} · ${newColor}` : newColor ? newColor : baseQty
+    const qty = withColor && newStyle ? `${withColor} · ${newStyle}` : newStyle && !withColor ? newStyle : withColor
     onChange([...items, { name, qty, section: sectionLabel }])
     setNewName('')
     setNewQty('')
     setNewColor('')
+    setNewStyle('')
     setCustomName('')
   }
 
@@ -1931,12 +1937,22 @@ function CocktailHourBuilder({
                         {selectedDef.colors.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     )}
+                    {section.styles && (
+                      <select
+                        value={newStyle}
+                        onChange={(e) => setNewStyle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                      >
+                        <option value="">— Plated or passed? —</option>
+                        {section.styles.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )}
                     <div className="flex gap-2">
                       <button type="button" onClick={() => addItem(section.label, section.unit)}
                         className="px-3 py-1.5 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-lg transition-colors">
                         Add
                       </button>
-                      <button type="button" onClick={() => { setOpenSection(null); setNewName(''); setNewQty(''); setNewColor(''); setCustomName('') }}
+                      <button type="button" onClick={() => { setOpenSection(null); setNewName(''); setNewQty(''); setNewColor(''); setNewStyle(''); setCustomName('') }}
                         className="px-3 py-1.5 text-sm text-stone-500 hover:text-stone-700 rounded-lg transition-colors">
                         Cancel
                       </button>
