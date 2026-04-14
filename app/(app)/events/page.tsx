@@ -18,6 +18,7 @@ interface Event {
   ceremony_time: string | null
   cocktail_time: string | null
   dinner_time: string | null
+  couples_meal_time: string | null
   guest_count: number | null
   status: string
   address: string | null
@@ -190,6 +191,7 @@ function emptyEvent(userId: string): Omit<Event, 'id' | 'created_at' | 'updated_
     ceremony_time: null,
     cocktail_time: null,
     dinner_time: null,
+    couples_meal_time: null,
     guest_count: null,
     status: 'not_confirmed',
     address: null,
@@ -410,6 +412,7 @@ export default function EventsPage() {
       ceremony_time: event.ceremony_time,
       cocktail_time: event.cocktail_time,
       dinner_time: event.dinner_time,
+      couples_meal_time: event.couples_meal_time,
       guest_count: event.guest_count,
       address: event.address,
       venue_name: event.venue_name,
@@ -572,11 +575,13 @@ export default function EventsPage() {
                   selectedId === event.id ? 'bg-stone-50 border-l-2 border-l-ember-500' : ''
                 }`}
               >
-                <p className="text-sm font-medium text-stone-900 truncate">{event.event_name}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-baseline gap-2">
                   {event.event_date && (
-                    <span className="text-xs text-stone-400">{formatDateDisplay(event.event_date)}</span>
+                    <span className="text-xs font-medium text-ember-600 flex-shrink-0">{formatDateDisplay(event.event_date)}</span>
                   )}
+                  <p className="text-sm font-medium text-stone-900 truncate">{event.event_name}</p>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
                   {event.guest_count != null && (
                     <span className="text-xs text-stone-400">{event.guest_count} guests</span>
                   )}
@@ -889,6 +894,14 @@ function DetailsTab({
                 <input type="text" value={(form.dinner_time as string) ?? ''}
                   onChange={(e) => onChange('dinner_time', e.target.value || null)}
                   placeholder="7:00 PM"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+              </div>
+              {/* Couple's Meal */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Couple's Meal</span>
+                <input type="text" value={(form.couples_meal_time as string) ?? ''}
+                  onChange={(e) => onChange('couples_meal_time', e.target.value || null)}
+                  placeholder="7:30 PM"
                   className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
               </div>
             </div>
@@ -1380,6 +1393,15 @@ function DrivingTab({
               placeholder="7:00 PM"
               className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
           </div>
+
+          {/* Couple's Meal */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white">
+            <span className="text-xs font-medium text-stone-500 w-36 flex-shrink-0">Couple's Meal</span>
+            <input type="text" value={(form.couples_meal_time as string) ?? ''}
+              onChange={(e) => onChange('couples_meal_time', e.target.value || null)}
+              placeholder="7:30 PM"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-stone-50 border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors" />
+          </div>
         </div>
         {calcError && <p className="text-xs text-red-500 mt-3">{calcError}</p>}
       </section>
@@ -1583,7 +1605,16 @@ function MenuNotesTab({
         />
       </div>
       {textarea('Dietary Meals', 'dietary_meals', 'GF, dairy-free, vegetarian, etc.')}
-      {textarea("Couple's Meal", 'couples_meal', "What are we making for the couple's plate?")}
+      <div>
+        {timeLabel("Couple's Meal", form.couples_meal_time as string | null)}
+        <textarea
+          value={(form.couples_meal as string) ?? ''}
+          onChange={(e) => onChange('couples_meal', e.target.value || null)}
+          placeholder="What are we making for the couple's plate?"
+          rows={3}
+          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+        />
+      </div>
       <div>
         {timeLabel('Dinner Service', form.dinner_time as string | null)}
         <textarea
