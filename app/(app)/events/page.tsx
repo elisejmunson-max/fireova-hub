@@ -771,7 +771,7 @@ export default function EventsPage() {
                   >
                     {tab === 'details' ? 'Event Details'
                       : tab === 'driving' ? 'Driving & Parking'
-                      : tab === 'notes' ? 'Menu Notes'
+                      : tab === 'notes' ? 'Menu'
                       : (
                       <span className="flex items-center gap-1.5">
                         Pack List
