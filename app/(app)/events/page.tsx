@@ -1713,7 +1713,7 @@ const COCKTAIL_SECTIONS: {
     label: 'Charcuterie',
     unit: 'size',
     items: [
-      { name: 'Grazing Table', sizes: ['3ft', '4ft', '5ft', '6ft'] },
+      { name: 'Grazing Table', sizes: ['3ft', '4ft', '6ft', '8ft'] },
       { name: 'Charcuterie Board' },
       { name: 'Charcuterie Cups' },
       { name: 'Custom' },
