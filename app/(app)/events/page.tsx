@@ -1666,28 +1666,35 @@ function CocktailHourBuilder({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="bg-white border border-stone-200 rounded-xl overflow-hidden divide-y divide-stone-100">
       {COCKTAIL_SECTIONS.map((section) => {
         const sectionItems = items.filter((i) => i.section === section.label)
         const isOpen = openSection === section.label
         const selectedDef = section.items.find((i) => i.name === newName)
 
         return (
-          <div key={section.label} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-            {/* Section header */}
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
-              <button
-                type="button"
-                onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
-                className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          <div key={section.label}>
+            {/* Section header — tap to expand */}
+            <button
+              type="button"
+              onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
+              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-stone-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <svg className={`w-3.5 h-3.5 text-stone-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-                Add
-              </button>
-            </div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
+                {sectionItems.length > 0 && (
+                  <span className="text-xs text-stone-400">({sectionItems.length})</span>
+                )}
+              </div>
+              {sectionItems.length > 0 && !isOpen && (
+                <span className="text-xs text-stone-400 truncate max-w-xs text-right">
+                  {sectionItems.map(i => i.name).join(', ')}
+                </span>
+              )}
+            </button>
 
             {/* Selected items — clean plain list */}
             {sectionItems.length > 0 && (
@@ -1719,6 +1726,7 @@ function CocktailHourBuilder({
               <div className="px-4 py-3 bg-stone-50 border-t border-stone-100 space-y-2">
                 <div className="flex gap-2">
                   <select
+                    autoFocus
                     value={newName}
                     onChange={(e) => { setNewName(e.target.value); setNewQty('') }}
                     className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
