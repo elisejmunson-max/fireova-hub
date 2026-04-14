@@ -1640,15 +1640,25 @@ function CocktailHourBuilder({
   onChange: (items: { name: string; qty: string; section?: string }[]) => void
 }) {
   const [openSection, setOpenSection] = useState<string | null>(null)
-  const [hiddenSections, setHiddenSections] = useState<string[]>([])
+  // Sections with no items start collapsed; sections already populated start open
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(() =>
+    COCKTAIL_SECTIONS.filter((s) => !items.some((i) => i.section === s.label)).map((s) => s.label)
+  )
   const [newName, setNewName] = useState('')
   const [newQty, setNewQty] = useState('')
   const [customName, setCustomName] = useState('')
 
-  function toggleHidden(label: string) {
-    setHiddenSections((prev) =>
-      prev.includes(label) ? prev.filter((s) => s !== label) : [...prev, label]
-    )
+  function expandSection(label: string) {
+    setCollapsedSections((prev) => prev.filter((s) => s !== label))
+    setOpenSection(label)
+    setNewName('')
+    setNewQty('')
+    setCustomName('')
+  }
+
+  function collapseSection(label: string) {
+    setCollapsedSections((prev) => [...prev, label])
+    if (openSection === label) setOpenSection(null)
   }
 
   function addItem(sectionLabel: string, unit: string) {
@@ -1671,17 +1681,19 @@ function CocktailHourBuilder({
     onChange(items.map((item, i) => i === idx ? { ...item, qty } : item))
   }
 
+  const visibleSections = COCKTAIL_SECTIONS.filter((s) => !collapsedSections.includes(s.label))
+  const hiddenSections = COCKTAIL_SECTIONS.filter((s) => collapsedSections.includes(s.label))
+
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden divide-y divide-stone-100">
-      {COCKTAIL_SECTIONS.map((section) => {
+      {/* Visible (active) sections */}
+      {visibleSections.map((section) => {
         const sectionItems = items.filter((i) => i.section === section.label)
         const isOpen = openSection === section.label
-        const isHidden = hiddenSections.includes(section.label)
         const selectedDef = section.items.find((i) => i.name === newName)
 
         return (
           <div key={section.label}>
-            {/* Section header */}
             <div className="flex items-center justify-between px-4 py-2.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">{section.label}</span>
@@ -1690,30 +1702,29 @@ function CocktailHourBuilder({
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {!isHidden && (
-                  <button
-                    type="button"
-                    onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
-                    className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
-                  >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add
-                  </button>
-                )}
                 <button
                   type="button"
-                  onClick={() => toggleHidden(section.label)}
-                  className={`text-xs font-medium px-2 py-0.5 rounded transition-colors ${isHidden ? 'text-ember-600 hover:text-ember-700' : 'text-stone-500 hover:text-stone-700 bg-stone-100 hover:bg-stone-200'}`}
+                  onClick={() => { setOpenSection(isOpen ? null : section.label); setNewName(''); setNewQty(''); setCustomName('') }}
+                  className="flex items-center gap-1 text-xs text-ember-600 hover:text-ember-700 font-medium transition-colors"
                 >
-                  {isHidden ? 'Show' : 'Hide'}
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add
                 </button>
+                {sectionItems.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => collapseSection(section.label)}
+                    className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Selected items — only show when not hidden */}
-            {!isHidden && sectionItems.length > 0 && (
+            {sectionItems.length > 0 && (
               <div className="px-4 pb-2 divide-y divide-stone-100">
                 {sectionItems.map((item, i) => {
                   const idx = items.indexOf(item)
@@ -1741,7 +1752,7 @@ function CocktailHourBuilder({
               </div>
             )}
 
-            {!isHidden && isOpen && (
+            {isOpen && (
               <div className="px-4 py-3 bg-stone-50 border-t border-stone-100 space-y-2">
                 <div className="flex gap-2">
                   <select
@@ -1800,6 +1811,25 @@ function CocktailHourBuilder({
           </div>
         )
       })}
+
+      {/* Collapsed sections — shown as compact add chips */}
+      {hiddenSections.length > 0 && (
+        <div className="px-4 py-3 flex flex-wrap gap-2">
+          {hiddenSections.map((section) => (
+            <button
+              key={section.label}
+              type="button"
+              onClick={() => expandSection(section.label)}
+              className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 rounded-full px-3 py-1 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {section.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
