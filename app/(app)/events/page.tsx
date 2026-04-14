@@ -45,7 +45,7 @@ interface Event {
   updated_at: string
 }
 
-type Tab = 'details' | 'driving' | 'notes'
+type Tab = 'details' | 'driving' | 'notes' | 'packlist'
 
 // ---------------------------------------------------------------------------
 // Menu data
@@ -776,7 +776,7 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'driving', 'notes'] as Tab[]).map((tab) => (
+                {(['details', 'driving', 'notes', 'packlist'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -788,7 +788,8 @@ export default function EventsPage() {
                   >
                     {tab === 'details' ? 'Event Details'
                       : tab === 'driving' ? 'Driving & Parking'
-                      : 'Menu'}
+                      : tab === 'notes' ? 'Menu'
+                      : 'Pack List'}
                   </button>
                 ))}
               </div>
@@ -821,6 +822,11 @@ export default function EventsPage() {
                   onSave={handleSaveDetails}
                   selectedMenuItems={selectedEvent.selected_menu_items ?? []}
                   onToggleMenu={handleMenuToggle}
+                />
+              )}
+              {activeTab === 'packlist' && (
+                <CocktailPackTab
+                  cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
                 />
               )}
             </div>
@@ -2010,20 +2016,8 @@ function PrepChecklist({
     })
   }
 
-  // Build pack list: collect unique pack items from all cocktail items that have a defined pack list
-  const packSections: { heading: string; items: string[] }[] = []
-  const seenPackHeadings = new Set<string>()
-  cocktailItems.forEach((item) => {
-    const packItems = PACK_LISTS[item.name]
-    if (packItems && !seenPackHeadings.has(item.name)) {
-      seenPackHeadings.add(item.name)
-      packSections.push({ heading: item.name, items: packItems })
-    }
-  })
-
   const hasCocktail = cocktailItems.length > 0
   const hasMenu = menuItems.length > 0
-  const hasPack = packSections.length > 0
 
   if (!hasCocktail && !hasMenu) return null
 
@@ -2072,17 +2066,6 @@ function PrepChecklist({
             ))}
           </div>
         )}
-        {hasPack && packSections.map((section) => (
-          <div key={`pack-${section.heading}`} className="px-4 py-3 space-y-1.5">
-            <div className="flex items-center gap-2 mb-2">
-              <p className="text-xs font-semibold text-stone-700">Pack List</p>
-              <span className="px-2 py-0.5 text-[11px] font-medium text-stone-500 bg-stone-100 rounded-full">{section.heading}</span>
-            </div>
-            {section.items.map((packItem, j) => (
-              <CheckRow key={`pack-${section.heading}-${j}`} label={packItem} checkKey={`pack-${section.heading}-${j}`} />
-            ))}
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -2185,6 +2168,104 @@ function MenuNotesTab({
           {dirty ? 'Save' : 'All changes saved'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Cocktail Pack Tab — pack list driven by cocktail hour items
+// ---------------------------------------------------------------------------
+
+function CocktailPackTab({
+  cocktailItems,
+}: {
+  cocktailItems: { name: string; qty: string; section?: string }[]
+}) {
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+
+  function toggle(key: string) {
+    setChecked((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  // Build sections from cocktail items
+  const sections: { heading: string; qty: string; items: string[] }[] = []
+  const seen = new Set<string>()
+  cocktailItems.forEach((item) => {
+    const packItems = PACK_LISTS[item.name]
+    if (packItems && !seen.has(item.name)) {
+      seen.add(item.name)
+      const label = item.qty ? `${item.qty} × ${item.name}` : item.name
+      sections.push({ heading: label, qty: item.qty, items: packItems })
+    }
+  })
+
+  const totalItems = sections.reduce((sum, s) => sum + s.items.length, 0)
+  const checkedCount = sections.reduce(
+    (sum, s) =>
+      sum + s.items.filter((_, j) => checked.has(`${s.heading}-${j}`)).length,
+    0,
+  )
+  const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0
+
+  if (sections.length === 0) {
+    return (
+      <div className="p-6 max-w-3xl">
+        <div className="bg-stone-50 border border-stone-200 rounded-xl px-5 py-8 text-center">
+          <p className="text-sm text-stone-500">No pack list items yet.</p>
+          <p className="text-xs text-stone-400 mt-1">Add items to the cocktail hour on the Menu tab to generate a pack list.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-3xl space-y-6 pb-12">
+      {/* Progress bar */}
+      <div className="bg-white rounded-xl border border-stone-200 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-stone-900">Pack Progress</span>
+          <span className="text-sm font-semibold text-stone-700">{checkedCount} / {totalItems}</span>
+        </div>
+        <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-ember-500 rounded-full transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {pct === 100 && totalItems > 0 && (
+          <p className="text-xs text-green-600 font-medium mt-2">All packed. Ready to roll.</p>
+        )}
+      </div>
+
+      {/* Pack sections */}
+      {sections.map((section) => (
+        <div key={section.heading}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">{section.heading}</h3>
+          <div className="bg-white rounded-xl border border-stone-200 divide-y divide-stone-100">
+            {section.items.map((packItem, j) => {
+              const key = `${section.heading}-${j}`
+              const done = checked.has(key)
+              return (
+                <label key={key} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-stone-50 transition-colors">
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-ember-600 border-ember-600' : 'border-stone-300 hover:border-ember-400'}`}>
+                    {done && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-stone-800">{packItem}</span>
+                  <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
