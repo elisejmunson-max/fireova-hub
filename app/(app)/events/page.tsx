@@ -1557,12 +1557,43 @@ function MenuNotesTab({
     )
   }
 
+  function timeLabel(label: string, time: string | null | undefined) {
+    return (
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-medium text-stone-500">{label}</span>
+        {time ? (
+          <span className="px-2 py-0.5 text-[11px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">{time}</span>
+        ) : (
+          <span className="px-2 py-0.5 text-[11px] text-stone-300 bg-stone-50 border border-stone-200 rounded-full">No time set</span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-3xl space-y-4">
-      {textarea('Cocktail Hour', 'cocktail_hour', 'What is being served during cocktail hour?')}
+      <div>
+        {timeLabel('Cocktail Hour', form.cocktail_time as string | null)}
+        <textarea
+          value={(form.cocktail_hour as string) ?? ''}
+          onChange={(e) => onChange('cocktail_hour', e.target.value || null)}
+          placeholder="What is being served during cocktail hour?"
+          rows={3}
+          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+        />
+      </div>
       {textarea('Dietary Meals', 'dietary_meals', 'GF, dairy-free, vegetarian, etc.')}
       {textarea("Couple's Meal", 'couples_meal', "What are we making for the couple's plate?")}
-      {textarea('Dinner Service', 'dinner_service', 'Dinner service details and notes')}
+      <div>
+        {timeLabel('Dinner Service', form.dinner_time as string | null)}
+        <textarea
+          value={(form.dinner_service as string) ?? ''}
+          onChange={(e) => onChange('dinner_service', e.target.value || null)}
+          placeholder="Dinner service details and notes"
+          rows={3}
+          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+        />
+      </div>
       {textarea('Dessert', 'dessert_notes', 'Dessert options and notes')}
       {textarea('Special Notes', 'special_notes', 'Anything else the team needs to know')}
 
