@@ -826,6 +826,7 @@ export default function EventsPage() {
               )}
               {activeTab === 'packlist' && (
                 <CocktailPackTab
+                  eventId={selectedId ?? 'local'}
                   cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
                 />
               )}
@@ -2177,18 +2178,56 @@ function MenuNotesTab({
 // ---------------------------------------------------------------------------
 
 function CocktailPackTab({
+  eventId,
   cocktailItems,
 }: {
+  eventId: string
   cocktailItems: { name: string; qty: string; section?: string }[]
 }) {
-  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const checkedKey = `pack_checked_${eventId}`
+  const signoffKey = `pack_signoff_${eventId}`
+
+  const [checked, setChecked] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const stored = localStorage.getItem(checkedKey)
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+    } catch { return new Set() }
+  })
+
+  const [signoff, setSignoff] = useState<{ initials: string; signed_at: string } | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const stored = localStorage.getItem(signoffKey)
+      return stored ? JSON.parse(stored) : null
+    } catch { return null }
+  })
+
+  const [initialsInput, setInitialsInput] = useState('')
 
   function toggle(key: string) {
     setChecked((prev) => {
       const next = new Set(prev)
       next.has(key) ? next.delete(key) : next.add(key)
+      localStorage.setItem(checkedKey, JSON.stringify(Array.from(next)))
       return next
     })
+  }
+
+  function confirmSignoff() {
+    const val = initialsInput.trim().toUpperCase()
+    if (!val) return
+    const data = { initials: val, signed_at: new Date().toISOString() }
+    localStorage.setItem(signoffKey, JSON.stringify(data))
+    setSignoff(data)
+    setInitialsInput('')
+  }
+
+  function clearSignoff() {
+    localStorage.removeItem(signoffKey)
+    localStorage.removeItem(checkedKey)
+    setSignoff(null)
+    setChecked(new Set())
   }
 
   // Build sections from cocktail items
@@ -2210,6 +2249,7 @@ function CocktailPackTab({
     0,
   )
   const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0
+  const allDone = totalItems > 0 && checkedCount === totalItems
 
   if (sections.length === 0) {
     return (
@@ -2236,8 +2276,8 @@ function CocktailPackTab({
             style={{ width: `${pct}%` }}
           />
         </div>
-        {pct === 100 && totalItems > 0 && (
-          <p className="text-xs text-green-600 font-medium mt-2">All packed. Ready to roll.</p>
+        {allDone && !signoff && (
+          <p className="text-xs text-green-600 font-medium mt-2">All packed. Add initials below to sign off.</p>
         )}
       </div>
 
@@ -2266,6 +2306,55 @@ function CocktailPackTab({
           </div>
         </div>
       ))}
+
+      {/* Sign-off block */}
+      {signoff ? (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-green-800">Packed and signed off</p>
+              <p className="text-xs text-green-600 mt-0.5">
+                Initials: <span className="font-bold tracking-widest">{signoff.initials}</span>
+                {' · '}
+                {new Date(signoff.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {' at '}
+                {new Date(signoff.signed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
+            <button
+              onClick={clearSignoff}
+              className="text-xs text-green-500 hover:text-green-700 underline whitespace-nowrap pt-0.5"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-stone-200 rounded-xl px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Sign Off</p>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={initialsInput}
+              onChange={(e) => setInitialsInput(e.target.value.slice(0, 4))}
+              onKeyDown={(e) => e.key === 'Enter' && confirmSignoff()}
+              placeholder="Initials"
+              maxLength={4}
+              className="w-24 px-3 py-2 text-sm font-semibold tracking-widest uppercase text-center bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 placeholder-stone-300"
+            />
+            <button
+              onClick={confirmSignoff}
+              disabled={!initialsInput.trim()}
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-ember-600 text-white hover:bg-ember-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Confirm
+            </button>
+            {!allDone && (
+              <span className="text-xs text-stone-400">{totalItems - checkedCount} items unchecked</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
