@@ -2258,7 +2258,7 @@ function CocktailPackTab({
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-stone-800">{packItem}</span>
+                  <span className={`text-sm transition-colors ${done ? 'line-through text-stone-400' : 'text-stone-800'}`}>{packItem}</span>
                   <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
                 </label>
               )
