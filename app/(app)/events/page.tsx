@@ -1863,7 +1863,7 @@ function PrepChecklist({
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-stone-100">
-        <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Prep Checklist</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Menu</span>
       </div>
       <div className="divide-y divide-stone-100">
         {hasCocktail && (
@@ -1882,7 +1882,7 @@ function PrepChecklist({
                       </svg>
                     )}
                   </div>
-                  <span className={`text-sm transition-colors ${done ? 'line-through text-stone-400' : 'text-stone-800'}`}>{label}</span>
+                  <span className={`text-sm text-stone-800`}>{label}</span>
                   <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
                 </label>
               )
@@ -1904,7 +1904,7 @@ function PrepChecklist({
                       </svg>
                     )}
                   </div>
-                  <span className={`text-sm transition-colors ${done ? 'line-through text-stone-400' : 'text-stone-800'}`}>{item}</span>
+                  <span className={`text-sm text-stone-800`}>{item}</span>
                   <input type="checkbox" className="sr-only" checked={done} onChange={() => toggle(key)} />
                 </label>
               )
