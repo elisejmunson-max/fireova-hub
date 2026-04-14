@@ -670,7 +670,7 @@ export default function EventsPage() {
   const progress = getPackProgress()
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden">
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden relative">
       {/* Left panel — Finder-style column browser */}
       <div className="w-80 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between flex-shrink-0">
@@ -847,64 +847,52 @@ export default function EventsPage() {
           </>
         )}
       </div>
-    </div>
 
-    {/* New Event Modal */}
-    {showNewModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
-          <h3 className="text-base font-semibold text-stone-900 mb-4">New Event</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-stone-500 mb-1">Event Date</label>
-              <input
-                type="date"
-                value={newEventDate}
-                onChange={(e) => setNewEventDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-              />
+      {/* New Event Modal */}
+      {showNewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-base font-semibold text-stone-900 mb-4">New Event</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-500 mb-1">Event Date</label>
+                <input
+                  type="date"
+                  value={newEventDate}
+                  onChange={(e) => setNewEventDate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-500 mb-1">Event Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { setShowNewModal(false); handleCreateEvent(newEventName, newEventDate) }
+                    if (e.key === 'Escape') setShowNewModal(false)
+                  }}
+                  placeholder="e.g. Johnson Wedding"
+                  className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-stone-500 mb-1">Event Name</label>
-              <input
-                type="text"
-                autoFocus
-                value={newEventName}
-                onChange={(e) => setNewEventName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setShowNewModal(false)
-                    handleCreateEvent(newEventName, newEventDate)
-                  }
-                  if (e.key === 'Escape') setShowNewModal(false)
-                }}
-                placeholder="e.g. Johnson Wedding"
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-              />
+            <div className="flex gap-2 mt-6">
+              <button type="button" onClick={() => setShowNewModal(false)}
+                className="flex-1 px-4 py-2 text-sm text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={() => { setShowNewModal(false); handleCreateEvent(newEventName, newEventDate) }}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-xl transition-colors">
+                Create
+              </button>
             </div>
-          </div>
-          <div className="flex gap-2 mt-6">
-            <button
-              type="button"
-              onClick={() => setShowNewModal(false)}
-              className="flex-1 px-4 py-2 text-sm text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowNewModal(false)
-                handleCreateEvent(newEventName, newEventDate)
-              }}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-600 hover:bg-ember-700 rounded-xl transition-colors"
-            >
-              Create
-            </button>
           </div>
         </div>
-      </div>
-    )}
+      )}
+    </div>
   )
 }
 
