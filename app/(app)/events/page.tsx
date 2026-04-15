@@ -1790,7 +1790,7 @@ const DINNER_SECTIONS: {
   },
   {
     label: 'Salads',
-    unit: 'bowls',
+    unit: 'full pans',
     items: [
       { name: 'Caesar' },
       { name: 'Custom' },
