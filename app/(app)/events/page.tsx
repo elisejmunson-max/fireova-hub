@@ -39,6 +39,7 @@ interface Event {
   dessert_notes: string | null
   special_notes: string | null
   cocktail_hour_items: { name: string; qty: string }[]
+  dinner_service_items: { name: string; qty: string }[]
   selected_menu_items: string[]
   checked_pack_items: string[]
   created_at: string
@@ -1758,6 +1759,45 @@ const COCKTAIL_SECTIONS: {
   },
 ]
 
+const DINNER_SECTIONS: {
+  label: string
+  unit: string
+  styles?: string[]
+  items: { name: string; sizes?: string[]; colors?: string[] }[]
+}[] = [
+  {
+    label: 'Pizzas',
+    unit: 'pies',
+    items: [
+      { name: 'Margherita' },
+      { name: 'Pepperoni' },
+      { name: 'Arugula Prosciutto' },
+      { name: 'Street Taco' },
+      { name: 'Pig Pen' },
+      { name: 'Custom' },
+    ],
+  },
+  {
+    label: 'Salads',
+    unit: 'bowls',
+    items: [
+      { name: 'Caesar' },
+      { name: 'Custom' },
+    ],
+  },
+  {
+    label: 'Hot Sides',
+    unit: 'pans',
+    items: [
+      { name: 'Meatballs' },
+      { name: 'BBQ Wings' },
+      { name: 'Lamb Lollipops' },
+      { name: 'Ahi Tuna' },
+      { name: 'Custom' },
+    ],
+  },
+]
+
 // Formats "qty · color · style" + name as: "qty · Name · color · style"
 // The first segment of qty (count/size) always leads; modifiers trail the name.
 function formatCocktailLabel(name: string, qty: string): string {
@@ -1772,14 +1812,16 @@ function formatCocktailLabel(name: string, qty: string): string {
 function CocktailHourBuilder({
   items,
   onChange,
+  sections = COCKTAIL_SECTIONS,
 }: {
   items: { name: string; qty: string; section?: string }[]
   onChange: (items: { name: string; qty: string; section?: string }[]) => void
+  sections?: typeof COCKTAIL_SECTIONS
 }) {
   const [openSection, setOpenSection] = useState<string | null>(null)
   // Sections with no items start collapsed; sections already populated start open
   const [collapsedSections, setCollapsedSections] = useState<string[]>(() =>
-    COCKTAIL_SECTIONS.filter((s) => !items.some((i) => i.section === s.label)).map((s) => s.label)
+    sections.filter((s) => !items.some((i) => i.section === s.label)).map((s) => s.label)
   )
   const [newName, setNewName] = useState('')
   const [newQty, setNewQty] = useState('')
@@ -1803,7 +1845,7 @@ function CocktailHourBuilder({
   }
 
   function addItem(sectionLabel: string, unit: string) {
-    const sectionDef = COCKTAIL_SECTIONS.find((s) => s.label === sectionLabel)
+    const sectionDef = sections.find((s) => s.label === sectionLabel)
     const itemDef = sectionDef?.items.find((i) => i.name === newName)
     const name = newName === 'Custom' ? customName.trim() : newName
     if (!name) return
@@ -1826,8 +1868,8 @@ function CocktailHourBuilder({
     onChange(items.map((item, i) => i === idx ? { ...item, qty } : item))
   }
 
-  const visibleSections = COCKTAIL_SECTIONS.filter((s) => !collapsedSections.includes(s.label))
-  const hiddenSections = COCKTAIL_SECTIONS.filter((s) => collapsedSections.includes(s.label))
+  const visibleSections = sections.filter((s) => !collapsedSections.includes(s.label))
+  const hiddenSections = sections.filter((s) => collapsedSections.includes(s.label))
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden divide-y divide-stone-100">
@@ -2135,12 +2177,16 @@ const PACK_LISTS_ES: Record<string, string[]> = {
 
 function PrepChecklist({
   cocktailItems,
+  dinnerItems = [],
   menuItems,
   cocktailTime,
+  dinnerTime,
 }: {
   cocktailItems: { name: string; qty: string; section?: string }[]
+  dinnerItems?: { name: string; qty: string; section?: string }[]
   menuItems: string[]
   cocktailTime?: string | null
+  dinnerTime?: string | null
 }) {
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
@@ -2153,9 +2199,10 @@ function PrepChecklist({
   }
 
   const hasCocktail = cocktailItems.length > 0
+  const hasDinner = dinnerItems.length > 0
   const hasMenu = menuItems.length > 0
 
-  if (!hasCocktail && !hasMenu) return null
+  if (!hasCocktail && !hasDinner && !hasMenu) return null
 
   function CheckRow({ label, checkKey }: { label: string; checkKey: string }) {
     const done = checked.has(checkKey)
@@ -2191,6 +2238,20 @@ function PrepChecklist({
             {cocktailItems.map((item, i) => {
               const label = formatCocktailLabel(item.name, item.qty)
               return <CheckRow key={`cocktail-${i}`} label={label} checkKey={`cocktail-${i}`} />
+            })}
+          </div>
+        )}
+        {hasDinner && (
+          <div className="px-4 py-3 space-y-1.5">
+            <div className="flex items-center gap-2 mb-2">
+              {dinnerTime && (
+                <span className="px-2 py-0.5 text-[11px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">{dinnerTime}</span>
+              )}
+              <p className="text-xs font-semibold text-stone-700">Dinner Service</p>
+            </div>
+            {dinnerItems.map((item, i) => {
+              const label = formatCocktailLabel(item.name, item.qty)
+              return <CheckRow key={`dinner-${i}`} label={label} checkKey={`dinner-${i}`} />
             })}
           </div>
         )}
@@ -2259,8 +2320,10 @@ function MenuNotesTab({
 
       <PrepChecklist
         cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
+        dinnerItems={(form.dinner_service_items as { name: string; qty: string }[]) ?? []}
         menuItems={[]}
         cocktailTime={form.cocktail_time as string | null}
+        dinnerTime={form.dinner_time as string | null}
       />
 
       <div>
@@ -2283,12 +2346,10 @@ function MenuNotesTab({
       </div>
       <div>
         {timeLabel('Dinner Service', form.dinner_time as string | null)}
-        <textarea
-          value={(form.dinner_service as string) ?? ''}
-          onChange={(e) => onChange('dinner_service', e.target.value || null)}
-          placeholder="Dinner service details and notes"
-          rows={3}
-          className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400 transition-colors resize-none"
+        <CocktailHourBuilder
+          items={(form.dinner_service_items as { name: string; qty: string }[]) ?? []}
+          onChange={(items) => onChange('dinner_service_items', items as unknown as string)}
+          sections={DINNER_SECTIONS}
         />
       </div>
       {textarea('Dessert', 'dessert_notes', 'Dessert options and notes')}
