@@ -1717,6 +1717,7 @@ function DrivingTab({
 const COCKTAIL_SECTIONS: {
   label: string
   unit: string
+  noQty?: boolean
   styles?: string[]
   items: { name: string; sizes?: string[]; colors?: string[] }[]
 }[] = [
@@ -1762,12 +1763,14 @@ const COCKTAIL_SECTIONS: {
 const DINNER_SECTIONS: {
   label: string
   unit: string
+  noQty?: boolean
   styles?: string[]
   items: { name: string; sizes?: string[]; colors?: string[] }[]
 }[] = [
   {
     label: 'Pizzas',
-    unit: 'pies',
+    unit: '',
+    noQty: true,
     items: [
       { name: 'Margherita' },
       { name: 'Pepperoni' },
@@ -1856,7 +1859,7 @@ function CocktailHourBuilder({
     const itemDef = sectionDef?.items.find((i) => i.name === newName)
     const name = newName === 'Custom' ? customName.trim() : newName
     if (!name) return
-    const baseQty = newQty.trim() ? (itemDef?.sizes ? newQty : unit ? `${newQty} ${unit}` : newQty) : ''
+    const baseQty = sectionDef?.noQty ? '' : newQty.trim() ? (itemDef?.sizes ? newQty : unit ? `${newQty} ${unit}` : newQty) : ''
     const withColor = baseQty && newColor ? `${baseQty} · ${newColor}` : newColor ? newColor : baseQty
     const qty = withColor && newStyle ? `${withColor} · ${newStyle}` : newStyle && !withColor ? newStyle : withColor
     onChange([...items, { name, qty, section: sectionLabel }])
@@ -1964,26 +1967,28 @@ function CocktailHourBuilder({
                 </div>
                 {newName && (
                   <div className="space-y-2">
-                    <div className="flex gap-2">
-                      {selectedDef?.sizes ? (
-                        <select
-                          value={newQty}
-                          onChange={(e) => setNewQty(e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-                        >
-                          <option value="">— Size —</option>
-                          {selectedDef.sizes.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={newQty}
-                          onChange={(e) => setNewQty(e.target.value)}
-                          placeholder={section.unit ? `# of ${section.unit}` : 'Qty'}
-                          className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
-                        />
-                      )}
-                    </div>
+                    {!section.noQty && (
+                      <div className="flex gap-2">
+                        {selectedDef?.sizes ? (
+                          <select
+                            value={newQty}
+                            onChange={(e) => setNewQty(e.target.value)}
+                            className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                          >
+                            <option value="">— Size —</option>
+                            {selectedDef.sizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={newQty}
+                            onChange={(e) => setNewQty(e.target.value)}
+                            placeholder={section.unit ? `# of ${section.unit}` : 'Qty'}
+                            className="flex-1 px-2.5 py-1.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-ember-500/30 focus:border-ember-400"
+                          />
+                        )}
+                      </div>
+                    )}
                     {selectedDef?.colors && (
                       <select
                         value={newColor}
