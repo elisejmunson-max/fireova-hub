@@ -834,6 +834,7 @@ export default function EventsPage() {
                 <CocktailPackTab
                   eventId={selectedId ?? 'local'}
                   cocktailItems={(form.cocktail_hour_items as { name: string; qty: string }[]) ?? []}
+                  dinnerItems={(form.dinner_service_items as { name: string; qty: string }[]) ?? []}
                 />
               )}
             </div>
@@ -2522,9 +2523,11 @@ function MenuNotesTab({
 function CocktailPackTab({
   eventId,
   cocktailItems,
+  dinnerItems = [],
 }: {
   eventId: string
   cocktailItems: { name: string; qty: string; section?: string }[]
+  dinnerItems?: { name: string; qty: string; section?: string }[]
 }) {
   const checkedKey = `pack_checked_${eventId}`
   const signoffKey = `pack_signoff_${eventId}`
@@ -2573,11 +2576,11 @@ function CocktailPackTab({
     setChecked(new Set())
   }
 
-  // Build sections from cocktail items
+  // Build sections from cocktail + dinner items
   const activeLists = lang === 'es' ? PACK_LISTS_ES : PACK_LISTS
   const sections: { heading: string; qty: string; items: string[] }[] = []
   const seen = new Set<string>()
-  cocktailItems.forEach((item) => {
+  ;[...cocktailItems, ...dinnerItems].forEach((item) => {
     const packItems = activeLists[item.name] ?? PACK_LISTS[item.name]
     if (packItems && !seen.has(item.name)) {
       seen.add(item.name)
