@@ -2382,10 +2382,27 @@ function PrepChecklist({
               )}
               <p className="text-xs font-semibold text-stone-700">Cocktail Hour</p>
             </div>
-            {cocktailItems.map((item, i) => {
-              const label = formatCocktailLabel(item.name, item.qty)
-              return <CheckRow key={`cocktail-${i}`} label={label} checkKey={`cocktail-${i}`} />
-            })}
+            {(() => {
+              const groups: { section: string; items: typeof cocktailItems }[] = []
+              cocktailItems.forEach((item) => {
+                const sec = item.section ?? 'Other'
+                const last = groups[groups.length - 1]
+                if (last && last.section === sec) { last.items.push(item) }
+                else { groups.push({ section: sec, items: [item] }) }
+              })
+              return groups.map((group) => (
+                <div key={group.section}>
+                  {groups.length > 1 && (
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mt-2 mb-1">{group.section}</p>
+                  )}
+                  {group.items.map((item) => {
+                    const idx = cocktailItems.indexOf(item)
+                    const label = formatCocktailLabel(item.name, item.qty)
+                    return <CheckRow key={`cocktail-${idx}`} label={label} checkKey={`cocktail-${idx}`} />
+                  })}
+                </div>
+              ))
+            })()}
           </div>
         )}
         {hasDinner && (
