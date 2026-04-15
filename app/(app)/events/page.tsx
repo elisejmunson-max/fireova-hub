@@ -1798,7 +1798,7 @@ const DINNER_SECTIONS: {
   },
   {
     label: 'Hot Sides',
-    unit: 'pans',
+    unit: 'full pans',
     items: [
       { name: 'Meatballs' },
       { name: 'BBQ Wings' },
