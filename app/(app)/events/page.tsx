@@ -416,30 +416,35 @@ export default function EventsPage() {
     }
   }, [selectedId])
 
+  // Auto-save any form change after 800ms of inactivity.
+  // We pass the fresh `next` snapshot into the closure so we never read stale state.
   function handleFormChange(field: keyof Event, value: string | number | boolean | null) {
     setForm((prev) => {
       const next = { ...prev, [field]: value }
-      // Auto-save cocktail_hour_items immediately (debounced)
-      if (field === 'cocktail_hour_items' && selectedId) {
+      if (selectedId) {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(async () => {
-          if (!supabaseConfigured || userId === 'dev') { flashSave(); return }
-          const supabase = createClient()
-          await supabase
-            .from('events')
-            .update({ cocktail_hour_items: value, updated_at: new Date().toISOString() })
-            .eq('id', selectedId)
-          setEvents((prev) => prev.map((e) => e.id === selectedId ? { ...e, cocktail_hour_items: value as unknown as { name: string; qty: string }[] } : e))
-          flashSave()
-        }, 600)
+        saveTimerRef.current = setTimeout(() => {
+          autoSaveForm(next, selectedId)
+        }, 800)
       }
       return next
     })
     setFormDirty(true)
   }
 
+  async function autoSaveForm(snapshot: Partial<Event>, eventId: string) {
+    if (!supabaseConfigured || userId === 'dev') { flashSave(); setFormDirty(false); return }
+    const patch = { ...snapshot } as Record<string, unknown>
+    delete patch.id
+    delete patch.created_at
+    delete patch.updated_at
+    await saveEvent(patch as Partial<Event>, eventId)
+    setFormDirty(false)
+  }
+
   async function handleSaveDetails() {
     if (!selectedId) return
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
     const patch: Partial<Event> = { ...form }
     delete (patch as Record<string, unknown>).id
     delete (patch as Record<string, unknown>).created_at
