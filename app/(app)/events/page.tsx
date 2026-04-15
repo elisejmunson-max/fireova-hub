@@ -2178,10 +2178,10 @@ function PrepChecklist({
         {hasCocktail && (
           <div className="px-4 py-3 space-y-1.5">
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-xs font-semibold text-stone-700">Cocktail Hour</p>
               {cocktailTime && (
                 <span className="px-2 py-0.5 text-[11px] font-semibold text-ember-700 bg-ember-50 border border-ember-200 rounded-full">{cocktailTime}</span>
               )}
+              <p className="text-xs font-semibold text-stone-700">Cocktail Hour</p>
             </div>
             {cocktailItems.map((item, i) => {
               const label = formatCocktailLabel(item.name, item.qty)
