@@ -782,7 +782,7 @@ export default function EventsPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4">
-                {(['details', 'driving', 'notes', 'packlist'] as Tab[]).map((tab) => (
+                {(['details', 'notes', 'packlist', 'driving'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
