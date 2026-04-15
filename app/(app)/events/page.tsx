@@ -1771,9 +1771,16 @@ const DINNER_SECTIONS: {
     items: [
       { name: 'Margherita' },
       { name: 'Pepperoni' },
+      { name: 'Meat Lovers' },
       { name: 'Arugula Prosciutto' },
-      { name: 'Street Taco' },
       { name: 'Pig Pen' },
+      { name: 'Tropical Debate' },
+      { name: 'Pesto Pizza' },
+      { name: 'Chicken Florentine' },
+      { name: 'Veggie' },
+      { name: 'Street Taco' },
+      { name: 'Philly' },
+      { name: 'Buffalo Chicken' },
       { name: 'Custom' },
     ],
   },
@@ -2104,6 +2111,73 @@ const PACK_LISTS: Record<string, string[]> = {
     'Dill',
     'Rectangle platter',
   ],
+  // Pizzas
+  'Margherita': [
+    'Basil',
+  ],
+  'Meat Lovers': [
+    'Pepperoni',
+    'Sausage',
+    'Meatball',
+  ],
+  'Arugula Prosciutto': [
+    'Arugula',
+    'Prosciutto',
+    'Shaved parmesan',
+    'Balsamic glaze',
+  ],
+  'Pig Pen': [
+    'Pulled pork',
+    'Jalapeño',
+    'BBQ sauce',
+  ],
+  'Tropical Debate': [
+    'Ham',
+    'Pineapple',
+    'Basil',
+    'Hot honey',
+  ],
+  'Pesto Pizza': [
+    'Pesto',
+    'Tomato',
+    'Artichoke',
+    'Bacon',
+  ],
+  'Chicken Florentine': [
+    'Chicken',
+    'Bacon',
+    'Spinach',
+    'Tomato',
+  ],
+  'Veggie': [
+    'Broccolini',
+    'Spinach',
+    'Red onion',
+    'Garlic',
+  ],
+  'Street Taco': [
+    'Steak',
+    'Pico de gallo / spoon',
+    'Lime',
+    'Grill pan',
+    'Knife',
+  ],
+  'Philly': [
+    'Steak',
+    'Mushrooms',
+    'Roasted peppers',
+    'Shaved parmesan',
+    'Grill pan',
+  ],
+  'Buffalo Chicken': [
+    'Crispy chicken',
+    'Carrot / celery mix',
+    'Gorgonzola',
+    'Buffalo sauce',
+    'Green onions',
+    'Grill pan',
+    'Knife',
+  ],
 }
 
 const PACK_LISTS_ES: Record<string, string[]> = {
@@ -2168,6 +2242,73 @@ const PACK_LISTS_ES: Record<string, string[]> = {
     'Salmón',
     'Eneldo',
     'Bandeja rectangular',
+  ],
+  // Pizzas
+  'Margherita': [
+    'Albahaca',
+  ],
+  'Meat Lovers': [
+    'Pepperoni',
+    'Salchicha',
+    'Albóndiga',
+  ],
+  'Arugula Prosciutto': [
+    'Arúgula',
+    'Prosciutto',
+    'Parmesano rallado',
+    'Glaseado balsámico',
+  ],
+  'Pig Pen': [
+    'Cerdo desmenuzado',
+    'Jalapeño',
+    'Salsa BBQ',
+  ],
+  'Tropical Debate': [
+    'Jamón',
+    'Piña',
+    'Albahaca',
+    'Miel picante',
+  ],
+  'Pesto Pizza': [
+    'Pesto',
+    'Tomate',
+    'Alcachofa',
+    'Tocino',
+  ],
+  'Chicken Florentine': [
+    'Pollo',
+    'Tocino',
+    'Espinaca',
+    'Tomate',
+  ],
+  'Veggie': [
+    'Brócoli',
+    'Espinaca',
+    'Cebolla morada',
+    'Ajo',
+  ],
+  'Street Taco': [
+    'Bistec',
+    'Pico de gallo / cuchara',
+    'Limón',
+    'Sartén para asar',
+    'Cuchillo',
+  ],
+  'Philly': [
+    'Bistec',
+    'Champiñones',
+    'Pimientos asados',
+    'Parmesano rallado',
+    'Sartén para asar',
+  ],
+  'Buffalo Chicken': [
+    'Pollo crujiente',
+    'Mezcla zanahoria / apio',
+    'Gorgonzola',
+    'Salsa buffalo',
+    'Cebollitas verdes',
+    'Sartén para asar',
+    'Cuchillo',
   ],
 }
 
