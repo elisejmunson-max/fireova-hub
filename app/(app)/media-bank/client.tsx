@@ -151,8 +151,9 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     const query = supabase
       .from('media_assets')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(500)
     const finalQuery = activeFolder === '__unassigned__'
       ? query.is('folder_id', null)
       : query.eq('folder_id', activeFolder)
@@ -171,7 +172,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   async function refreshFolderCounts() {
     if (isDevMode(userId)) return
     const supabase = createClient()
-    const { data } = await supabase.from('media_assets').select('folder_id').neq('folder_id', '__archive__')
+    const { data } = await supabase.from('media_assets').select('folder_id').eq('user_id', userId).neq('folder_id', '__archive__')
     if (!data) return
     const counts: Record<string, number> = {}
     for (const row of data) {
@@ -263,14 +264,12 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
       const { data: record, error: dbError } = await supabase.from('media_assets').insert({
         user_id: userId, filename: file.name, storage_path: path,
         file_type: file.type, size_bytes: file.size, tags: [], notes: null,
+        folder_id: activeFolder ?? null,
       }).select().single()
-      if (!dbError && record) {
-        const asset = { ...record, folder_id: activeFolder, photographer: null }
+      if (dbError) { setUploadError(`Failed to save ${file.name}: ${dbError.message}`); continue }
+      if (record) {
+        const asset = { ...record, photographer: null }
         newAssets.push(asset)
-        // Persist folder_id to DB
-        if (activeFolder) {
-          await supabase.from('media_assets').update({ folder_id: activeFolder }).eq('id', record.id)
-        }
       }
     }
 
