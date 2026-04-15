@@ -1792,7 +1792,7 @@ const DINNER_SECTIONS: {
     label: 'Salads',
     unit: 'full pans',
     items: [
-      { name: 'Caesar' },
+      { name: 'Caesar Salad' },
       { name: 'Custom' },
     ],
   },
