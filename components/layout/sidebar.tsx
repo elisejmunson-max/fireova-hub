@@ -25,8 +25,7 @@ const navGroups = [
     collapsible: true,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-      { href: '/quick-post', label: 'Quick Post', icon: QuickPostIcon },
-      { href: '/create', label: 'Create Post', icon: CreateIcon, badge: 'New' },
+      { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
       { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
       { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
     ],
