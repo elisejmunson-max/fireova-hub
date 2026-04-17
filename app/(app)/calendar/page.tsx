@@ -448,35 +448,30 @@ export default function CalendarPage() {
     return `${startLabel} – ${endLabel}, ${yearLabel}`
   }
 
-  // When a date is selected, auto-schedule the first approved post matching the suggested pillar
-  useEffect(() => {
-    if (!selectedDate) return
-    setSchedulingDate(selectedDate)
+  async function autoScheduleForDate(date: string) {
+    setSchedulingDate(date)
     setAutoScheduled(null)
 
-    const suggestion = getSuggestedPillarFromList(selectedDate, rotationList)
-    // Only auto-schedule future dates that have no post yet
-    const alreadyHasPost = (postsByDate[selectedDate] ?? []).length > 0
+    // Don't auto-schedule past dates or dates already with a post
+    if (date < todayStr) return
+    const alreadyHasPost = (postsByDate[date] ?? []).length > 0
     if (alreadyHasPost) return
+    if (drafts.length === 0) return
 
-    const pool = suggestion
-      ? drafts.filter((d) => d.pillar === suggestion.pillar)
-      : drafts
-    const match = pool[0] ?? drafts[0] // fall back to any approved post
+    const suggestion = getSuggestedPillarFromList(date, rotationList)
+    const pool = suggestion ? drafts.filter((d) => d.pillar === suggestion.pillar) : []
+    const match = pool[0] ?? drafts[0]
     if (!match) return
 
     setScheduling(true)
     const supabase = createClient()
-    supabase.from('posts')
-      .update({ scheduled_date: selectedDate, status: 'scheduled' } as never)
+    await supabase.from('posts')
+      .update({ scheduled_date: date, status: 'scheduled' } as never)
       .eq('id', match.id)
-      .then(async () => {
-        await loadPosts()
-        setAutoScheduled({ title: match.title, date: selectedDate })
-        setScheduling(false)
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate])
+    await loadPosts()
+    setAutoScheduled({ title: match.title, date })
+    setScheduling(false)
+  }
 
   async function schedulePost(e?: React.FormEvent) {
     e?.preventDefault()
@@ -552,10 +547,12 @@ export default function CalendarPage() {
       if (date === selectedDate) {
         setSelectedDate(null)
         setDraftPillarFilter('')
+        setAutoScheduled(null)
       } else {
         setSelectedDate(date)
         if (suggestion) setDraftPillarFilter(suggestion.pillar)
         else setDraftPillarFilter('')
+        autoScheduleForDate(date)
       }
     }
 
