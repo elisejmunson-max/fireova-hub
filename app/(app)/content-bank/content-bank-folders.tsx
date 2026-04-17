@@ -208,8 +208,8 @@ function PostRow({
             <span className="text-xs text-stone-400">{post.format}</span>
           </div>
           <p className="text-sm font-medium text-stone-900 truncate">{post.title}</p>
-          {post.topic && (
-            <p className="text-xs text-stone-500 mt-0.5 truncate">{post.topic}</p>
+          {(post.caption_option1 || post.topic) && (
+            <p className="text-xs text-stone-500 mt-0.5 truncate">{post.caption_option1 || post.topic}</p>
           )}
           {/* Feedback preview — only in Needs Approval folder */}
           {folder === 'review' && feedback.trim() && (
