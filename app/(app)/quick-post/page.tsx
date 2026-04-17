@@ -63,6 +63,16 @@ export default function NewPostPage() {
   const [refineText, setRefineText] = useState<Record<1|2, string>>({ 1: '', 2: '' })
   const [refining, setRefining]     = useState<1|2|null>(null)
   const [refineError, setRefineError] = useState<string | null>(null)
+  const [approvedCaptions, setApprovedCaptions] = useState<Set<1|2>>(new Set())
+
+  function toggleApproved(opt: 1|2) {
+    setApprovedCaptions((prev) => {
+      const next = new Set(prev)
+      if (next.has(opt)) next.delete(opt)
+      else next.add(opt)
+      return next
+    })
+  }
 
   // Preview
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -347,8 +357,11 @@ export default function NewPostPage() {
         if (approval === 'review') { reviewSet.add(post.id); approvedSet.delete(post.id) }
         else {
           approvedSet.add(post.id); reviewSet.delete(post.id)
-          // Save approved captions to Supabase so the AI learns from them
-          const captionsToSave = [caption1.trim(), caption2.trim()].filter(Boolean)
+          // Only save captions the user thumbed up
+          const captionsToSave = [
+            approvedCaptions.has(1) ? caption1.trim() : '',
+            approvedCaptions.has(2) ? caption2.trim() : '',
+          ].filter(Boolean)
           if (captionsToSave.length > 0) {
             await supabase.from('approved_captions').insert(
               captionsToSave.map((caption) => ({
@@ -713,10 +726,24 @@ export default function NewPostPage() {
 
               {/* Caption 1 — The Fireova Punch */}
               {(caption1 || generating) && (
-                <div className="space-y-2">
+                <div className={`space-y-2 rounded-lg p-3 -mx-3 transition-colors ${approvedCaptions.has(1) ? 'bg-emerald-50' : ''}`}>
                   <div className="flex items-center justify-between">
                     <label className="label mb-0">The Fireova Punch</label>
-                    <span className="text-xs text-stone-400">{caption1.length}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-400">{caption1.length}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleApproved(1)}
+                        title={approvedCaptions.has(1) ? 'Remove approval' : 'Approve this caption'}
+                        className={`flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
+                          approvedCaptions.has(1)
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-500'
+                        }`}
+                      >
+                        <ThumbsUpIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <textarea value={caption1} onChange={(e) => setCaption1(e.target.value)} rows={4} className="input text-sm resize-none" />
                   <div className="flex items-center gap-2">
@@ -741,10 +768,24 @@ export default function NewPostPage() {
 
               {/* Caption 2 — The Party Vibe */}
               {(caption2 || generating) && (
-                <div className="space-y-2">
+                <div className={`space-y-2 rounded-lg p-3 -mx-3 transition-colors ${approvedCaptions.has(2) ? 'bg-emerald-50' : ''}`}>
                   <div className="flex items-center justify-between">
                     <label className="label mb-0">The Party Vibe</label>
-                    <span className="text-xs text-stone-400">{caption2.length}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-400">{caption2.length}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleApproved(2)}
+                        title={approvedCaptions.has(2) ? 'Remove approval' : 'Approve this caption'}
+                        className={`flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
+                          approvedCaptions.has(2)
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-500'
+                        }`}
+                      >
+                        <ThumbsUpIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <textarea value={caption2} onChange={(e) => setCaption2(e.target.value)} rows={3} className="input text-sm resize-none" />
                   <div className="flex items-center gap-2">
@@ -818,9 +859,14 @@ export default function NewPostPage() {
 
             {/* Save actions */}
             <div className="card p-4 space-y-2">
+              {approvedCaptions.size > 0 && (
+                <p className="text-xs text-emerald-600 font-medium text-center">
+                  {approvedCaptions.size === 2 ? 'Both captions' : approvedCaptions.has(1) ? 'The Fireova Punch' : 'The Party Vibe'} will be saved as your approved voice example{approvedCaptions.size > 1 ? 's' : ''}.
+                </p>
+              )}
               <button type="button" onClick={() => handleSave('draft', 'approved')}
                 disabled={saving || !title || !pillar} className="btn-primary w-full text-sm disabled:opacity-40">
-                {saving ? 'Saving...' : 'Approve & Save'}
+                {saving ? 'Saving...' : 'Save to Content Bank'}
               </button>
               <button type="button" onClick={() => handleSave('draft', 'review')}
                 disabled={saving || !title || !pillar} className="btn-secondary w-full text-sm disabled:opacity-40">
@@ -1030,4 +1076,7 @@ function EyeIcon({ className }: { className?: string }) {
 }
 function ImagePlaceholderIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+}
+function ThumbsUpIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905a3.61 3.61 0 01-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
 }
