@@ -168,11 +168,11 @@ export default function Sidebar({ user }: SidebarProps) {
                         <div key={subKey}>
                           <button
                             onClick={() => toggleGroup(subKey)}
-                            className="w-full flex items-center justify-between pl-3 pr-3 py-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/40 transition-colors group/sub"
+                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-stone-800/60 transition-colors group/sub"
                           >
-                            <div className="flex items-center gap-2">
-                              <FolderIcon className={`w-3.5 h-3.5 flex-shrink-0 ${subHasActive ? 'text-ember-500' : 'text-stone-600 group-hover/sub:text-stone-400'}`} />
-                              <span className="text-xs font-semibold tracking-wide">{child.subGroup}</span>
+                            <div className="flex items-center gap-3">
+                              <FolderIcon className={`w-4 h-4 flex-shrink-0 ${subHasActive ? 'text-ember-400' : 'text-stone-500'}`} />
+                              <span className="text-sm font-medium">{child.subGroup}</span>
                             </div>
                             <svg
                               className={`w-3 h-3 text-stone-600 group-hover/sub:text-stone-400 transition-transform duration-200 ${subCollapsed ? '-rotate-90' : ''}`}
