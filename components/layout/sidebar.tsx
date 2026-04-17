@@ -36,7 +36,7 @@ const navGroups: NavGroup[] = [
       {
         subGroup: 'Social Media',
         items: [
-          { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
+          { href: '/quick-post', label: 'Create New Post', icon: QuickPostIcon },
           { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
           { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
           { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
