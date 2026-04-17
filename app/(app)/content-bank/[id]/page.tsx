@@ -112,14 +112,21 @@ export default function PostDetailPage() {
       setFeedback(feedbackStore[id] ?? '')
     } catch {}
 
-    // Load associated media from localStorage
+    // Load associated media from Supabase post_media table
     try {
-      const raw = localStorage.getItem(LS_POST_MEDIA_KEY)
-      const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
-      const assetIds = store[id] ?? []
-      if (assetIds.length > 0) {
+      const { data: postMedia } = await supabase
+        .from('post_media')
+        .select('asset_id')
+        .eq('post_id', id)
+        .order('display_order', { ascending: true })
+      if (postMedia && postMedia.length > 0) {
+        const assetIds = postMedia.map((m: { asset_id: string }) => m.asset_id)
         const { data: mediaData } = await supabase.from('media_assets').select('*').in('id', assetIds)
-        if (mediaData) setSelectedMedia(mediaData as MediaAsset[])
+        if (mediaData) {
+          // Preserve display order
+          const ordered = assetIds.map((aid: string) => mediaData.find((m: MediaAsset) => m.id === aid)).filter(Boolean)
+          setSelectedMedia(ordered as MediaAsset[])
+        }
       }
     } catch {}
 
