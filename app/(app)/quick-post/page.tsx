@@ -734,14 +734,13 @@ export default function NewPostPage() {
                       <button
                         type="button"
                         onClick={() => toggleApproved(1)}
-                        title={approvedCaptions.has(1) ? 'Remove approval' : 'Approve this caption'}
-                        className={`flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                           approvedCaptions.has(1)
                             ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-500'
+                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-600'
                         }`}
                       >
-                        <ThumbsUpIcon className="w-3.5 h-3.5" />
+                        {approvedCaptions.has(1) ? 'Approved' : 'Approve'}
                       </button>
                     </div>
                   </div>
@@ -776,14 +775,13 @@ export default function NewPostPage() {
                       <button
                         type="button"
                         onClick={() => toggleApproved(2)}
-                        title={approvedCaptions.has(2) ? 'Remove approval' : 'Approve this caption'}
-                        className={`flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                           approvedCaptions.has(2)
                             ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-500'
+                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-600'
                         }`}
                       >
-                        <ThumbsUpIcon className="w-3.5 h-3.5" />
+                        {approvedCaptions.has(2) ? 'Approved' : 'Approve'}
                       </button>
                     </div>
                   </div>
