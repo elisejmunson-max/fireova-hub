@@ -35,14 +35,6 @@ const navGroups: NavGroup[] = [
     children: [
       { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
       {
-        subGroup: 'Hiring Ads',
-        items: [],
-      },
-      {
-        subGroup: 'Promotions',
-        items: [],
-      },
-      {
         subGroup: 'Social Media',
         items: [
           { href: '/quick-post', label: 'Create New Post', icon: QuickPostIcon },
@@ -50,6 +42,14 @@ const navGroups: NavGroup[] = [
           { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
           { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
         ],
+      },
+      {
+        subGroup: 'Hiring Ads',
+        items: [],
+      },
+      {
+        subGroup: 'Promotions',
+        items: [],
       },
     ],
   },
