@@ -913,45 +913,56 @@ function MediaPicker({ selected, pillar, onConfirm, onClose }: {
   onClose: () => void
 }) {
   const [assets, setAssets] = useState<MediaAsset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [picks, setPicks] = useState<Set<string>>(new Set(selected.map((a) => a.id)))
-  const [assetMeta, setAssetMeta] = useState<Record<string, { folder_id?: string | null }>>({})
+  const [loading, setLoading] = useState(false)
+  const [picks, setPicks] = useState<MediaAsset[]>([...selected])
   const [pillarFilter, setPillarFilter] = useState<string | null>(pillar ?? null)
+  const [subPillarFilter, setSubPillarFilter] = useState<string | null>(null)
+  const [itemFilter, setItemFilter] = useState<string | null>(null)
   const [dynPillarFolderIds, setDynPillarFolderIds] = useState<Record<string, string>>(PILLAR_FOLDER_IDS)
-  const [dynPillarSubfolderIds, setDynPillarSubfolderIds] = useState<Record<string, string[]>>(PILLAR_SUBFOLDER_IDS)
   const [dynPillars, setDynPillars] = useState<string[]>([...PILLARS])
+  const [dynSubPillars, setDynSubPillars] = useState<Record<string, string[]>>({})
+  const [dynSubPillarItems, setDynSubPillarItems] = useState<Record<string, string[]>>({})
+
+  const { toFolderSlug } = require('@/lib/pillar-utils')
 
   useEffect(() => {
-    try { const r = localStorage.getItem('fireova_asset_meta'); if (r) setAssetMeta(JSON.parse(r)) } catch {}
     try {
       const d = getDynamicPillarData()
       setDynPillarFolderIds(d.pillarFolderIds)
-      setDynPillarSubfolderIds(d.pillarSubfolderIds)
       setDynPillars(d.pillars)
+      setDynSubPillars(d.subPillars)
+      setDynSubPillarItems(d.subPillarItems)
     } catch {}
-    const supabase = createClient()
-    supabase.from('media_assets').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { setAssets(data ?? []); setLoading(false) })
   }, [])
 
-  function assetInPillar(assetId: string, p: string): boolean {
-    const rootId = dynPillarFolderIds[p]; if (!rootId) return false
-    const folderId = assetMeta[assetId]?.folder_id ?? null; if (!folderId) return false
-    if (folderId === rootId) return true
-    return (dynPillarSubfolderIds[rootId] ?? []).includes(folderId)
-  }
+  // Fetch assets per folder when drill-down changes
+  useEffect(() => {
+    if (!pillarFilter) { setAssets([]); return }
+    const pillarId = dynPillarFolderIds[pillarFilter]
+    if (!pillarId) { setAssets([]); return }
+    setLoading(true)
+    const supabase = createClient()
+    let folderFilter: string
+    if (itemFilter && subPillarFilter) {
+      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
+      const itemId = `${subId}--${toFolderSlug(itemFilter)}`
+      folderFilter = `folder_id.eq.${itemId}`
+    } else if (subPillarFilter) {
+      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
+      folderFilter = `folder_id.eq.${subId},folder_id.like.${subId}--%`
+    } else {
+      folderFilter = `folder_id.eq.${pillarId},folder_id.like.${pillarId}--%`
+    }
+    supabase.from('media_assets').select('*').neq('folder_id', '__archive__').or(folderFilter)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setAssets(data ?? []); setLoading(false) })
+  }, [pillarFilter, subPillarFilter, itemFilter, dynPillarFolderIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = assets.filter((a) => {
-    if (pillarFilter && !assetInPillar(a.id, pillarFilter)) return false
-    if (search.trim() && !a.filename.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
+  const subPillarsForPillar = pillarFilter ? (dynSubPillars[pillarFilter] ?? []) : []
+  const itemsForSubPillar = (pillarFilter && subPillarFilter) ? (dynSubPillarItems[subPillarFilter] ?? []) : []
 
-  const pillarsWithMedia = dynPillars.filter((p) => assets.some((a) => assetInPillar(a.id, p)))
-
-  function toggle(id: string) {
-    setPicks((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
+  function toggle(asset: MediaAsset) {
+    setPicks((prev) => prev.find((a) => a.id === asset.id) ? prev.filter((a) => a.id !== asset.id) : [...prev, asset])
   }
 
   return (
@@ -960,56 +971,65 @@ function MediaPicker({ selected, pillar, onConfirm, onClose }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
           <div>
             <h2 className="text-sm font-semibold text-stone-900">Pick Media</h2>
-            <p className="text-xs text-stone-500 mt-0.5">{picks.size} selected</p>
+            <p className="text-xs text-stone-500 mt-0.5">{picks.length} selected</p>
           </div>
-          <div className="flex items-center gap-3">
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..." className="input text-xs py-1.5 w-44" autoFocus />
-            <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><CloseIcon className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><CloseIcon className="w-4 h-4" /></button>
+        </div>
+
+        {/* Folder drill-down */}
+        <div className="px-5 py-2.5 border-b border-stone-100 space-y-2">
+          {/* Back button */}
+          {pillarFilter && (
+            <button onClick={() => { if (itemFilter) setItemFilter(null); else if (subPillarFilter) setSubPillarFilter(null); else setPillarFilter(null) }}
+              className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-600">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+              {itemFilter ? subPillarFilter : subPillarFilter ? pillarFilter : 'All pillars'}
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {!pillarFilter && dynPillars.map((p) => (
+              <button key={p} onClick={() => { setPillarFilter(p); setSubPillarFilter(null); setItemFilter(null) }}
+                className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full border bg-white text-stone-500 border-stone-200 hover:border-stone-400 transition-colors">{p}</button>
+            ))}
+            {pillarFilter && !subPillarFilter && subPillarsForPillar.map((s) => (
+              <button key={s} onClick={() => { setSubPillarFilter(s); setItemFilter(null) }}
+                className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full border bg-white text-stone-500 border-stone-200 hover:border-stone-400 transition-colors">{s}</button>
+            ))}
+            {subPillarFilter && !itemFilter && itemsForSubPillar.map((item) => (
+              <button key={item} onClick={() => setItemFilter(item)}
+                className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full border bg-white text-stone-500 border-stone-200 hover:border-stone-400 transition-colors">{item}</button>
+            ))}
+            {pillarFilter && (
+              <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-stone-800 text-white">
+                {itemFilter ?? subPillarFilter ?? pillarFilter}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Pillar filter tabs */}
-        {pillarsWithMedia.length > 0 && (
-          <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-stone-100 overflow-x-auto">
-            <button onClick={() => setPillarFilter(null)}
-              className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full border transition-colors ${pillarFilter === null ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'}`}>
-              All
-            </button>
-            {pillarsWithMedia.map((p) => (
-              <button key={p} onClick={() => setPillarFilter(pillarFilter === p ? null : p)}
-                className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full border transition-colors ${pillarFilter === p ? 'bg-ember-600 text-white border-ember-600' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
+          {!pillarFilter ? (
+            <div className="text-center py-16 text-stone-400 text-sm">Pick a folder above to browse photos.</div>
+          ) : loading ? (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
               {Array.from({ length: 10 }).map((_, i) => <div key={i} className="aspect-square rounded-lg bg-stone-100 animate-pulse" />)}
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-stone-400 text-sm">
-              {pillarFilter && assets.length > 0
-                ? `No media tagged to "${pillarFilter}" yet. Assign media to the ${pillarFilter} folder in the Media Bank.`
-                : assets.length === 0 ? 'No media uploaded yet.' : 'No results.'}
-            </div>
+          ) : assets.length === 0 ? (
+            <div className="text-center py-16 text-stone-400 text-sm">No media in this folder yet.</div>
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-              {filtered.map((asset) => (
-                <PickerThumb key={asset.id} asset={asset} selected={picks.has(asset.id)} onToggle={() => toggle(asset.id)} />
+              {assets.map((asset) => (
+                <PickerThumb key={asset.id} asset={asset} selected={!!picks.find((a) => a.id === asset.id)} onToggle={() => toggle(asset)} />
               ))}
             </div>
           )}
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100 bg-stone-50 rounded-b-2xl">
-          <button onClick={() => setPicks(new Set())} className="text-xs text-stone-400 hover:text-stone-600">Clear all</button>
+          <button onClick={() => setPicks([])} className="text-xs text-stone-400 hover:text-stone-600">Clear all</button>
           <div className="flex gap-2">
             <button onClick={onClose} className="btn-secondary text-sm py-1.5">Cancel</button>
-            <button onClick={() => onConfirm(assets.filter((a) => picks.has(a.id)))} className="btn-primary text-sm py-1.5">
-              {picks.size > 0 ? `Attach ${picks.size} file${picks.size !== 1 ? 's' : ''}` : 'Done'}
+            <button onClick={() => onConfirm(picks)} className="btn-primary text-sm py-1.5">
+              {picks.length > 0 ? `Attach ${picks.length} file${picks.length !== 1 ? 's' : ''}` : 'Done'}
             </button>
           </div>
         </div>
