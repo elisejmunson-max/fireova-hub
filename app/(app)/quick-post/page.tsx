@@ -866,10 +866,6 @@ export default function NewPostPage() {
                 disabled={saving || !title || !pillar} className="btn-primary w-full text-sm disabled:opacity-40">
                 {saving ? 'Saving...' : 'Save to Content Bank'}
               </button>
-              <button type="button" onClick={() => handleSave('draft', 'review')}
-                disabled={saving || !title || !pillar} className="btn-secondary w-full text-sm disabled:opacity-40">
-                Submit for Review
-              </button>
               <button type="button" onClick={() => handleSave('draft')}
                 disabled={saving || !title || !pillar}
                 className="w-full py-2 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-50 border border-transparent hover:border-stone-200 transition-colors disabled:opacity-40">

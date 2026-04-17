@@ -74,8 +74,7 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
   }
 
   const approvedPosts = posts.filter((p) => approvedIds.has(p.id))
-  const reviewPosts = posts.filter((p) => reviewIds.has(p.id) && !approvedIds.has(p.id))
-  const draftPosts = posts.filter((p) => !approvedIds.has(p.id) && !reviewIds.has(p.id))
+  const draftPosts = posts.filter((p) => !approvedIds.has(p.id))
 
   const folders: { name: FolderName; label: string; posts: Post[]; color: string; desc: string }[] = [
     {
@@ -84,13 +83,6 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
       posts: approvedPosts,
       color: 'text-emerald-600',
       desc: 'Ready to schedule',
-    },
-    {
-      name: 'review',
-      label: 'Needs Approval',
-      posts: reviewPosts,
-      color: 'text-amber-600',
-      desc: 'Submitted for review',
     },
     {
       name: 'drafts',
@@ -137,7 +129,7 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
           {openFolders.has(name) && folderPosts.length === 0 && (
             <div className="border-t border-stone-100 px-5 py-4 text-xs text-stone-400">
               {name === 'drafts' ? (
-                <Link href="/create" className="text-ember-600 hover:text-ember-700 font-medium">
+                <Link href="/quick-post" className="text-ember-600 hover:text-ember-700 font-medium">
                   + Create a new post
                 </Link>
               ) : (
@@ -170,15 +162,6 @@ function PostRow({
       <div className="flex-shrink-0 pt-1">
         {folder === 'drafts' && (
           <button
-            onClick={onSubmitReview}
-            title="Submit for approval"
-            className="px-2.5 py-1 rounded-full text-xs font-medium border border-amber-200 text-amber-600 hover:bg-amber-50 transition-colors whitespace-nowrap"
-          >
-            Submit
-          </button>
-        )}
-        {folder === 'review' && (
-          <button
             onClick={onApprove}
             title="Approve for scheduling"
             className="px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors whitespace-nowrap"
@@ -188,8 +171,8 @@ function PostRow({
         )}
         {folder === 'approved' && (
           <button
-            onClick={onSubmitReview}
-            title="Move back to review"
+            onClick={onApprove}
+            title="Move back to drafts"
             className="w-7 h-7 rounded-full bg-emerald-500 border border-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors"
           >
             <CheckIcon />
@@ -210,17 +193,6 @@ function PostRow({
           <p className="text-sm font-medium text-stone-900 truncate">{post.title}</p>
           {(post.caption_option1 || post.topic) && (
             <p className="text-xs text-stone-500 mt-0.5 truncate">{post.caption_option1 || post.topic}</p>
-          )}
-          {/* Feedback preview — only in Needs Approval folder */}
-          {folder === 'review' && feedback.trim() && (
-            <div className="mt-1.5 flex items-start gap-1.5">
-              <span className="flex-shrink-0 mt-0.5 w-3.5 h-3.5 text-amber-500">
-                <FeedbackIcon />
-              </span>
-              <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 leading-snug line-clamp-2">
-                {feedback}
-              </p>
-            </div>
           )}
         </div>
         <div className="flex-shrink-0 text-right">
