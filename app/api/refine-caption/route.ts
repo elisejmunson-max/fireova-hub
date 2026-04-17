@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 const REFINE_SYSTEM_PROMPT = `You are refining a social media caption for Fireova, a mobile wood-fired pizza catering team in DFW.
 
@@ -30,20 +31,34 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey })
 
-  const { caption, platform, instruction, approvedExamples } = await request.json() as {
+  const { caption, platform, instruction } = await request.json() as {
     caption: string
     platform: string
     instruction: string
-    approvedExamples?: string[]
   }
 
   if (!caption?.trim() || !instruction?.trim()) {
     return Response.json({ error: 'Caption and instruction are required.' }, { status: 400 })
   }
 
-  // Build examples block if approved examples exist
-  const examplesBlock = approvedExamples && approvedExamples.length > 0
-    ? `\nAPPROVED CAPTION EXAMPLES — These are real captions that have already been approved. Match this exact voice and tone:\n${approvedExamples.slice(0, 5).map((e, i) => `${i + 1}. "${e}"`).join('\n')}\n`
+  // Fetch approved captions from Supabase
+  let approvedExamples: string[] = []
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data } = await supabase
+        .from('approved_captions')
+        .select('caption')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (data) approvedExamples = data.map((r: { caption: string }) => r.caption)
+    }
+  } catch {}
+
+  const examplesBlock = approvedExamples.length > 0
+    ? `\nYOUR APPROVED CAPTIONS — your actual voice, match it:\n${approvedExamples.map((e, i) => `${i + 1}. "${e}"`).join('\n')}\n`
     : ''
 
   const userMessage = `${examplesBlock}

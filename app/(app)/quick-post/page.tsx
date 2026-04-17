@@ -17,21 +17,8 @@ type Format = 'Reel' | 'Carousel' | 'Photo'
 type Status = 'draft' | 'scheduled' | 'published'
 type PreviewPlatform = 'instagram' | 'facebook' | 'tiktok'
 
-const LS_EXAMPLES_KEY = 'fireova_approved_examples'
-const REVIEW_KEY      = 'fireova_review_posts'
-const APPROVED_KEY    = 'fireova_approved_posts'
-
-function loadApprovedExamples(): string[] {
-  try { return JSON.parse(localStorage.getItem(LS_EXAMPLES_KEY) ?? '[]') } catch { return [] }
-}
-function saveApprovedExample(caption: string) {
-  if (!caption.trim()) return
-  try {
-    const existing = loadApprovedExamples()
-    const deduped = existing.filter((e) => e !== caption)
-    localStorage.setItem(LS_EXAMPLES_KEY, JSON.stringify([caption, ...deduped].slice(0, 10)))
-  } catch {}
-}
+const REVIEW_KEY    = 'fireova_review_posts'
+const APPROVED_KEY  = 'fireova_approved_posts'
 
 // ---------------------------------------------------------------------------
 // Page
@@ -241,7 +228,6 @@ export default function NewPostPage() {
           format,
           topic,
           notes,
-          approvedExamples: loadApprovedExamples(),
         }),
       })
       if (!res.ok) {
@@ -297,9 +283,8 @@ export default function NewPostPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           caption: captionText,
-          platform: opt === 1 ? 'Instagram / Facebook' : 'TikTok',
+          platform: opt === 1 ? 'The Fireova Punch' : 'The Party Vibe',
           instruction,
-          approvedExamples: loadApprovedExamples(),
         }),
       })
       if (!res.ok) {
@@ -362,8 +347,17 @@ export default function NewPostPage() {
         if (approval === 'review') { reviewSet.add(post.id); approvedSet.delete(post.id) }
         else {
           approvedSet.add(post.id); reviewSet.delete(post.id)
-          if (caption1.trim()) saveApprovedExample(caption1.trim())
-          if (caption2.trim()) saveApprovedExample(caption2.trim())
+          // Save approved captions to Supabase so the AI learns from them
+          const captionsToSave = [caption1.trim(), caption2.trim()].filter(Boolean)
+          if (captionsToSave.length > 0) {
+            await supabase.from('approved_captions').insert(
+              captionsToSave.map((caption) => ({
+                user_id: userId,
+                caption,
+                pillar: pillar || null,
+              }))
+            )
+          }
         }
         localStorage.setItem(REVIEW_KEY, JSON.stringify([...reviewSet]))
         localStorage.setItem(APPROVED_KEY, JSON.stringify([...approvedSet]))
@@ -717,11 +711,11 @@ export default function NewPostPage() {
                 </div>
               )}
 
-              {/* Caption 1 — Instagram / Facebook */}
+              {/* Caption 1 — The Fireova Punch */}
               {(caption1 || generating) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="label mb-0">Instagram / Facebook</label>
+                    <label className="label mb-0">The Fireova Punch</label>
                     <span className="text-xs text-stone-400">{caption1.length}</span>
                   </div>
                   <textarea value={caption1} onChange={(e) => setCaption1(e.target.value)} rows={4} className="input text-sm resize-none" />
@@ -745,11 +739,11 @@ export default function NewPostPage() {
                 </div>
               )}
 
-              {/* Caption 2 — TikTok */}
+              {/* Caption 2 — The Party Vibe */}
               {(caption2 || generating) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="label mb-0">TikTok</label>
+                    <label className="label mb-0">The Party Vibe</label>
                     <span className="text-xs text-stone-400">{caption2.length}</span>
                   </div>
                   <textarea value={caption2} onChange={(e) => setCaption2(e.target.value)} rows={3} className="input text-sm resize-none" />

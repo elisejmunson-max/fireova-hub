@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 const BRAND_SYSTEM_PROMPT = `You are writing Instagram captions for Fireova, a mobile wood-fired pizza catering team based in DFW. You write as a real member of the team — warm, grounded, and present at the event. Every caption must sound like a friend who catered the party talking about it the next day, not a marketing department.
 
@@ -79,14 +80,29 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey })
 
-  const { imageUrls, pillar, format, topic, notes, approvedExamples } = await request.json() as {
+  const { imageUrls, pillar, format, topic, notes } = await request.json() as {
     imageUrls: string[]
     pillar: string
     format: string
     topic?: string
     notes?: string
-    approvedExamples?: string[]
   }
+
+  // Fetch approved captions from Supabase for this user
+  let approvedExamples: string[] = []
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data } = await supabase
+        .from('approved_captions')
+        .select('caption')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(8)
+      if (data) approvedExamples = data.map((r: { caption: string }) => r.caption)
+    }
+  } catch {}
 
   const contentParts: Anthropic.MessageParam['content'] = []
 
@@ -98,9 +114,9 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Build approved examples block (makes the AI match her preferred voice over time)
-  const examplesBlock = approvedExamples && approvedExamples.length > 0
-    ? `\nAPPROVED CAPTION EXAMPLES — These are real captions that have already been approved. Match this exact voice, flow, and tone:\n${approvedExamples.slice(0, 5).map((e, i) => `${i + 1}. "${e}"`).join('\n')}\n`
+  // Build approved examples block — your own approved captions teach the AI your voice
+  const examplesBlock = approvedExamples.length > 0
+    ? `\nYOUR APPROVED CAPTIONS — These are captions you have already approved. This is your actual voice. Match it:\n${approvedExamples.map((e, i) => `${i + 1}. "${e}"`).join('\n')}\n`
     : ''
 
   // Build the text prompt
