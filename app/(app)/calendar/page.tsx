@@ -192,7 +192,6 @@ export default function CalendarPage() {
 
   const [rotationList, setRotationList] = useState(() => buildRotationList(SUB_PILLARS, SUB_PILLAR_ITEMS))
   const [posts, setPosts] = useState<Post[]>([])
-  const [approvedPostIds, setApprovedPostIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
@@ -220,7 +219,7 @@ export default function CalendarPage() {
     ? `${year}-${String(month + 1).padStart(2, '0')}`
     : `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}`
 
-  // Load custom sub-pillars, items, and approved post IDs from localStorage
+  // Load custom sub-pillars and items from localStorage
   useEffect(() => {
     try {
       const storedSubs = localStorage.getItem(LS_SUB_PILLARS_KEY)
@@ -229,19 +228,6 @@ export default function CalendarPage() {
       const items = storedItems ? { ...SUB_PILLAR_ITEMS, ...JSON.parse(storedItems) } : SUB_PILLAR_ITEMS
       setRotationList(buildRotationList(subs, items))
     } catch {}
-    try {
-      const stored = localStorage.getItem('fireova_approved_posts')
-      if (stored) setApprovedPostIds(new Set(JSON.parse(stored)))
-    } catch {}
-    // Re-load approved IDs when window regains focus (user may have approved in another tab)
-    function onFocus() {
-      try {
-        const stored = localStorage.getItem('fireova_approved_posts')
-        setApprovedPostIds(stored ? new Set(JSON.parse(stored)) : new Set())
-      } catch {}
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   useEffect(() => {
@@ -400,7 +386,7 @@ export default function CalendarPage() {
     return map
   }, [posts])
 
-  const drafts = posts.filter((p) => p.status === 'draft' && approvedPostIds.has(p.id))
+  const drafts = posts.filter((p) => p.status === 'draft' && p.approved)
   const filteredDrafts = draftPillarFilter ? drafts.filter((d) => d.pillar === draftPillarFilter) : drafts
   const selectedPosts = selectedDate ? (postsByDate[selectedDate] ?? []) : []
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : []
@@ -503,11 +489,12 @@ export default function CalendarPage() {
     setPreviewMedia([])
     setPreviewLoading(true)
     try {
-      const raw = localStorage.getItem('fireova_post_media')
-      const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
-      const assetIds = store[post.id] ?? []
-      if (assetIds.length > 0) {
-        const supabase = createClient()
+      const supabase = createClient()
+      const { data: postMedia } = await supabase
+        .from('post_media').select('asset_id').eq('post_id', post.id)
+        .order('display_order', { ascending: true })
+      if (postMedia && postMedia.length > 0) {
+        const assetIds = postMedia.map((m: { asset_id: string }) => m.asset_id)
         const { data } = await supabase.from('media_assets').select('*').in('id', assetIds)
         if (data) setPreviewMedia(data as MediaAsset[])
       }

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PILLAR_COLORS, STATUS_COLORS } from '@/lib/constants'
 import type { Post } from '@/lib/types'
 import PostThumbnail from './post-thumbnail'
-import { LS_APPROVED_KEY, LS_REVIEW_KEY, getSet, saveSet } from './approve-post-button'
+import { createClient } from '@/lib/supabase/client'
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -13,55 +14,17 @@ function formatDate(dateStr: string) {
   })
 }
 
-type FolderName = 'approved' | 'review' | 'drafts'
-
-const LS_FEEDBACK_KEY = 'fireova_post_feedback'
+type FolderName = 'approved' | 'drafts'
 
 export default function ContentBankFolders({ posts }: { posts: Post[] }) {
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set())
-  const [reviewIds, setReviewIds] = useState<Set<string>>(new Set())
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({})
-  const [openFolders, setOpenFolders] = useState<Set<FolderName>>(new Set(['approved', 'review', 'drafts']))
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [openFolders, setOpenFolders] = useState<Set<FolderName>>(new Set(['approved', 'drafts']))
 
-  useEffect(() => {
-    setApprovedIds(getSet(LS_APPROVED_KEY))
-    setReviewIds(getSet(LS_REVIEW_KEY))
-    try {
-      const raw = localStorage.getItem(LS_FEEDBACK_KEY)
-      setFeedbackMap(raw ? JSON.parse(raw) : {})
-    } catch {}
-  }, [])
-
-  function submitForReview(postId: string, e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation()
-    const review = getSet(LS_REVIEW_KEY)
-    const approved = getSet(LS_APPROVED_KEY)
-    if (review.has(postId)) {
-      review.delete(postId)
-    } else {
-      review.add(postId)
-      approved.delete(postId) // can't be in both
-      saveSet(LS_APPROVED_KEY, approved)
-      setApprovedIds(new Set(approved))
-    }
-    saveSet(LS_REVIEW_KEY, review)
-    setReviewIds(new Set(review))
-  }
-
-  function approvePost(postId: string, e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation()
-    const approved = getSet(LS_APPROVED_KEY)
-    const review = getSet(LS_REVIEW_KEY)
-    if (approved.has(postId)) {
-      approved.delete(postId)
-    } else {
-      approved.add(postId)
-      review.delete(postId) // move out of review
-      saveSet(LS_REVIEW_KEY, review)
-      setReviewIds(new Set(review))
-    }
-    saveSet(LS_APPROVED_KEY, approved)
-    setApprovedIds(new Set(approved))
+  async function toggleApproval(post: Post) {
+    const supabase = createClient()
+    await supabase.from('posts').update({ approved: !post.approved } as never).eq('id', post.id)
+    startTransition(() => router.refresh())
   }
 
   function toggleFolder(name: FolderName) {
@@ -73,8 +36,8 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
     })
   }
 
-  const approvedPosts = posts.filter((p) => approvedIds.has(p.id))
-  const draftPosts = posts.filter((p) => !approvedIds.has(p.id))
+  const approvedPosts = posts.filter((p) => p.approved)
+  const draftPosts = posts.filter((p) => !p.approved)
 
   const folders: { name: FolderName; label: string; posts: Post[]; color: string; desc: string }[] = [
     {
@@ -118,9 +81,8 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
                   key={post.id}
                   post={post}
                   folder={name}
-                  feedback={feedbackMap[post.id] ?? ''}
-                  onSubmitReview={(e) => submitForReview(post.id, e)}
-                  onApprove={(e) => approvePost(post.id, e)}
+                  onToggleApproval={() => toggleApproval(post)}
+                  disabled={pending}
                 />
               ))}
             </div>
@@ -146,38 +108,30 @@ export default function ContentBankFolders({ posts }: { posts: Post[] }) {
 function PostRow({
   post,
   folder,
-  feedback,
-  onSubmitReview,
-  onApprove,
+  onToggleApproval,
+  disabled,
 }: {
   post: Post
   folder: FolderName
-  feedback: string
-  onSubmitReview: (e: React.MouseEvent) => void
-  onApprove: (e: React.MouseEvent) => void
+  onToggleApproval: () => void
+  disabled: boolean
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3 hover:bg-stone-50 transition-colors">
-      {/* Action button */}
+      {/* Approve / unapprove button */}
       <div className="flex-shrink-0 pt-1">
-        {folder === 'drafts' && (
-          <button
-            onClick={onApprove}
-            title="Approve for scheduling"
-            className="w-7 h-7 rounded-full border-2 border-emerald-300 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:border-emerald-500 hover:text-white transition-colors"
-          >
-            <CheckIcon />
-          </button>
-        )}
-        {folder === 'approved' && (
-          <button
-            onClick={onApprove}
-            title="Move back to drafts"
-            className="w-7 h-7 rounded-full bg-emerald-500 border border-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors"
-          >
-            <CheckIcon />
-          </button>
-        )}
+        <button
+          onClick={onToggleApproval}
+          disabled={disabled}
+          title={folder === 'approved' ? 'Move back to drafts' : 'Approve for scheduling'}
+          className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
+            folder === 'approved'
+              ? 'bg-emerald-500 border border-emerald-500 text-white hover:bg-emerald-600'
+              : 'border-2 border-emerald-300 text-emerald-400 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white'
+          }`}
+        >
+          <CheckIcon />
+        </button>
       </div>
 
       {/* Post content link */}
@@ -220,14 +174,6 @@ function CheckIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  )
-}
-
-function FeedbackIcon() {
-  return (
-    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
     </svg>
   )
 }

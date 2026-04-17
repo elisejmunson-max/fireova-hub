@@ -48,6 +48,7 @@ export type Database = {
           scheduled_date: string | null
           notes: string | null
           thumbnail_url: string | null
+          approved: boolean
           created_at: string
           updated_at: string
         }
@@ -66,6 +67,7 @@ export type Database = {
           scheduled_date?: string | null
           notes?: string | null
           thumbnail_url?: string | null
+          approved?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -82,6 +84,7 @@ export type Database = {
           scheduled_date?: string | null
           notes?: string | null
           thumbnail_url?: string | null
+          approved?: boolean
           updated_at?: string
         }
       }
