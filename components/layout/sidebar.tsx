@@ -6,37 +6,49 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
+interface NavItem {
+  href: string
+  label: string
+  icon: (p: { className?: string }) => JSX.Element
+  badge?: string
+}
+
+interface NavSubGroup {
+  subGroup: string
+  items: NavItem[]
+}
+
+interface NavGroup {
+  label: string
+  collapsible: boolean
+  children: (NavItem | NavSubGroup)[]
+}
+
 interface SidebarProps {
   user: User
 }
 
-function QuickPostIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M9 21V9" />
-    </svg>
-  )
-}
-
-const navGroups = [
+const navGroups: NavGroup[] = [
   {
     label: 'Marketing',
     collapsible: true,
-    items: [
-      { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-      { subLabel: 'Social Media' },
-      { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
-      { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
-      { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
-      { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
-      { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
+    children: [
+      {
+        subGroup: 'Social Media',
+        items: [
+          { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
+          { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
+          { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
+          { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
+          { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
+        ],
+      },
     ],
   },
   {
     label: 'Operations',
     collapsible: true,
-    items: [
+    children: [
       { href: '/recipes', label: 'Recipes', icon: RecipesIcon },
       { href: '/training', label: 'Training Manuals', icon: TrainingIcon },
       { href: '/events', label: 'Events & Pack Lists', icon: EventsIcon },
@@ -45,11 +57,21 @@ const navGroups = [
   {
     label: 'Settings',
     collapsible: true,
-    items: [
+    children: [
       { href: '/settings', label: 'Settings', icon: SettingsIcon },
     ],
   },
 ]
+
+function isSubGroup(item: NavItem | NavSubGroup): item is NavSubGroup {
+  return 'subGroup' in item
+}
+
+function allHrefsInGroup(group: NavGroup): string[] {
+  return group.children.flatMap((child) =>
+    isSubGroup(child) ? child.items.map((i) => i.href) : [child.href]
+  )
+}
 
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
@@ -58,8 +80,12 @@ export default function Sidebar({ user }: SidebarProps) {
   const [signingOut, setSigningOut] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
-  function toggleGroup(label: string) {
-    setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }))
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  function isActive(href: string) {
+    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
   }
 
   async function handleSignOut() {
@@ -71,6 +97,27 @@ export default function Sidebar({ user }: SidebarProps) {
 
   const displayName = user.email?.split('@')[0] ?? 'You'
   const initial = displayName.charAt(0).toUpperCase()
+
+  function NavLink({ href, label, icon: Icon, badge, indent }: NavItem & { indent?: boolean }) {
+    const active = isActive(href)
+    return (
+      <Link
+        href={href}
+        onClick={() => setMobileOpen(false)}
+        className={`flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          indent ? 'pl-7 pr-3' : 'px-3'
+        } ${active ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'}`}
+      >
+        <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-ember-400' : 'text-stone-500'}`} />
+        {label}
+        {badge && (
+          <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
+            {badge}
+          </span>
+        )}
+      </Link>
+    )
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -90,10 +137,10 @@ export default function Sidebar({ user }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto sidebar-nav">
         {navGroups.map((group) => {
-          const isCollapsed = !!collapsedGroups[group.label]
-          const hasActiveItem = group.items.some(({ href }) =>
-            pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-          )
+          const groupCollapsed = !!collapsedGroups[group.label]
+          const hrefs = allHrefsInGroup(group)
+          const hasActiveItem = hrefs.some((href) => isActive(href))
+
           return (
             <div key={group.label} className="mb-1">
               <button
@@ -102,51 +149,56 @@ export default function Sidebar({ user }: SidebarProps) {
               >
                 <span className="text-xs font-semibold tracking-wide">{group.label}</span>
                 <svg
-                  className={`w-3.5 h-3.5 text-stone-600 group-hover:text-stone-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
+                  className={`w-3.5 h-3.5 text-stone-600 group-hover:text-stone-400 transition-transform duration-200 ${groupCollapsed ? '-rotate-90' : ''}`}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {!isCollapsed && (
+              {!groupCollapsed && (
                 <div className="space-y-0.5 mt-0.5">
-                  {group.items.map((item: any, i: number) => {
-                    if (item.subLabel) {
+                  {group.children.map((child, i) => {
+                    if (isSubGroup(child)) {
+                      const subKey = `${group.label}::${child.subGroup}`
+                      const subCollapsed = !!collapsedGroups[subKey]
+                      const subHasActive = child.items.some((item) => isActive(item.href))
+
                       return (
-                        <p key={`sublabel-${i}`} className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-stone-600 uppercase">
-                          {item.subLabel}
-                        </p>
+                        <div key={subKey}>
+                          <button
+                            onClick={() => toggleGroup(subKey)}
+                            className="w-full flex items-center justify-between pl-3 pr-3 py-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/40 transition-colors group/sub"
+                          >
+                            <div className="flex items-center gap-2">
+                              <FolderIcon className={`w-3.5 h-3.5 flex-shrink-0 ${subHasActive ? 'text-ember-500' : 'text-stone-600 group-hover/sub:text-stone-400'}`} />
+                              <span className="text-xs font-semibold tracking-wide">{child.subGroup}</span>
+                            </div>
+                            <svg
+                              className={`w-3 h-3 text-stone-600 group-hover/sub:text-stone-400 transition-transform duration-200 ${subCollapsed ? '-rotate-90' : ''}`}
+                              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {!subCollapsed && (
+                            <div className="space-y-0.5 mt-0.5">
+                              {child.items.map((item) => (
+                                <NavLink key={item.href} {...item} indent />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )
                     }
-                    const { href, label, icon: Icon, badge } = item
-                    const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-stone-800 text-white'
-                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ember-400' : 'text-stone-500'}`} />
-                        {label}
-                        {badge && (
-                          <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
-                            {badge}
-                          </span>
-                        )}
-                      </Link>
-                    )
+
+                    return <NavLink key={child.href} {...child} />
                   })}
                 </div>
               )}
 
-              {/* Show active indicator dot on group header when collapsed and has active item */}
-              {isCollapsed && hasActiveItem && (
+              {groupCollapsed && hasActiveItem && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-ember-500" />
               )}
             </div>
@@ -225,18 +277,19 @@ function FlameIcon({ className }: { className?: string }) {
   )
 }
 
-function DashboardIcon({ className }: { className?: string }) {
+function FolderIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
     </svg>
   )
 }
 
-function CreateIcon({ className }: { className?: string }) {
+function QuickPostIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M9 21V9" />
     </svg>
   )
 }
