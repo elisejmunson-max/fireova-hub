@@ -47,6 +47,7 @@ export type Database = {
           status: 'draft' | 'scheduled' | 'published'
           scheduled_date: string | null
           notes: string | null
+          thumbnail_url: string | null
           created_at: string
           updated_at: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           status?: 'draft' | 'scheduled' | 'published'
           scheduled_date?: string | null
           notes?: string | null
+          thumbnail_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -79,6 +81,7 @@ export type Database = {
           status?: 'draft' | 'scheduled' | 'published'
           scheduled_date?: string | null
           notes?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
         }
       }

@@ -323,6 +323,11 @@ export default function NewPostPage() {
     const supabase = supabaseRef.current
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id ?? 'dev'
+    const firstImage = selectedMedia.find((m) => m.file_type.startsWith('image/') && !['image/heic', 'image/heif'].includes(m.file_type.toLowerCase()))
+    const thumbnailUrl = firstImage
+      ? supabase.storage.from('media').getPublicUrl(firstImage.storage_path).data.publicUrl
+      : null
+
     const payload: PostInsert = {
       user_id: userId,
       title,
@@ -336,6 +341,7 @@ export default function NewPostPage() {
       status,
       scheduled_date: null,
       notes: notes || null,
+      thumbnail_url: thumbnailUrl,
     }
     const { data: post, error: postError } = await supabase.from('posts').insert(payload).select().single()
     if (postError || !post) {

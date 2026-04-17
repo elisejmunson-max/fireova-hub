@@ -250,6 +250,12 @@ export default function PostDetailPage() {
     if (!title || !pillar) { setError('Title and pillar are required.'); return }
     setSaving(true); setError(null)
 
+    const supabase = createClient()
+    const firstImage = selectedMedia.find((m) => m.file_type.startsWith('image/') && !['image/heic', 'image/heif'].includes(m.file_type.toLowerCase()))
+    const thumbnailUrl = firstImage
+      ? supabase.storage.from('media').getPublicUrl(firstImage.storage_path).data.publicUrl
+      : null
+
     const payload: PostUpdate = {
       title,
       pillar,
@@ -262,10 +268,10 @@ export default function PostDetailPage() {
       hashtags: hashtags.filter(Boolean),
       shot_ideas: shotIdeas.filter(Boolean),
       notes: notes || null,
+      thumbnail_url: thumbnailUrl,
       updated_at: new Date().toISOString(),
     }
 
-    const supabase = createClient()
     const { error: saveError } = await supabase.from('posts').update(payload as never).eq('id', id)
 
     if (saveError) { setError(saveError.message); setSaving(false); return }

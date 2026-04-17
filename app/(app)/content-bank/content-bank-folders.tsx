@@ -182,7 +182,7 @@ function PostRow({
 
       {/* Post content link */}
       <Link href={`/content-bank/${post.id}`} className="flex items-start gap-3 flex-1 min-w-0">
-        <PostThumbnail postId={post.id} />
+        <PostThumbnail thumbnailUrl={post.thumbnail_url} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className={`badge ${PILLAR_COLORS[post.pillar] ?? 'bg-stone-100 text-stone-600'}`}>
