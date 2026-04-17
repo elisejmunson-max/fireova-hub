@@ -21,10 +21,11 @@ function QuickPostIcon({ className }: { className?: string }) {
 
 const navGroups = [
   {
-    label: 'Social Media',
+    label: 'Marketing',
     collapsible: true,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+      { subLabel: 'Social Media' },
       { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
       { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
       { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
@@ -110,7 +111,15 @@ export default function Sidebar({ user }: SidebarProps) {
 
               {!isCollapsed && (
                 <div className="space-y-0.5 mt-0.5">
-                  {group.items.map(({ href, label, icon: Icon, badge }: { href: string; label: string; icon: (p: { className?: string }) => JSX.Element; badge?: string }) => {
+                  {group.items.map((item: any, i: number) => {
+                    if (item.subLabel) {
+                      return (
+                        <p key={`sublabel-${i}`} className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-stone-600 uppercase">
+                          {item.subLabel}
+                        </p>
+                      )
+                    }
+                    const { href, label, icon: Icon, badge } = item
                     const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
                     return (
                       <Link
