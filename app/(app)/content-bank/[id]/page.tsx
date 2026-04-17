@@ -33,8 +33,6 @@ export default function PostDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [selectedMedia, setSelectedMedia] = useState<MediaAsset[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
-  const dragIndexRef = useRef<number | null>(null)
-
   function reorderMedia(fromIdx: number, toIdx: number) {
     if (fromIdx === toIdx) return
     setSelectedMedia((prev) => {
@@ -452,9 +450,10 @@ export default function PostDetailPage() {
                       key={asset.id}
                       asset={asset}
                       index={idx}
+                      total={selectedMedia.length}
                       onRemove={() => setSelectedMedia((prev) => prev.filter((a) => a.id !== asset.id))}
-                      onDragStart={() => { dragIndexRef.current = idx }}
-                      onDrop={() => { if (dragIndexRef.current !== null) reorderMedia(dragIndexRef.current, idx) }}
+                      onMoveLeft={() => reorderMedia(idx, idx - 1)}
+                      onMoveRight={() => reorderMedia(idx, idx + 1)}
                     />
                   ))}
                 </div>
@@ -888,39 +887,30 @@ export default function PostDetailPage() {
 function SelectedThumb({
   asset,
   index,
+  total,
   onRemove,
-  onDragStart,
-  onDrop,
+  onMoveLeft,
+  onMoveRight,
 }: {
   asset: MediaAsset
   index: number
+  total: number
   onRemove: () => void
-  onDragStart: () => void
-  onDrop: () => void
+  onMoveLeft: () => void
+  onMoveRight: () => void
 }) {
   const supabase = createClient()
   const url = supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
   const isImage = asset.file_type.startsWith('image/')
   const canPreview = isImage && !['image/heic', 'image/heif'].includes(asset.file_type.toLowerCase())
-  const [isDragOver, setIsDragOver] = useState(false)
 
   return (
-    <div
-      draggable
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
-      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => { e.preventDefault(); setIsDragOver(false); onDrop() }}
-      onDragEnd={() => setIsDragOver(false)}
-      className={`relative group aspect-square rounded-lg overflow-hidden border bg-stone-100 cursor-grab active:cursor-grabbing transition-all ${
-        isDragOver ? 'border-ember-400 ring-2 ring-ember-300 scale-105' : 'border-stone-200'
-      }`}
-    >
+    <div className="relative group aspect-square rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
       {canPreview ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={asset.filename} draggable={false} className="w-full h-full object-cover pointer-events-none" />
+        <img src={url} alt={asset.filename} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center pointer-events-none">
+        <div className="w-full h-full flex items-center justify-center">
           <VideoIcon className="w-6 h-6 text-stone-400" />
         </div>
       )}
@@ -928,12 +918,36 @@ function SelectedThumb({
       <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center justify-center z-10 pointer-events-none">
         {index + 1}
       </div>
+      {/* Remove */}
       <button
         onClick={onRemove}
         className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20"
       >
         <XSmIcon className="w-3 h-3" />
       </button>
+      {/* Move arrows — shown on hover */}
+      <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+        {index > 0 && (
+          <button
+            onClick={onMoveLeft}
+            className="w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+        {index < total - 1 && (
+          <button
+            onClick={onMoveRight}
+            className="w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   )
 }
