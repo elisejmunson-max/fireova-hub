@@ -104,11 +104,11 @@ export default function Sidebar({ user }: SidebarProps) {
       <Link
         href={href}
         onClick={() => setMobileOpen(false)}
-        className={`flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-          indent ? 'pl-7 pr-3' : 'px-3'
+        className={`flex items-center gap-3 rounded-lg font-medium transition-colors ${
+          indent ? 'pl-7 pr-3 py-1.5 text-xs' : 'px-3 py-2.5 text-sm'
         } ${active ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'}`}
       >
-        <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-ember-400' : 'text-stone-500'}`} />
+        <Icon className={`flex-shrink-0 ${indent ? 'w-3.5 h-3.5' : 'w-4 h-4'} ${active ? 'text-ember-400' : 'text-stone-500'}`} />
         {label}
         {badge && (
           <span className="ml-auto text-xs font-medium text-ember-400 bg-ember-950/60 px-1.5 py-0.5 rounded">
