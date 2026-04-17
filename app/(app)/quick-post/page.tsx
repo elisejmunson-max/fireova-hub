@@ -42,7 +42,7 @@ export default function NewPostPage() {
 
   // Media browser
   const [assets, setAssets]           = useState<MediaAsset[]>([])
-  const [loadingAssets, setLoadingAssets] = useState(true)
+  const [loadingAssets, setLoadingAssets] = useState(false)
   const [pillarFilter, setPillarFilter] = useState<string | null>(null)
   const [subPillarFilter, setSubPillarFilter] = useState<string | null>(null)
   const [itemFilter, setItemFilter]   = useState<string | null>(null)
@@ -87,7 +87,7 @@ export default function NewPostPage() {
   const [saved, setSaved]       = useState(false)
 
   // ---------------------------------------------------------------------------
-  // Load assets + pillar data
+  // Load pillar data on mount
   // ---------------------------------------------------------------------------
   useEffect(() => {
     try {
@@ -98,17 +98,43 @@ export default function NewPostPage() {
       setDynSubPillars(d.subPillars)
       setDynSubPillarItems(d.subPillarItems)
     } catch {}
+  }, [])
 
-    supabaseRef.current
+  // ---------------------------------------------------------------------------
+  // Fetch assets per-folder when drill-down changes
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!pillarFilter) { setAssets([]); return }
+
+    const pillarId = dynPillarFolderIds[pillarFilter]
+    if (!pillarId) { setAssets([]); return }
+
+    setLoadingAssets(true)
+    const supabase = supabaseRef.current
+
+    let folderFilter: string
+    if (itemFilter && subPillarFilter) {
+      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
+      const itemId = `${subId}--${toFolderSlug(itemFilter)}`
+      folderFilter = `folder_id.eq.${itemId}`
+    } else if (subPillarFilter) {
+      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
+      folderFilter = `folder_id.eq.${subId},folder_id.like.${subId}--%`
+    } else {
+      folderFilter = `folder_id.eq.${pillarId},folder_id.like.${pillarId}--%`
+    }
+
+    supabase
       .from('media_assets')
       .select('*')
+      .neq('folder_id', '__archive__')
+      .or(folderFilter)
       .order('created_at', { ascending: false })
-      .limit(500)
       .then(({ data }) => {
         setAssets(data ?? [])
         setLoadingAssets(false)
       })
-  }, [])
+  }, [pillarFilter, subPillarFilter, itemFilter, dynPillarFolderIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-detect pillar from selected media
   useEffect(() => {
@@ -134,7 +160,10 @@ export default function NewPostPage() {
   // Media browser helpers
   // ---------------------------------------------------------------------------
   function getFolderId(assetId: string): string | null {
-    return assets.find((a) => a.id === assetId)?.folder_id ?? null
+    return (
+      assets.find((a) => a.id === assetId) ??
+      selectedMedia.find((a) => a.id === assetId)
+    )?.folder_id ?? null
   }
   function assetInPillar(assetId: string, p: string): boolean {
     const rootId = dynPillarFolderIds[p]
@@ -185,17 +214,11 @@ export default function NewPostPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Filtered asset grid
+  // Filtered asset grid (assets are already fetched for current folder level)
   // ---------------------------------------------------------------------------
   const subPillarsForPillar = pillarFilter ? (dynSubPillars[pillarFilter] ?? []) : []
   const itemsForSubPillar   = (pillarFilter && subPillarFilter) ? (dynSubPillarItems[subPillarFilter] ?? []) : []
-  const filtered = !pillarFilter ? [] : assets.filter((a) => {
-    if (pillarFilter && subPillarFilter && itemFilter)
-      return assetInItem(a.id, pillarFilter, subPillarFilter, itemFilter)
-    if (pillarFilter && subPillarFilter)
-      return assetInSubPillar(a.id, pillarFilter, subPillarFilter)
-    return assetInPillar(a.id, pillarFilter)
-  })
+  const filtered = assets
 
   // ---------------------------------------------------------------------------
   // Generate captions
