@@ -200,6 +200,7 @@ export default function CalendarPage() {
   const [schedulingDate, setSchedulingDate] = useState<string>('')
   const [scheduling, setScheduling] = useState(false)
   const [draftPillarFilter, setDraftPillarFilter] = useState<string>('')
+  const [autoScheduled, setAutoScheduled] = useState<{ title: string; date: string } | null>(null)
 
   // Post preview modal
   const [previewPost, setPreviewPost] = useState<Post | null>(null)
@@ -447,9 +448,34 @@ export default function CalendarPage() {
     return `${startLabel} – ${endLabel}, ${yearLabel}`
   }
 
-  // Pre-fill the scheduling date when a calendar date is selected
+  // When a date is selected, auto-schedule the first approved post matching the suggested pillar
   useEffect(() => {
-    if (selectedDate) setSchedulingDate(selectedDate)
+    if (!selectedDate) return
+    setSchedulingDate(selectedDate)
+    setAutoScheduled(null)
+
+    const suggestion = getSuggestedPillarFromList(selectedDate, rotationList)
+    // Only auto-schedule future dates that have no post yet
+    const alreadyHasPost = (postsByDate[selectedDate] ?? []).length > 0
+    if (alreadyHasPost) return
+
+    const pool = suggestion
+      ? drafts.filter((d) => d.pillar === suggestion.pillar)
+      : drafts
+    const match = pool[0] ?? drafts[0] // fall back to any approved post
+    if (!match) return
+
+    setScheduling(true)
+    const supabase = createClient()
+    supabase.from('posts')
+      .update({ scheduled_date: selectedDate, status: 'scheduled' } as never)
+      .eq('id', match.id)
+      .then(async () => {
+        await loadPosts()
+        setAutoScheduled({ title: match.title, date: selectedDate })
+        setScheduling(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate])
 
   async function schedulePost(e?: React.FormEvent) {
@@ -457,14 +483,12 @@ export default function CalendarPage() {
     if (!schedulingDraftId || !schedulingDate) return
     setScheduling(true)
     const supabase = createClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('posts') as any).update({ scheduled_date: schedulingDate, status: 'scheduled' }).eq('id', schedulingDraftId)
+    await supabase.from('posts').update({ scheduled_date: schedulingDate, status: 'scheduled' } as never).eq('id', schedulingDraftId)
     await loadPosts()
     setSchedulingDraftId('')
     setScheduling(false)
   }
 
-  // Auto-schedule as soon as a draft is picked (when date is already selected from calendar)
   async function handleDraftSelect(draftId: string) {
     setSchedulingDraftId(draftId)
     if (draftId && schedulingDate) {
@@ -865,61 +889,47 @@ export default function CalendarPage() {
                 <h3 className="text-sm font-semibold text-stone-900">Schedule a Post</h3>
               </div>
 
-              {drafts.length === 0 ? (
+              {scheduling && (
+                <div className="flex items-center gap-2 text-xs text-stone-400 py-1">
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-stone-500 animate-spin inline-block flex-shrink-0" />
+                  Scheduling...
+                </div>
+              )}
+
+              {!scheduling && autoScheduled && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5 space-y-1">
+                  <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    Auto-scheduled
+                  </p>
+                  <p className="text-xs text-emerald-800 font-medium truncate">{autoScheduled.title}</p>
+                  <button
+                    onClick={() => {
+                      const post = posts.find(p => p.title === autoScheduled.title && p.scheduled_date === autoScheduled.date)
+                      if (post) unschedulePost(post.id)
+                      setAutoScheduled(null)
+                    }}
+                    className="text-xs text-emerald-500 hover:text-red-500 transition-colors"
+                  >
+                    Undo
+                  </button>
+                </div>
+              )}
+
+              {!scheduling && !autoScheduled && drafts.length === 0 && (
                 <div className="text-center py-2">
                   <p className="text-xs text-stone-400">No approved drafts yet.</p>
                   <Link href="/content-bank" className="text-xs text-ember-600 hover:text-ember-700 font-medium mt-1 inline-block">
                     Approve posts in Content Bank
                   </Link>
                 </div>
-              ) : (
-                <form onSubmit={schedulePost} className="space-y-3">
-                  {/* Pillar filter — suggested pill + All */}
-                  {(() => {
-                    const suggestion = selectedDate ? getSuggestedPillarFromList(selectedDate, rotationList) : null
-                    return (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => { setDraftPillarFilter(''); setSchedulingDraftId('') }}
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                            draftPillarFilter === '' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
-                        >
-                          All
-                        </button>
-                        {suggestion && (
-                          <button
-                            type="button"
-                            onClick={() => { setDraftPillarFilter(suggestion.pillar); setSchedulingDraftId('') }}
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                              draftPillarFilter === suggestion.pillar ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                            }`}
-                          >
-                            {suggestion.pillar}
-                            <span className={`ml-1 ${draftPillarFilter === suggestion.pillar ? 'text-stone-300' : 'text-stone-400'}`}>
-                              · {suggestion.sub}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })()}
-                  {/* removed all-pillars list — kept intentionally minimal: just All + suggested */}
-                  {false && PILLARS.map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => { setDraftPillarFilter(p); setSchedulingDraftId('') }}
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                            draftPillarFilter === p ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+              )}
 
-                  {/* Date — pre-filled from calendar click, or manual entry */}
+              {!scheduling && !autoScheduled && drafts.length > 0 && (
+                <form onSubmit={schedulePost} className="space-y-3">
+                  <p className="text-xs text-stone-400">
+                    {selectedDate ? 'No pillar match — pick manually:' : 'Or pick a date and post manually:'}
+                  </p>
                   <div className="flex items-center gap-2">
                     <input
                       type="date"
@@ -927,34 +937,25 @@ export default function CalendarPage() {
                       onChange={(e) => setSchedulingDate(e.target.value)}
                       className="input text-sm flex-1"
                     />
-                    {selectedDate && schedulingDate === selectedDate && (
-                      <span className="text-xs text-ember-600 font-medium flex-shrink-0">Selected date</span>
-                    )}
                   </div>
-
-                  {/* Draft picker — auto-schedules on select if date is set */}
                   <select
                     value={schedulingDraftId}
                     onChange={(e) => handleDraftSelect(e.target.value)}
                     disabled={scheduling}
                     className="input text-sm w-full disabled:opacity-60"
                   >
-                    <option value="">
-                      {scheduling ? 'Scheduling...' : filteredDrafts.length === 0 ? 'No drafts for this pillar' : 'Pick a draft to schedule →'}
-                    </option>
-                    {filteredDrafts.map((d) => (
-                      <option key={d.id} value={d.id}>{d.title}</option>
+                    <option value="">{drafts.length === 0 ? 'No approved posts' : 'Pick a post →'}</option>
+                    {drafts.map((d) => (
+                      <option key={d.id} value={d.id}>{d.title} · {d.pillar}</option>
                     ))}
                   </select>
-
-                  {/* Manual submit — only needed if no calendar date is selected */}
                   {!selectedDate && (
                     <button
                       type="submit"
                       disabled={!schedulingDraftId || !schedulingDate || scheduling}
                       className="btn-primary w-full text-sm disabled:opacity-40"
                     >
-                      {scheduling ? 'Scheduling...' : 'Schedule Post'}
+                      Schedule Post
                     </button>
                   )}
                 </form>
