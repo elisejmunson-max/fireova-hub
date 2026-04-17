@@ -164,9 +164,9 @@ function PostRow({
           <button
             onClick={onApprove}
             title="Approve for scheduling"
-            className="px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors whitespace-nowrap"
+            className="w-7 h-7 rounded-full border-2 border-emerald-300 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:border-emerald-500 hover:text-white transition-colors"
           >
-            Approve
+            <CheckIcon />
           </button>
         )}
         {folder === 'approved' && (
