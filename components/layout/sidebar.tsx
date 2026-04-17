@@ -39,6 +39,10 @@ const navGroups: NavGroup[] = [
         items: [],
       },
       {
+        subGroup: 'Promotions',
+        items: [],
+      },
+      {
         subGroup: 'Social Media',
         items: [
           { href: '/quick-post', label: 'Create New Post', icon: QuickPostIcon },
