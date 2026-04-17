@@ -33,6 +33,7 @@ const navGroups: NavGroup[] = [
     label: 'Marketing',
     collapsible: true,
     children: [
+      { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
       {
         subGroup: 'Social Media',
         items: [
@@ -42,7 +43,6 @@ const navGroups: NavGroup[] = [
           { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
         ],
       },
-      { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
     ],
   },
   {
