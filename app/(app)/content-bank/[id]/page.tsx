@@ -257,7 +257,15 @@ export default function PostDetailPage() {
     const { error: saveError } = await supabase.from('posts').update(payload as never).eq('id', id)
 
     if (saveError) { setError(saveError.message); setSaving(false); return }
-    saveMediaAssociation(selectedMedia.map((m) => m.id))
+
+    // Save media associations to Supabase (replace all existing)
+    await supabase.from('post_media').delete().eq('post_id', id)
+    if (selectedMedia.length > 0) {
+      await supabase.from('post_media').insert(
+        selectedMedia.map((m, i) => ({ post_id: id, asset_id: m.id, display_order: i }))
+      )
+    }
+
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
     setSaving(false)
