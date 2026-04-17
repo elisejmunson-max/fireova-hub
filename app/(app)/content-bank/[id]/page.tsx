@@ -112,18 +112,30 @@ export default function PostDetailPage() {
       setFeedback(feedbackStore[id] ?? '')
     } catch {}
 
-    // Load associated media from Supabase post_media table
+    // Load associated media — Supabase first, fall back to localStorage for migration
     try {
       const { data: postMedia } = await supabase
         .from('post_media')
         .select('asset_id')
         .eq('post_id', id)
         .order('display_order', { ascending: true })
+
+      let assetIds: string[] = []
+
       if (postMedia && postMedia.length > 0) {
-        const assetIds = postMedia.map((m: { asset_id: string }) => m.asset_id)
+        assetIds = postMedia.map((m: { asset_id: string }) => m.asset_id)
+      } else {
+        // Fall back to localStorage (migration path for older posts)
+        try {
+          const raw = localStorage.getItem(LS_POST_MEDIA_KEY)
+          const store: Record<string, string[]> = raw ? JSON.parse(raw) : {}
+          assetIds = store[id] ?? []
+        } catch {}
+      }
+
+      if (assetIds.length > 0) {
         const { data: mediaData } = await supabase.from('media_assets').select('*').in('id', assetIds)
         if (mediaData) {
-          // Preserve display order
           const ordered = assetIds.map((aid: string) => mediaData.find((m: MediaAsset) => m.id === aid)).filter(Boolean)
           setSelectedMedia(ordered as MediaAsset[])
         }
