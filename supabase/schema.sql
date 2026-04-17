@@ -147,6 +147,78 @@ create policy "Users can delete own caption templates"
   using (auth.uid() = user_id);
 
 -- ============================================================
+-- POST MEDIA (links posts to media assets)
+-- ============================================================
+create table if not exists public.post_media (
+  id            uuid primary key default uuid_generate_v4(),
+  post_id       uuid not null references public.posts(id) on delete cascade,
+  asset_id      uuid not null references public.media_assets(id) on delete cascade,
+  display_order int not null default 0,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists post_media_post_id_idx on public.post_media(post_id);
+create index if not exists post_media_asset_id_idx on public.post_media(asset_id);
+
+alter table public.post_media enable row level security;
+
+create policy "Users can view own post media"
+  on public.post_media for select
+  using (
+    exists (
+      select 1 from public.posts
+      where posts.id = post_media.post_id
+      and posts.user_id = auth.uid()
+    )
+  );
+
+create policy "Users can insert own post media"
+  on public.post_media for insert
+  with check (
+    exists (
+      select 1 from public.posts
+      where posts.id = post_media.post_id
+      and posts.user_id = auth.uid()
+    )
+  );
+
+create policy "Users can delete own post media"
+  on public.post_media for delete
+  using (
+    exists (
+      select 1 from public.posts
+      where posts.id = post_media.post_id
+      and posts.user_id = auth.uid()
+    )
+  );
+
+-- ============================================================
+-- APPROVED CAPTIONS (AI learning memory)
+-- ============================================================
+create table if not exists public.approved_captions (
+  id         uuid primary key default uuid_generate_v4(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  caption    text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists approved_captions_user_id_idx on public.approved_captions(user_id);
+
+alter table public.approved_captions enable row level security;
+
+create policy "Users can view own approved captions"
+  on public.approved_captions for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own approved captions"
+  on public.approved_captions for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete own approved captions"
+  on public.approved_captions for delete
+  using (auth.uid() = user_id);
+
+-- ============================================================
 -- STORAGE BUCKET
 -- Run this separately in SQL editor or via Supabase dashboard:
 -- Storage > New bucket > Name: "media" > Public: true
