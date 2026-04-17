@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -27,6 +27,8 @@ export default function PostDetailPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isLoaded = useRef(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [selectedMedia, setSelectedMedia] = useState<MediaAsset[]>([])
@@ -143,7 +145,17 @@ export default function PostDetailPage() {
     } catch {}
 
     setLoading(false)
+    isLoaded.current = true
   }
+
+  // Auto-save 1.5 s after any field change
+  useEffect(() => {
+    if (!isLoaded.current || !title || !pillar) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => { handleSave() }, 1500)
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, pillar, topic, format, status, scheduledDate, captionOption1, captionOption2, hashtags, shotIdeas, notes, selectedMedia])
 
   function approveOption(opt: 1 | 2) {
     const next = approvedOption === opt ? null : opt
@@ -378,18 +390,16 @@ export default function PostDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {saved && (
+            {saving && (
+              <span className="text-xs text-stone-400 font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-stone-500 animate-spin inline-block" /> Saving...
+              </span>
+            )}
+            {saved && !saving && (
               <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                 <CheckIcon className="w-3.5 h-3.5" /> Saved
               </span>
             )}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="btn-primary text-sm"
-            >
-              {saving ? 'Saving...' : 'Save changes'}
-            </button>
           </div>
         </div>
       </div>
@@ -751,9 +761,9 @@ export default function PostDetailPage() {
                   />
                 </div>
               )}
-              <button onClick={handleSave} disabled={saving} className="btn-primary w-full text-sm">
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
+              <div className="text-xs text-center text-stone-400 py-1">
+                {saving ? 'Saving...' : saved ? '✓ All changes saved' : 'Changes save automatically'}
+              </div>
             </div>
 
             {/* Feedback & Suggestions */}
