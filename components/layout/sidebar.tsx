@@ -39,10 +39,10 @@ const navGroups: NavGroup[] = [
           { href: '/quick-post', label: 'Create New Post', icon: QuickPostIcon },
           { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
           { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
-          { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
           { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
         ],
       },
+      { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
     ],
   },
   {
