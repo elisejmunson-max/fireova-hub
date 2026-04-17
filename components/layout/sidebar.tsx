@@ -149,9 +149,9 @@ export default function Sidebar({ user }: SidebarProps) {
             <div key={group.label} className="mb-1">
               <button
                 onClick={() => toggleGroup(group.label)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-stone-800/40 transition-colors group"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-stone-200 hover:text-white hover:bg-stone-800/40 transition-colors group"
               >
-                <span className="text-xs font-semibold tracking-wide">{group.label}</span>
+                <span className="text-sm font-bold tracking-wide">{group.label}</span>
                 <svg
                   className={`w-3.5 h-3.5 text-stone-600 group-hover:text-stone-400 transition-transform duration-200 ${groupCollapsed ? '-rotate-90' : ''}`}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
