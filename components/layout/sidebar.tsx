@@ -21,28 +21,23 @@ function QuickPostIcon({ className }: { className?: string }) {
 
 const navGroups = [
   {
-    label: 'Social Media Content',
+    label: 'Social Media',
     collapsible: true,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
       { href: '/quick-post', label: 'New Post', icon: QuickPostIcon },
       { href: '/content-bank', label: 'Content Bank', icon: ContentIcon },
       { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
-    ],
-  },
-  {
-    label: 'Library',
-    collapsible: true,
-    items: [
       { href: '/media-bank', label: 'Media Bank', icon: MediaIcon },
-      { href: '/recipes', label: 'Recipes', icon: RecipesIcon },
-      { href: '/training', label: 'Training Manuals', icon: TrainingIcon },
+      { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
     ],
   },
   {
     label: 'Operations',
     collapsible: true,
     items: [
+      { href: '/recipes', label: 'Recipes', icon: RecipesIcon },
+      { href: '/training', label: 'Training Manuals', icon: TrainingIcon },
       { href: '/events', label: 'Events & Pack Lists', icon: EventsIcon },
     ],
   },
@@ -50,7 +45,6 @@ const navGroups = [
     label: 'Settings',
     collapsible: true,
     items: [
-      { href: '/pillars', label: 'Pillars', icon: PillarsIcon },
       { href: '/settings', label: 'Settings', icon: SettingsIcon },
     ],
   },
