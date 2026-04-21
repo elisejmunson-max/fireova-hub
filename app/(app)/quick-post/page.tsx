@@ -519,11 +519,14 @@ export default function NewPostPage() {
                   {filtered.map((asset) => {
                     const isSelected = selectedMedia.some((a) => a.id === asset.id)
                     const order = isSelected ? selectedMedia.findIndex((a) => a.id === asset.id) + 1 : null
-                    const canPreview = asset.file_type.startsWith('image/')
-                    const url = canPreview
+                    const isImage = asset.file_type.startsWith('image/')
+                    const isVideo = asset.file_type.startsWith('video/')
+                    const url = isImage
                       ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path, {
                           transform: { width: 200, height: 200, resize: 'cover' },
                         }).data.publicUrl
+                      : isVideo
+                      ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
                       : null
                     const assetPillar = getPillarForAsset(asset.id)
                     const color = assetPillar ? (PILLAR_COLORS[assetPillar] ?? '') : ''
@@ -536,8 +539,17 @@ export default function NewPostPage() {
                           isSelected ? 'border-ember-500 ring-2 ring-ember-200' : 'border-transparent hover:border-stone-300'
                         }`}
                       >
-                        {url ? (
+                        {isImage && url ? (
                           <img src={url} alt={asset.filename} draggable={false} className="w-full h-full object-cover" />
+                        ) : isVideo && url ? (
+                          <div className="relative w-full h-full bg-stone-900">
+                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
+                                <VideoIcon className="w-3.5 h-3.5 text-white" />
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-full h-full bg-stone-100 flex items-center justify-center">
                             <VideoIcon className="w-6 h-6 text-stone-400" />
@@ -575,10 +587,14 @@ export default function NewPostPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedMedia.map((asset, idx) => {
-                    const url = asset.file_type.startsWith('image/')
+                    const isImageAsset = asset.file_type.startsWith('image/')
+                    const isVideoAsset = asset.file_type.startsWith('video/')
+                    const url = isImageAsset
                       ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path, {
                           transform: { width: 120, height: 120, resize: 'cover' },
                         }).data.publicUrl
+                      : isVideoAsset
+                      ? supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
                       : null
                     return (
                       <div
@@ -589,8 +605,15 @@ export default function NewPostPage() {
                         onDrop={() => { if (dragIndexRef.current !== null) { reorderMedia(dragIndexRef.current, idx); dragIndexRef.current = null } }}
                         className="relative w-14 h-14 rounded-lg overflow-hidden border border-stone-200 cursor-grab active:cursor-grabbing group"
                       >
-                        {url ? (
+                        {isImageAsset && url ? (
                           <img src={url} alt={asset.filename} draggable={false} className="w-full h-full object-cover" />
+                        ) : isVideoAsset && url ? (
+                          <div className="relative w-full h-full bg-stone-900">
+                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <VideoIcon className="w-3 h-3 text-white/80" />
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-full h-full bg-stone-100 flex items-center justify-center">
                             <VideoIcon className="w-4 h-4 text-stone-400" />
