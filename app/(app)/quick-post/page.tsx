@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   PILLARS, FORMATS, PILLAR_COLORS, HASHTAG_POOL,
-  PILLAR_FOLDER_IDS, PILLAR_SUBFOLDER_IDS,
+  PILLAR_FOLDER_IDS, PILLAR_SUBFOLDER_IDS, PRESET_FOLDERS,
 } from '@/lib/constants'
 import { getDynamicPillarData, toFolderSlug } from '@/lib/pillar-utils'
+
+const LS_FOLDERS_KEY = 'fireova_folders'
+type FolderItem = { id: string; name: string; parent_id?: string | null }
 import type { MediaAsset, PostInsert } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -30,9 +33,9 @@ export default function NewPostPage() {
   // Media browser
   const [assets, setAssets]           = useState<MediaAsset[]>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
-  const [pillarFilter, setPillarFilter] = useState<string | null>(null)
-  const [subPillarFilter, setSubPillarFilter] = useState<string | null>(null)
-  const [itemFilter, setItemFilter]   = useState<string | null>(null)
+  const [browseFolderId, setBrowseFolderId] = useState<string | null>(null)
+  const [allFolders, setAllFolders]   = useState<FolderItem[]>(PRESET_FOLDERS)
+  // Keep pillar data for auto-detect and post form
   const [dynPillars, setDynPillars]   = useState<string[]>([...PILLARS])
   const [dynPillarFolderIds, setDynPillarFolderIds] = useState<Record<string, string>>(PILLAR_FOLDER_IDS)
   const [dynPillarSubfolderIds, setDynPillarSubfolderIds] = useState<Record<string, string[]>>(PILLAR_SUBFOLDER_IDS)
@@ -95,43 +98,30 @@ export default function NewPostPage() {
       setDynSubPillars(d.subPillars)
       setDynSubPillarItems(d.subPillarItems)
     } catch {}
+    // Load actual Media Bank folder structure
+    try {
+      const stored = localStorage.getItem(LS_FOLDERS_KEY)
+      if (stored) setAllFolders(JSON.parse(stored))
+    } catch {}
   }, [])
 
   // ---------------------------------------------------------------------------
   // Fetch assets per-folder when drill-down changes
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!pillarFilter) { setAssets([]); return }
-
-    const pillarId = dynPillarFolderIds[pillarFilter]
-    if (!pillarId) { setAssets([]); return }
-
+    if (!browseFolderId) { setAssets([]); return }
     setLoadingAssets(true)
-    const supabase = supabaseRef.current
-
-    let folderFilter: string
-    if (itemFilter && subPillarFilter) {
-      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
-      const itemId = `${subId}--${toFolderSlug(itemFilter)}`
-      folderFilter = `folder_id.eq.${itemId}`
-    } else if (subPillarFilter) {
-      const subId = `${pillarId}--${toFolderSlug(subPillarFilter)}`
-      folderFilter = `folder_id.eq.${subId},folder_id.like.${subId}--%`
-    } else {
-      folderFilter = `folder_id.eq.${pillarId},folder_id.like.${pillarId}--%`
-    }
-
-    supabase
+    supabaseRef.current
       .from('media_assets')
       .select('*')
       .neq('folder_id', '__archive__')
-      .or(folderFilter)
+      .or(`folder_id.eq.${browseFolderId},folder_id.like.${browseFolderId}--%`)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setAssets(data ?? [])
         setLoadingAssets(false)
       })
-  }, [pillarFilter, subPillarFilter, itemFilter, dynPillarFolderIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [browseFolderId])
 
   // Auto-detect pillar from selected media
   useEffect(() => {
@@ -213,8 +203,16 @@ export default function NewPostPage() {
   // ---------------------------------------------------------------------------
   // Filtered asset grid (assets are already fetched for current folder level)
   // ---------------------------------------------------------------------------
-  const subPillarsForPillar = pillarFilter ? (dynSubPillars[pillarFilter] ?? []) : []
-  const itemsForSubPillar   = (pillarFilter && subPillarFilter) ? (dynSubPillarItems[subPillarFilter] ?? []) : []
+  // Folder browser helpers
+  const rootFolders = allFolders.filter((f) => !f.parent_id)
+  const childFolders = browseFolderId ? allFolders.filter((f) => f.parent_id === browseFolderId) : []
+  function getFolderPath(id: string): FolderItem[] {
+    const path: FolderItem[] = []
+    let cur: FolderItem | undefined = allFolders.find((f) => f.id === id)
+    while (cur) { path.unshift(cur); cur = cur.parent_id ? allFolders.find((f) => f.id === cur!.parent_id) : undefined }
+    return path
+  }
+  const folderPath = browseFolderId ? getFolderPath(browseFolderId) : []
   const filtered = assets
 
   // ---------------------------------------------------------------------------
@@ -458,54 +456,40 @@ export default function NewPostPage() {
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap">
-                {pillarFilter && (
+                {/* Breadcrumb back button */}
+                {browseFolderId && (
                   <button
-                    onClick={() => {
-                      if (itemFilter) setItemFilter(null)
-                      else if (subPillarFilter) setSubPillarFilter(null)
-                      else setPillarFilter(null)
-                    }}
+                    onClick={() => setBrowseFolderId(folderPath.length > 1 ? folderPath[folderPath.length - 2].id : null)}
                     className="flex items-center gap-1 px-2 py-1 rounded-full text-xs text-stone-400 hover:text-stone-600 border border-stone-200 hover:border-stone-300 transition-colors"
                   >
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
-                    {itemFilter ? subPillarFilter : subPillarFilter ? pillarFilter : 'All'}
+                    {folderPath.length > 1 ? folderPath[folderPath.length - 2].name : 'All'}
                   </button>
                 )}
-                {(subPillarFilter || pillarFilter) && (
-                  <span className="text-xs text-stone-300 select-none">/</span>
-                )}
 
-                {!pillarFilter && dynPillars.map((p) => (
-                  <button key={p}
-                    onClick={() => { setPillarFilter(p); setSubPillarFilter(null); setItemFilter(null) }}
+                {/* Root folders */}
+                {!browseFolderId && rootFolders.map((f) => (
+                  <button key={f.id}
+                    onClick={() => setBrowseFolderId(f.id)}
                     className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
-                  >{p}</button>
+                  >{f.name}</button>
                 ))}
-                {pillarFilter && !subPillarFilter && subPillarsForPillar.map((s) => (
-                  <button key={s}
-                    onClick={() => { setSubPillarFilter(s); setItemFilter(null) }}
+
+                {/* Child folders of selected */}
+                {browseFolderId && childFolders.map((f) => (
+                  <button key={f.id}
+                    onClick={() => setBrowseFolderId(f.id)}
                     className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
-                  >{s}</button>
+                  >{f.name}</button>
                 ))}
-                {subPillarFilter && !itemFilter && itemsForSubPillar.map((item) => (
-                  <button key={item}
-                    onClick={() => setItemFilter(item)}
-                    className="px-2.5 py-1 rounded-full text-xs font-medium border bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition-colors"
-                  >{item}</button>
-                ))}
-                {(itemFilter || (subPillarFilter && itemsForSubPillar.length === 0) || (pillarFilter && subPillarsForPillar.length === 0 && !subPillarFilter)) && (
+
+                {/* Current folder chip */}
+                {browseFolderId && (
                   <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-800 text-white">
-                    {itemFilter ?? subPillarFilter ?? pillarFilter}
-                    <button
-                      onClick={() => {
-                        if (itemFilter) setItemFilter(null)
-                        else if (subPillarFilter) setSubPillarFilter(null)
-                        else setPillarFilter(null)
-                      }}
-                      className="ml-0.5 hover:text-stone-300"
-                    >
+                    {folderPath[folderPath.length - 1]?.name}
+                    <button onClick={() => setBrowseFolderId(null)} className="ml-0.5 hover:text-stone-300">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
