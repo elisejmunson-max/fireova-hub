@@ -214,22 +214,87 @@ export default function NewPostPage() {
   const filtered = assets
 
   // ---------------------------------------------------------------------------
+  // Extract frames from a video URL for AI analysis
+  // ---------------------------------------------------------------------------
+  function extractVideoFrames(videoUrl: string, count = 3): Promise<string[]> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video')
+      video.crossOrigin = 'anonymous'
+      video.muted = true
+      video.playsInline = true
+      const frames: string[] = []
+      let captureIdx = 0
+      const timeoutId = setTimeout(() => resolve(frames), 12000)
+
+      video.addEventListener('loadedmetadata', () => {
+        const d = video.duration || 10
+        const times = Array.from({ length: count }, (_, i) => d * (0.2 + (i * 0.3)))
+
+        function captureNext() {
+          if (captureIdx >= times.length) {
+            clearTimeout(timeoutId)
+            resolve(frames)
+            return
+          }
+          video.currentTime = times[captureIdx]
+        }
+
+        video.addEventListener('seeked', function onSeeked() {
+          try {
+            const canvas = document.createElement('canvas')
+            const scale = Math.min(1, 640 / (video.videoWidth || 640))
+            canvas.width  = Math.round((video.videoWidth  || 640) * scale)
+            canvas.height = Math.round((video.videoHeight || 360) * scale)
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+              if (dataUrl.length > 100) frames.push(dataUrl.split(',')[1])
+            }
+          } catch { /* CORS or tainted canvas — skip frame */ }
+          captureIdx++
+          captureNext()
+        })
+
+        captureNext()
+      })
+
+      video.addEventListener('error', () => { clearTimeout(timeoutId); resolve(frames) })
+      video.src = videoUrl
+      video.load()
+    })
+  }
+
+  // ---------------------------------------------------------------------------
   // Generate captions
   // ---------------------------------------------------------------------------
   async function generateCaption() {
     setGenerating(true)
     setGenError(null)
+
+    // Collect image URLs
     const imageUrls = selectedMedia
       .filter((a) => a.file_type.startsWith('image/') && !['image/heic', 'image/heif'].includes(a.file_type.toLowerCase()))
       .map((a) => supabaseRef.current.storage.from('media').getPublicUrl(a.storage_path, {
         transform: { width: 800, quality: 75 },
       }).data.publicUrl)
+
+    // Extract frames from selected videos
+    const videoFrames: string[] = []
+    const videoAssets = selectedMedia.filter((a) => a.file_type.startsWith('video/')).slice(0, 1)
+    for (const asset of videoAssets) {
+      const url = supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
+      const frames = await extractVideoFrames(url)
+      videoFrames.push(...frames)
+    }
+
     try {
       const res = await fetch('/api/generate-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageUrls,
+          videoFrames: videoFrames.length > 0 ? videoFrames : undefined,
           pillar: [pillar, subPillar, subPillarItem].filter(Boolean).join(' > '),
           format,
           topic,

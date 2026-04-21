@@ -80,8 +80,9 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey })
 
-  const { imageUrls, pillar, format, topic, notes } = await request.json() as {
+  const { imageUrls, videoFrames, pillar, format, topic, notes } = await request.json() as {
     imageUrls: string[]
+    videoFrames?: string[]   // base64 JPEG frames extracted from video(s)
     pillar: string
     format: string
     topic?: string
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 
   const contentParts: Anthropic.MessageParam['content'] = []
 
-  // Attach images if provided (cap at 2 to stay within Vercel function timeout)
+  // Attach images (cap at 2 to stay within Vercel function timeout)
   for (const url of (imageUrls ?? []).slice(0, 2)) {
     contentParts.push({
       type: 'image',
@@ -114,21 +115,36 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Attach video frames as base64 images (up to 3 frames from 1 video)
+  for (const frame of (videoFrames ?? []).slice(0, 3)) {
+    contentParts.push({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: frame },
+    })
+  }
+
+  const hasVideo = (videoFrames ?? []).length > 0
+
   // Build approved examples block — your own approved captions teach the AI your voice
   const examplesBlock = approvedExamples.length > 0
     ? `\nYOUR APPROVED CAPTIONS — These are captions you have already approved. This is your actual voice. Match it:\n${approvedExamples.map((e, i) => `${i + 1}. "${e}"`).join('\n')}\n`
     : ''
 
   // Build the text prompt
+  const mediaDescription = (() => {
+    if ((imageUrls?.length ?? 0) > 0 && hasVideo) return `${imageUrls.length} photo(s) and video frames attached — use what you see to ground the captions in real, specific moments.`
+    if (hasVideo) return `Video frames attached (3 frames sampled from the reel) — use what you see in those frames to ground the captions in real, specific moments. Write as if describing this video content.`
+    if (imageUrls?.length > 0) return `${imageUrls.length} image(s) attached — use what you see in the photo(s) to ground the captions in something real and specific.`
+    return 'No images attached — write based on the pillar and topic provided.'
+  })()
+
   const context = [
     examplesBlock,
     pillar && `Content pillar: ${pillar}`,
     format && `Format: ${format}`,
     topic && `Topic/context: ${topic}`,
     notes && `Additional details (photographer credit, venue, event name, etc.): ${notes}`,
-    imageUrls?.length > 0
-      ? `${imageUrls.length} image(s) attached — use what you see in the photo(s) to ground the captions in something real and specific.`
-      : 'No images attached — write based on the pillar and topic provided.',
+    mediaDescription,
   ].filter(Boolean).join('\n')
 
   contentParts.push({
