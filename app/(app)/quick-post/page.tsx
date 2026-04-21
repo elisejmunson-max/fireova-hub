@@ -60,6 +60,7 @@ export default function NewPostPage() {
 
   // Generation / refinement
   const [generating, setGenerating] = useState(false)
+  const [genPhase, setGenPhase]     = useState<'frames' | 'writing' | null>(null)
   const [genError, setGenError]     = useState<string | null>(null)
   const [showRefine, setShowRefine] = useState<Record<1|2, boolean>>({ 1: false, 2: false })
   const [refineText, setRefineText] = useState<Record<1|2, string>>({ 1: '', 2: '' })
@@ -215,54 +216,68 @@ export default function NewPostPage() {
 
   // ---------------------------------------------------------------------------
   // Extract frames from a video URL for AI analysis
+  // Fetches as blob first to avoid cross-origin canvas taint (CORS restriction)
   // ---------------------------------------------------------------------------
-  function extractVideoFrames(videoUrl: string, count = 6): Promise<string[]> {
-    return new Promise((resolve) => {
-      const video = document.createElement('video')
-      video.crossOrigin = 'anonymous'
-      video.muted = true
-      video.playsInline = true
-      const frames: string[] = []
-      let captureIdx = 0
-      const timeoutId = setTimeout(() => resolve(frames), 12000)
+  async function extractVideoFrames(videoUrl: string, count = 6): Promise<string[]> {
+    const frames: string[] = []
+    let blobUrl: string | null = null
+    try {
+      const response = await fetch(videoUrl)
+      if (!response.ok) return frames
+      const blob = await response.blob()
+      blobUrl = URL.createObjectURL(blob)
 
-      video.addEventListener('loadedmetadata', () => {
-        const d = video.duration || 10
-        const times = Array.from({ length: count }, (_, i) => d * (0.05 + (i * (0.9 / (count - 1)))))
+      await new Promise<void>((resolve) => {
+        const video = document.createElement('video')
+        video.muted = true
+        video.playsInline = true
+        let captureIdx = 0
+        const timeoutId = setTimeout(resolve, 30000)
 
-        function captureNext() {
-          if (captureIdx >= times.length) {
-            clearTimeout(timeoutId)
-            resolve(frames)
-            return
-          }
-          video.currentTime = times[captureIdx]
-        }
+        video.addEventListener('loadedmetadata', () => {
+          const d = video.duration || 10
+          const times = Array.from({ length: count }, (_, i) =>
+            d * (0.05 + (i * (0.9 / (count - 1))))
+          )
 
-        video.addEventListener('seeked', function onSeeked() {
-          try {
-            const canvas = document.createElement('canvas')
-            const scale = Math.min(1, 640 / (video.videoWidth || 640))
-            canvas.width  = Math.round((video.videoWidth  || 640) * scale)
-            canvas.height = Math.round((video.videoHeight || 360) * scale)
-            const ctx = canvas.getContext('2d')
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-              if (dataUrl.length > 100) frames.push(dataUrl.split(',')[1])
+          function captureNext() {
+            if (captureIdx >= times.length) {
+              clearTimeout(timeoutId)
+              resolve()
+              return
             }
-          } catch { /* CORS or tainted canvas — skip frame */ }
-          captureIdx++
+            video.currentTime = times[captureIdx]
+          }
+
+          video.addEventListener('seeked', function onSeeked() {
+            requestAnimationFrame(() => {
+              try {
+                const canvas = document.createElement('canvas')
+                const scale = Math.min(1, 640 / (video.videoWidth || 640))
+                canvas.width  = Math.round((video.videoWidth  || 640) * scale)
+                canvas.height = Math.round((video.videoHeight || 360) * scale)
+                const ctx = canvas.getContext('2d')
+                if (ctx) {
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+                  if (dataUrl.length > 500) frames.push(dataUrl.split(',')[1])
+                }
+              } catch { /* skip frame */ }
+              captureIdx++
+              captureNext()
+            })
+          })
+
           captureNext()
         })
 
-        captureNext()
+        video.addEventListener('error', () => { clearTimeout(timeoutId); resolve() })
+        video.src = blobUrl!
+        video.load()
       })
-
-      video.addEventListener('error', () => { clearTimeout(timeoutId); resolve(frames) })
-      video.src = videoUrl
-      video.load()
-    })
+    } catch { /* network or API error */ }
+    finally { if (blobUrl) URL.revokeObjectURL(blobUrl) }
+    return frames
   }
 
   // ---------------------------------------------------------------------------
@@ -282,11 +297,15 @@ export default function NewPostPage() {
     // Extract frames from selected videos
     const videoFrames: string[] = []
     const videoAssets = selectedMedia.filter((a) => a.file_type.startsWith('video/')).slice(0, 1)
-    for (const asset of videoAssets) {
-      const url = supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
-      const frames = await extractVideoFrames(url)
-      videoFrames.push(...frames)
+    if (videoAssets.length > 0) {
+      setGenPhase('frames')
+      for (const asset of videoAssets) {
+        const url = supabaseRef.current.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
+        const frames = await extractVideoFrames(url)
+        videoFrames.push(...frames)
+      }
     }
+    setGenPhase('writing')
 
     try {
       const res = await fetch('/api/generate-caption', {
@@ -336,6 +355,7 @@ export default function NewPostPage() {
       setGenError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
       setGenerating(false)
+      setGenPhase(null)
     }
   }
 
@@ -788,7 +808,7 @@ export default function NewPostPage() {
                   {generating ? (
                     <span className="flex items-center justify-center gap-2">
                       <SpinnerIcon className="w-4 h-4 animate-spin" />
-                      Writing captions...
+                      {genPhase === 'frames' ? 'Analyzing video...' : 'Writing captions...'}
                     </span>
                   ) : 'Generate Captions'}
                 </button>
