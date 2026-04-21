@@ -9,7 +9,6 @@ import {
 } from '@/lib/constants'
 import { getDynamicPillarData, toFolderSlug } from '@/lib/pillar-utils'
 
-const LS_FOLDERS_KEY = 'fireova_folders'
 type FolderItem = { id: string; name: string; parent_id?: string | null }
 import type { MediaAsset, PostInsert } from '@/lib/types'
 
@@ -98,11 +97,10 @@ export default function NewPostPage() {
       setDynSubPillars(d.subPillars)
       setDynSubPillarItems(d.subPillarItems)
     } catch {}
-    // Load actual Media Bank folder structure
-    try {
-      const stored = localStorage.getItem(LS_FOLDERS_KEY)
-      if (stored) setAllFolders(JSON.parse(stored))
-    } catch {}
+    // Load folder structure from Supabase
+    supabaseRef.current
+      .from('folders').select('id, name, parent_id').order('created_at')
+      .then(({ data }) => { if (data && data.length > 0) setAllFolders(data as FolderItem[]) })
   }, [])
 
   // ---------------------------------------------------------------------------

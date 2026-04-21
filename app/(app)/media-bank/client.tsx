@@ -95,53 +95,57 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
   const [folderCounts, setFolderCounts] = useState<Record<string, number>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const newFolderInputRef = useRef<HTMLInputElement>(null)
-  // Tracks whether the initial load has completed so the save effect doesn't
-  // overwrite localStorage on the very first render (before load has run).
-  const foldersReady = useRef(false)
-
-  // Load folders + asset meta from localStorage on mount
+  // Load folders from Supabase on mount (migrates from localStorage if needed)
   useEffect(() => {
-    try {
-      // Build the dynamic folder tree from current pillar data (merges static + localStorage pillars)
-      const dynData = getDynamicPillarData()
-      const dynamicTree = dynData.folderTree as Folder[]
+    async function loadFolders() {
+      // Build dynamic pillar data regardless of mode
+      try {
+        const dynData = getDynamicPillarData()
+        setDynPillarIds(new Set(Object.values(dynData.pillarFolderIds)))
+      } catch {}
 
-      // Update the set of locked pillar-level folder IDs
-      setDynPillarIds(new Set(Object.values(dynData.pillarFolderIds)))
-
-      const stored = localStorage.getItem(LS_FOLDERS_KEY)
-      if (stored) {
-        const parsed: Folder[] = JSON.parse(stored)
-        if (parsed.length > 0) {
-          // Use saved state (preserves moves/deletes), but add any new folders from
-          // the dynamic tree that didn't exist when the user last saved
-          const parsedIds = new Set(parsed.map((f) => f.id))
-          const newFolders = dynamicTree.filter((f) => !parsedIds.has(f.id))
-          setFolders([...parsed, ...newFolders])
-          // foldersReady is set to true by the save effect on the following render
-        } else {
-          setFolders(dynamicTree)
-          foldersReady.current = true
-        }
-      } else {
-        setFolders(dynamicTree)
-        foldersReady.current = true
+      if (isDevMode(userId)) {
+        // Dev mode: fall back to localStorage
+        try {
+          const stored = localStorage.getItem(LS_FOLDERS_KEY)
+          if (stored) {
+            const parsed: Folder[] = JSON.parse(stored)
+            if (parsed.length > 0) setFolders(parsed)
+          }
+        } catch {}
+        return
       }
-    } catch {
-      foldersReady.current = true
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist ALL folders to localStorage (including moved preset subfolders).
-  // Skip the first fire (initial render with defaults) so we don't overwrite
-  // saved data before the load effect has restored it.
-  useEffect(() => {
-    if (!foldersReady.current) {
-      foldersReady.current = true
-      return
+      const supabase = createClient()
+      const { data: supaFolders } = await supabase
+        .from('folders').select('id, name, parent_id').order('created_at')
+
+      if (supaFolders && supaFolders.length > 0) {
+        // Already seeded — use Supabase data
+        setFolders(supaFolders as Folder[])
+      } else {
+        // First time: migrate from localStorage or seed from presets
+        const dynData = getDynamicPillarData()
+        const dynamicTree = dynData.folderTree as Folder[]
+        let toSeed: Folder[] = dynamicTree
+        try {
+          const stored = localStorage.getItem(LS_FOLDERS_KEY)
+          if (stored) {
+            const parsed: Folder[] = JSON.parse(stored)
+            if (parsed.length > 0) toSeed = parsed
+          }
+        } catch {}
+        setFolders(toSeed)
+        const rows = toSeed.map((f) => ({
+          id: f.id, name: f.name,
+          parent_id: f.parent_id ?? null,
+          user_id: userId,
+        }))
+        await supabase.from('folders').upsert(rows, { onConflict: 'id' })
+      }
     }
-    localStorage.setItem(LS_FOLDERS_KEY, JSON.stringify(folders))
-  }, [folders])
+    loadFolders()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch assets for the active folder from Supabase
   useEffect(() => {
@@ -347,7 +351,7 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     return supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
   }
 
-  function addFolder() {
+  async function addFolder() {
     const name = newFolderName.trim()
     if (!name) return
     const id = `custom-${Date.now()}`
@@ -355,9 +359,15 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     setNewFolderName('')
     setAddingFolder(false)
     setActiveFolder(id)
+    if (!isDevMode(userId)) {
+      const supabase = createClient()
+      await supabase.from('folders').insert({ id, name, parent_id: null, user_id: userId })
+    } else {
+      localStorage.setItem(LS_FOLDERS_KEY, JSON.stringify([...folders, { id, name, parent_id: null }]))
+    }
   }
 
-  function addSubfolder(parentId: string) {
+  async function addSubfolder(parentId: string) {
     const name = subfolderName.trim()
     if (!name) return
     const id = `custom-${Date.now()}`
@@ -366,31 +376,55 @@ export default function MediaBankClient({ initialAssets, userId }: Props) {
     setSubfolderName('')
     setAddingSubfolderTo(null)
     setActiveFolder(id)
+    if (!isDevMode(userId)) {
+      const supabase = createClient()
+      await supabase.from('folders').insert({ id, name, parent_id: parentId, user_id: userId })
+    } else {
+      localStorage.setItem(LS_FOLDERS_KEY, JSON.stringify([...folders, { id, name, parent_id: parentId }]))
+    }
   }
 
-  function moveFolder(folderId: string, newParentId: string | null) {
+  async function moveFolder(folderId: string, newParentId: string | null) {
     setFolders((prev) => prev.map((f) => f.id === folderId ? { ...f, parent_id: newParentId } : f))
     if (newParentId) setExpandedFolders((prev) => new Set([...prev, newParentId]))
     setMovingFolder(null)
     setFolderMenu(null)
+    if (!isDevMode(userId)) {
+      const supabase = createClient()
+      await supabase.from('folders').update({ parent_id: newParentId }).eq('id', folderId)
+    }
   }
 
-  function deleteFolder(folderId: string) {
+  async function deleteFolder(folderId: string) {
     // Re-parent any children to the deleted folder's parent
     const folder = folders.find((f) => f.id === folderId)
+    const children = folders.filter((f) => f.parent_id === folderId)
     setFolders((prev) => prev
       .filter((f) => f.id !== folderId)
       .map((f) => f.parent_id === folderId ? { ...f, parent_id: folder?.parent_id ?? null } : f)
     )
     if (activeFolder === folderId) setActiveFolder(null)
     setFolderMenu(null)
+    if (!isDevMode(userId)) {
+      const supabase = createClient()
+      if (children.length > 0) {
+        await supabase.from('folders')
+          .update({ parent_id: folder?.parent_id ?? null })
+          .in('id', children.map((c) => c.id))
+      }
+      await supabase.from('folders').delete().eq('id', folderId)
+    }
   }
 
-  function renameFolder(folderId: string, newName: string) {
+  async function renameFolder(folderId: string, newName: string) {
     const name = newName.trim()
     if (!name) { setRenamingFolder(null); return }
     setFolders((prev) => prev.map((f) => f.id === folderId ? { ...f, name } : f))
     setRenamingFolder(null)
+    if (!isDevMode(userId)) {
+      const supabase = createClient()
+      await supabase.from('folders').update({ name }).eq('id', folderId)
+    }
   }
 
   // Returns the set of ancestor folder IDs for a given folder
