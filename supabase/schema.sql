@@ -44,6 +44,7 @@ create table if not exists public.posts (
   format          text not null check (format in ('Reel', 'Carousel', 'Photo')),
   caption_option1 text,
   caption_option2 text,
+  caption_option3 text,
   hashtags        text[] not null default '{}',
   shot_ideas      text[] not null default '{}',
   status          text not null default 'draft' check (status in ('draft', 'scheduled', 'published')),

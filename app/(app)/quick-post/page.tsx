@@ -55,6 +55,7 @@ export default function NewPostPage() {
   const [notes, setNotes]         = useState('')
   const [caption1, setCaption1]   = useState('')
   const [caption2, setCaption2]   = useState('')
+  const [caption3, setCaption3]   = useState('')
   const [hashtags, setHashtags]   = useState(['', '', '', ''])
   const [shotIdeas, setShotIdeas] = useState(['', '', ''])
 
@@ -62,13 +63,13 @@ export default function NewPostPage() {
   const [generating, setGenerating] = useState(false)
   const [genPhase, setGenPhase]     = useState<'frames' | 'writing' | null>(null)
   const [genError, setGenError]     = useState<string | null>(null)
-  const [showRefine, setShowRefine] = useState<Record<1|2, boolean>>({ 1: false, 2: false })
-  const [refineText, setRefineText] = useState<Record<1|2, string>>({ 1: '', 2: '' })
-  const [refining, setRefining]     = useState<1|2|null>(null)
+  const [showRefine, setShowRefine] = useState<Record<1|2|3, boolean>>({ 1: false, 2: false, 3: false })
+  const [refineText, setRefineText] = useState<Record<1|2|3, string>>({ 1: '', 2: '', 3: '' })
+  const [refining, setRefining]     = useState<1|2|3|null>(null)
   const [refineError, setRefineError] = useState<string | null>(null)
-  const [approvedCaptions, setApprovedCaptions] = useState<Set<1|2>>(new Set())
+  const [approvedCaptions, setApprovedCaptions] = useState<Set<1|2|3>>(new Set())
 
-  function toggleApproved(opt: 1|2) {
+  function toggleApproved(opt: 1|2|3) {
     setApprovedCaptions((prev) => {
       const next = new Set(prev)
       if (next.has(opt)) next.delete(opt)
@@ -337,10 +338,11 @@ export default function NewPostPage() {
       const jsonEnd   = raw.lastIndexOf('}')
       if (jsonStart === -1 || jsonEnd === -1) throw new Error('Unexpected response format.')
       const data = JSON.parse(raw.slice(jsonStart, jsonEnd + 1)) as {
-        option1?: string; option2?: string; hashtags?: string[]; shot_ideas?: string[]
+        option1?: string; option2?: string; option3?: string; hashtags?: string[]; shot_ideas?: string[]
       }
       if (data.option1) setCaption1(data.option1)
       if (data.option2) setCaption2(data.option2)
+      if (data.option3) setCaption3(data.option3)
       if (data.hashtags?.length) {
         const tags = data.hashtags.slice(0, 4)
         while (tags.length < 4) tags.push('')
@@ -362,8 +364,8 @@ export default function NewPostPage() {
   // ---------------------------------------------------------------------------
   // Refine
   // ---------------------------------------------------------------------------
-  async function refineCaption(opt: 1 | 2) {
-    const captionText = opt === 1 ? caption1 : caption2
+  async function refineCaption(opt: 1 | 2 | 3) {
+    const captionText = opt === 1 ? caption1 : opt === 2 ? caption2 : caption3
     const instruction = refineText[opt]
     if (!captionText.trim() || !instruction.trim()) return
     setRefining(opt)
@@ -374,7 +376,7 @@ export default function NewPostPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           caption: captionText,
-          platform: opt === 1 ? 'Option 1' : 'Option 2',
+          platform: opt === 1 ? 'Option 1' : opt === 2 ? 'Option 2' : 'Option 3 (vibe-led)',
           instruction,
         }),
       })
@@ -384,7 +386,8 @@ export default function NewPostPage() {
       }
       const revised = await res.text()
       if (opt === 1) setCaption1(revised.trim())
-      else setCaption2(revised.trim())
+      else if (opt === 2) setCaption2(revised.trim())
+      else setCaption3(revised.trim())
       setRefineText((prev) => ({ ...prev, [opt]: '' }))
       setShowRefine((prev) => ({ ...prev, [opt]: false }))
     } catch (err) {
@@ -417,6 +420,7 @@ export default function NewPostPage() {
       format,
       caption_option1: caption1 || null,
       caption_option2: caption2 || null,
+      caption_option3: caption3 || null,
       hashtags: hashtags.filter(Boolean),
       shot_ideas: shotIdeas.filter(Boolean),
       status,
@@ -483,7 +487,7 @@ export default function NewPostPage() {
   // Derived
   // ---------------------------------------------------------------------------
   const pillarColor  = pillar ? (PILLAR_COLORS[pillar] ?? 'bg-stone-100 text-stone-600') : ''
-  const hasCaption   = caption1.trim() || caption2.trim()
+  const hasCaption   = caption1.trim() || caption2.trim() || caption3.trim()
   const hasVideo      = selectedMedia.some((a) => a.file_type.startsWith('video/'))
   const videoOnlyMode = hasVideo && !pillar && !topic && !notes
   const canGenerate   = !!pillar || hasVideo
@@ -935,6 +939,59 @@ export default function NewPostPage() {
                           className="text-stone-400 hover:text-stone-600 text-xs px-1">✕</button>
                       </div>
                       {refineError && refining !== 2 && <p className="text-xs text-red-500">{refineError}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Caption 3 — Vibe */}
+              {(caption3 || generating) && (
+                <div className={`card p-4 space-y-3 transition-all ${approvedCaptions.has(3) ? 'ring-2 ring-emerald-400' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-stone-900">Option 3</h3>
+                      <p className="text-xs text-stone-500 mt-0.5">Vibe-led. Paint the mood, the scene, the feeling of being there.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleApproved(3)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+                        approvedCaptions.has(3)
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300 hover:text-stone-700'
+                      }`}
+                    >
+                      <ApproveIcon className="w-3.5 h-3.5" />
+                      {approvedCaptions.has(3) ? 'Approved' : 'Approve'}
+                    </button>
+                  </div>
+                  <textarea value={caption3} onChange={(e) => setCaption3(e.target.value)} rows={4} className="input text-sm resize-none" />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-stone-400">{caption3.length} characters</p>
+                    {caption3.trim() && !showRefine[3] && (
+                      <button type="button" onClick={() => setShowRefine((v) => ({ ...v, 3: true }))}
+                        className="text-xs text-stone-400 hover:text-ember-600 transition-colors flex items-center gap-1">
+                        <WandIcon className="w-3 h-3" /> Refine with AI
+                      </button>
+                    )}
+                  </div>
+                  {showRefine[3] && (
+                    <div className="border-t border-stone-100 pt-3 space-y-2">
+                      <p className="text-xs text-stone-500 font-medium">What should change?</p>
+                      <div className="flex gap-2">
+                        <input type="text" value={refineText[3]} onChange={(e) => setRefineText((v) => ({ ...v, 3: e.target.value }))}
+                          onKeyDown={(e) => e.key === 'Enter' && refineCaption(3)}
+                          placeholder='e.g. "more sensory" or "shorter"'
+                          className="input text-xs flex-1" autoFocus />
+                        <button type="button" onClick={() => refineCaption(3)} disabled={refining === 3 || !refineText[3].trim()}
+                          className="btn-primary text-xs py-1.5 flex-shrink-0 disabled:opacity-50">
+                          {refining === 3 ? 'Rewriting...' : 'Apply'}
+                        </button>
+                        <button type="button"
+                          onClick={() => { setShowRefine((v) => ({ ...v, 3: false })); setRefineText((v) => ({ ...v, 3: '' })) }}
+                          className="text-stone-400 hover:text-stone-600 text-xs px-1">✕</button>
+                      </div>
+                      {refineError && refining !== 3 && <p className="text-xs text-red-500">{refineError}</p>}
                     </div>
                   )}
                 </div>

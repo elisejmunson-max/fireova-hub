@@ -42,6 +42,7 @@ export type Database = {
           format: 'Reel' | 'Carousel' | 'Photo'
           caption_option1: string | null
           caption_option2: string | null
+          caption_option3: string | null
           hashtags: string[]
           shot_ideas: string[]
           status: 'draft' | 'scheduled' | 'published'
@@ -61,6 +62,7 @@ export type Database = {
           format: 'Reel' | 'Carousel' | 'Photo'
           caption_option1?: string | null
           caption_option2?: string | null
+          caption_option3?: string | null
           hashtags?: string[]
           shot_ideas?: string[]
           status?: 'draft' | 'scheduled' | 'published'
@@ -78,6 +80,7 @@ export type Database = {
           format?: 'Reel' | 'Carousel' | 'Photo'
           caption_option1?: string | null
           caption_option2?: string | null
+          caption_option3?: string | null
           hashtags?: string[]
           shot_ideas?: string[]
           status?: 'draft' | 'scheduled' | 'published'
