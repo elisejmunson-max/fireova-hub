@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Attach video frames as base64 images (up to 3 frames from 1 video)
-  for (const frame of (videoFrames ?? []).slice(0, 3)) {
+  // Attach video frames as base64 images (up to 6 frames from 1 video)
+  for (const frame of (videoFrames ?? []).slice(0, 6)) {
     contentParts.push({
       type: 'image',
       source: { type: 'base64', media_type: 'image/jpeg', data: frame },

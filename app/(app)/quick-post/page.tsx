@@ -216,7 +216,7 @@ export default function NewPostPage() {
   // ---------------------------------------------------------------------------
   // Extract frames from a video URL for AI analysis
   // ---------------------------------------------------------------------------
-  function extractVideoFrames(videoUrl: string, count = 3): Promise<string[]> {
+  function extractVideoFrames(videoUrl: string, count = 6): Promise<string[]> {
     return new Promise((resolve) => {
       const video = document.createElement('video')
       video.crossOrigin = 'anonymous'
@@ -228,7 +228,7 @@ export default function NewPostPage() {
 
       video.addEventListener('loadedmetadata', () => {
         const d = video.duration || 10
-        const times = Array.from({ length: count }, (_, i) => d * (0.2 + (i * 0.3)))
+        const times = Array.from({ length: count }, (_, i) => d * (0.05 + (i * (0.9 / (count - 1)))))
 
         function captureNext() {
           if (captureIdx >= times.length) {
