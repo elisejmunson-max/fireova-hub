@@ -503,9 +503,9 @@ export default function NewPostPage() {
             <div className="card p-4">
               {loadingAssets ? (
                 <div className="text-center py-12 text-stone-400 text-sm">Loading media...</div>
-              ) : !pillarFilter ? (
+              ) : !browseFolderId ? (
                 <div className="text-center py-10">
-                  <p className="text-stone-400 text-sm">Pick a pillar above to browse photos.</p>
+                  <p className="text-stone-400 text-sm">Pick a folder above to browse photos.</p>
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
