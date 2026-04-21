@@ -800,88 +800,111 @@ export default function NewPostPage() {
                 </div>
               )}
 
-              {/* Caption 1 — The Fireova Punch */}
+              {/* Caption 1 — Option 1 */}
               {(caption1 || generating) && (
-                <div className={`space-y-2 rounded-lg p-3 -mx-3 transition-colors ${approvedCaptions.has(1) ? 'bg-emerald-50' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <label className="label mb-0">The Fireova Punch</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-stone-400">{caption1.length}</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleApproved(1)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                          approvedCaptions.has(1)
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-600'
-                        }`}
-                      >
-                        {approvedCaptions.has(1) ? 'Approved' : 'Approve'}
-                      </button>
+                <div className={`card p-4 space-y-3 transition-all ${approvedCaptions.has(1) ? 'ring-2 ring-emerald-400' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-stone-900">Option 1: Instagram / Facebook</h3>
+                      <p className="text-xs text-stone-500 mt-0.5">2 to 4 sentences. Warm, flowing, and conversational.</p>
                     </div>
-                  </div>
-                  <textarea value={caption1} onChange={(e) => setCaption1(e.target.value)} rows={4} className="input text-sm resize-none" />
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setShowRefine((v) => ({ ...v, 1: !v[1] }))}
-                      className="text-xs text-stone-500 hover:text-stone-700 font-medium">
-                      {showRefine[1] ? 'Cancel' : 'Refine'}
+                    <button
+                      type="button"
+                      onClick={() => toggleApproved(1)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+                        approvedCaptions.has(1)
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300 hover:text-stone-700'
+                      }`}
+                    >
+                      <ApproveIcon className="w-3.5 h-3.5" />
+                      {approvedCaptions.has(1) ? 'Approved' : 'Approve'}
                     </button>
                   </div>
-                  {showRefine[1] && (
-                    <div className="flex gap-2">
-                      <input type="text" value={refineText[1]} onChange={(e) => setRefineText((v) => ({ ...v, 1: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && refineCaption(1)}
-                        placeholder="e.g. shorter hook, mention the couple..." className="input text-xs flex-1" autoFocus />
-                      <button type="button" onClick={() => refineCaption(1)} disabled={refining === 1 || !refineText[1].trim()}
-                        className="btn-primary text-xs px-3 disabled:opacity-40">
-                        {refining === 1 ? '...' : 'Go'}
+                  <textarea value={caption1} onChange={(e) => setCaption1(e.target.value)} rows={4} className="input text-sm resize-none" />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-stone-400">{caption1.length} characters</p>
+                    {caption1.trim() && !showRefine[1] && (
+                      <button type="button" onClick={() => setShowRefine((v) => ({ ...v, 1: true }))}
+                        className="text-xs text-stone-400 hover:text-ember-600 transition-colors flex items-center gap-1">
+                        <WandIcon className="w-3 h-3" /> Refine with AI
                       </button>
+                    )}
+                  </div>
+                  {showRefine[1] && (
+                    <div className="border-t border-stone-100 pt-3 space-y-2">
+                      <p className="text-xs text-stone-500 font-medium">What should change?</p>
+                      <div className="flex gap-2">
+                        <input type="text" value={refineText[1]} onChange={(e) => setRefineText((v) => ({ ...v, 1: e.target.value }))}
+                          onKeyDown={(e) => e.key === 'Enter' && refineCaption(1)}
+                          placeholder='e.g. "shorter hook" or "focus more on the couple"'
+                          className="input text-xs flex-1" autoFocus />
+                        <button type="button" onClick={() => refineCaption(1)} disabled={refining === 1 || !refineText[1].trim()}
+                          className="btn-primary text-xs py-1.5 flex-shrink-0 disabled:opacity-50">
+                          {refining === 1 ? 'Rewriting...' : 'Apply'}
+                        </button>
+                        <button type="button"
+                          onClick={() => { setShowRefine((v) => ({ ...v, 1: false })); setRefineText((v) => ({ ...v, 1: '' })) }}
+                          className="text-stone-400 hover:text-stone-600 text-xs px-1">✕</button>
+                      </div>
+                      {refineError && refining !== 1 && <p className="text-xs text-red-500">{refineError}</p>}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Caption 2 — The Party Vibe */}
+              {/* Caption 2 — Option 2 */}
               {(caption2 || generating) && (
-                <div className={`space-y-2 rounded-lg p-3 -mx-3 transition-colors ${approvedCaptions.has(2) ? 'bg-emerald-50' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <label className="label mb-0">The Party Vibe</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-stone-400">{caption2.length}</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleApproved(2)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                          approvedCaptions.has(2)
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-stone-200 text-stone-400 hover:border-emerald-400 hover:text-emerald-600'
-                        }`}
-                      >
-                        {approvedCaptions.has(2) ? 'Approved' : 'Approve'}
-                      </button>
+                <div className={`card p-4 space-y-3 transition-all ${approvedCaptions.has(2) ? 'ring-2 ring-emerald-400' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-stone-900">Option 2: TikTok</h3>
+                      <p className="text-xs text-stone-500 mt-0.5">Short and punchy. 1 to 2 sentences. Let the video do the talking.</p>
                     </div>
-                  </div>
-                  <textarea value={caption2} onChange={(e) => setCaption2(e.target.value)} rows={3} className="input text-sm resize-none" />
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setShowRefine((v) => ({ ...v, 2: !v[2] }))}
-                      className="text-xs text-stone-500 hover:text-stone-700 font-medium">
-                      {showRefine[2] ? 'Cancel' : 'Refine'}
+                    <button
+                      type="button"
+                      onClick={() => toggleApproved(2)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+                        approvedCaptions.has(2)
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300 hover:text-stone-700'
+                      }`}
+                    >
+                      <ApproveIcon className="w-3.5 h-3.5" />
+                      {approvedCaptions.has(2) ? 'Approved' : 'Approve'}
                     </button>
                   </div>
-                  {showRefine[2] && (
-                    <div className="flex gap-2">
-                      <input type="text" value={refineText[2]} onChange={(e) => setRefineText((v) => ({ ...v, 2: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && refineCaption(2)}
-                        placeholder="e.g. punchier, add an emoji..." className="input text-xs flex-1" autoFocus />
-                      <button type="button" onClick={() => refineCaption(2)} disabled={refining === 2 || !refineText[2].trim()}
-                        className="btn-primary text-xs px-3 disabled:opacity-40">
-                        {refining === 2 ? '...' : 'Go'}
+                  <textarea value={caption2} onChange={(e) => setCaption2(e.target.value)} rows={4} className="input text-sm resize-none" />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-stone-400">{caption2.length} characters</p>
+                    {caption2.trim() && !showRefine[2] && (
+                      <button type="button" onClick={() => setShowRefine((v) => ({ ...v, 2: true }))}
+                        className="text-xs text-stone-400 hover:text-ember-600 transition-colors flex items-center gap-1">
+                        <WandIcon className="w-3 h-3" /> Refine with AI
                       </button>
+                    )}
+                  </div>
+                  {showRefine[2] && (
+                    <div className="border-t border-stone-100 pt-3 space-y-2">
+                      <p className="text-xs text-stone-500 font-medium">What should change?</p>
+                      <div className="flex gap-2">
+                        <input type="text" value={refineText[2]} onChange={(e) => setRefineText((v) => ({ ...v, 2: e.target.value }))}
+                          onKeyDown={(e) => e.key === 'Enter' && refineCaption(2)}
+                          placeholder='e.g. "punchier" or "add a food detail"'
+                          className="input text-xs flex-1" autoFocus />
+                        <button type="button" onClick={() => refineCaption(2)} disabled={refining === 2 || !refineText[2].trim()}
+                          className="btn-primary text-xs py-1.5 flex-shrink-0 disabled:opacity-50">
+                          {refining === 2 ? 'Rewriting...' : 'Apply'}
+                        </button>
+                        <button type="button"
+                          onClick={() => { setShowRefine((v) => ({ ...v, 2: false })); setRefineText((v) => ({ ...v, 2: '' })) }}
+                          className="text-stone-400 hover:text-stone-600 text-xs px-1">✕</button>
+                      </div>
+                      {refineError && refining !== 2 && <p className="text-xs text-red-500">{refineError}</p>}
                     </div>
                   )}
                 </div>
               )}
-              {refineError && <p className="text-xs text-red-600">{refineError}</p>}
             </div>
 
             {/* Hashtags */}
@@ -1058,6 +1081,18 @@ function InstagramPreview({ previewUrl, caption, hashtags, isVideo }: { previewU
       </div>
     </div>
   )
+}
+
+function ApproveIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+function WandIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
 }
 
 function FacebookPreview({ previewUrl, caption, hashtags, isVideo }: { previewUrl: string | null; caption: string; hashtags: string; isVideo: boolean }) {
