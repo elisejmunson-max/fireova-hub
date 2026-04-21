@@ -131,19 +131,24 @@ export async function POST(request: NextRequest) {
     : ''
 
   // Build the text prompt
+  const videoOnly = hasVideo && !pillar && !topic && !notes
+
   const mediaDescription = (() => {
     if ((imageUrls?.length ?? 0) > 0 && hasVideo) return `${imageUrls.length} photo(s) and video frames attached — use what you see to ground the captions in real, specific moments.`
-    if (hasVideo) return `Video frames attached (3 frames sampled from the reel) — use what you see in those frames to ground the captions in real, specific moments. Write as if describing this video content.`
+    if (hasVideo && videoOnly) return `6 frames sampled from the reel are attached. Base the captions ENTIRELY on what you see in these frames — the people, the food, the setting, the energy. Do not invent details not visible. Write as if you watched this video.`
+    if (hasVideo) return `6 frames sampled from the reel are attached — use what you see in those frames to ground the captions in real, specific moments.`
     if (imageUrls?.length > 0) return `${imageUrls.length} image(s) attached — use what you see in the photo(s) to ground the captions in something real and specific.`
-    return 'No images attached — write based on the pillar and topic provided.'
+    return 'No media attached — write based on the pillar and topic provided.'
   })()
 
   const context = [
     examplesBlock,
-    pillar && `Content pillar: ${pillar}`,
+    videoOnly
+      ? 'No pillar or notes provided. Determine the content, mood, and subject from the video frames only.'
+      : pillar && `Content pillar: ${pillar}`,
     format && `Format: ${format}`,
-    topic && `Topic/context: ${topic}`,
-    notes && `Additional details (photographer credit, venue, event name, etc.): ${notes}`,
+    !videoOnly && topic && `Topic/context: ${topic}`,
+    !videoOnly && notes && `Additional details (photographer credit, venue, event name, etc.): ${notes}`,
     mediaDescription,
   ].filter(Boolean).join('\n')
 

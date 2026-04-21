@@ -482,8 +482,10 @@ export default function NewPostPage() {
   // ---------------------------------------------------------------------------
   // Derived
   // ---------------------------------------------------------------------------
-  const pillarColor = pillar ? (PILLAR_COLORS[pillar] ?? 'bg-stone-100 text-stone-600') : ''
-  const hasCaption  = caption1.trim() || caption2.trim()
+  const pillarColor  = pillar ? (PILLAR_COLORS[pillar] ?? 'bg-stone-100 text-stone-600') : ''
+  const hasCaption   = caption1.trim() || caption2.trim()
+  const hasVideo     = selectedMedia.some((a) => a.file_type.startsWith('video/'))
+  const canGenerate  = !!pillar || hasVideo
 
   return (
     <div className="flex flex-col h-full">
@@ -803,20 +805,31 @@ export default function NewPostPage() {
                 <div className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">{genError}</div>
               )}
               {!hasCaption && (
-                <button type="button" onClick={generateCaption} disabled={generating || !pillar}
-                  className="btn-primary w-full text-sm disabled:opacity-40">
-                  {generating ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <SpinnerIcon className="w-4 h-4 animate-spin" />
-                      {genPhase === 'frames' ? 'Analyzing video...' : 'Writing captions...'}
-                    </span>
-                  ) : 'Generate Captions'}
-                </button>
+                <>
+                  <button type="button" onClick={generateCaption} disabled={generating || !canGenerate}
+                    className="btn-primary w-full text-sm disabled:opacity-40">
+                    {generating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <SpinnerIcon className="w-4 h-4 animate-spin" />
+                        {genPhase === 'frames' ? 'Analyzing video...' : 'Writing captions...'}
+                      </span>
+                    ) : hasVideo && !pillar ? 'Generate from Video' : 'Generate Captions'}
+                  </button>
+                  {hasVideo && !pillar && (
+                    <p className="text-xs text-stone-400 text-center -mt-1">
+                      AI will watch the video and write captions based on what it sees.
+                      Add a pillar or notes below to give it more context.
+                    </p>
+                  )}
+                  {!hasVideo && !pillar && (
+                    <p className="text-xs text-stone-400 text-center -mt-1">Select a pillar above to generate.</p>
+                  )}
+                </>
               )}
               {generating && hasCaption && (
                 <div className="flex items-center gap-2 text-xs text-stone-500">
                   <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                  Rewriting...
+                  {genPhase === 'frames' ? 'Analyzing video...' : 'Rewriting...'}
                 </div>
               )}
 
