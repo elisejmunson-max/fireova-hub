@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       : pillar && `Content pillar: ${pillar}`,
     format && `Format: ${format}`,
     !videoOnly && topic && `Topic/context: ${topic}`,
-    !videoOnly && notes && `Additional details (photographer credit, venue, event name, etc.): ${notes}`,
+    !videoOnly && notes && `Notes from the user — work this into the captions: "${notes}"`,
     mediaDescription,
   ].filter(Boolean).join('\n')
 
