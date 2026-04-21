@@ -541,7 +541,7 @@ export default function NewPostPage() {
                           <img src={url} alt={asset.filename} draggable={false} className="w-full h-full object-cover" />
                         ) : isVideo && url ? (
                           <div className="relative w-full h-full bg-stone-900">
-                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline />
+                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline onLoadedMetadata={(e) => { (e.target as HTMLVideoElement).currentTime = 0.5 }} />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
                                 <VideoIcon className="w-3.5 h-3.5 text-white" />
@@ -607,7 +607,7 @@ export default function NewPostPage() {
                           <img src={url} alt={asset.filename} draggable={false} className="w-full h-full object-cover" />
                         ) : isVideoAsset && url ? (
                           <div className="relative w-full h-full bg-stone-900">
-                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline />
+                            <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline onLoadedMetadata={(e) => { (e.target as HTMLVideoElement).currentTime = 0.5 }} />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <VideoIcon className="w-3 h-3 text-white/80" />
                             </div>
