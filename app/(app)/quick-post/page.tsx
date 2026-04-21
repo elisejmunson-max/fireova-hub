@@ -354,7 +354,7 @@ export default function NewPostPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           caption: captionText,
-          platform: opt === 1 ? 'The Fireova Punch' : 'The Party Vibe',
+          platform: opt === 1 ? 'Option 1' : 'Option 2',
           instruction,
         }),
       })
@@ -805,8 +805,8 @@ export default function NewPostPage() {
                 <div className={`card p-4 space-y-3 transition-all ${approvedCaptions.has(1) ? 'ring-2 ring-emerald-400' : ''}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-stone-900">Option 1: Instagram / Facebook</h3>
-                      <p className="text-xs text-stone-500 mt-0.5">2 to 4 sentences. Warm, flowing, and conversational.</p>
+                      <h3 className="text-sm font-semibold text-stone-900">Option 1</h3>
+                      <p className="text-xs text-stone-500 mt-0.5">Short and punchy. Lead with the fire, the process, or the food.</p>
                     </div>
                     <button
                       type="button"
@@ -858,8 +858,8 @@ export default function NewPostPage() {
                 <div className={`card p-4 space-y-3 transition-all ${approvedCaptions.has(2) ? 'ring-2 ring-emerald-400' : ''}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-stone-900">Option 2: TikTok</h3>
-                      <p className="text-xs text-stone-500 mt-0.5">Short and punchy. 1 to 2 sentences. Let the video do the talking.</p>
+                      <h3 className="text-sm font-semibold text-stone-900">Option 2</h3>
+                      <p className="text-xs text-stone-500 mt-0.5">Warm and guest-focused. Center the couple, the crowd, or the moment.</p>
                     </div>
                     <button
                       type="button"

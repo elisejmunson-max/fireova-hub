@@ -39,10 +39,10 @@ NEVER write like these:
 
 TWO CAPTION OPTIONS EVERY TIME:
 
-Option 1: The Fireova Punch
+Option 1:
 Short, punchy, food or craft-focused. Lead with the fire, the process, or a specific food moment. 1-3 sentences. Hook with something specific and real.
 
-Option 2: The Party Vibe
+Option 2:
 Warm, guest or couple-focused. Center the people, the night, the celebration. 1-3 sentences. Romantic-but-relaxed energy, casual congrats tone.
 
 Both options: short hook, a line or two of warmth, done. No long bodies.

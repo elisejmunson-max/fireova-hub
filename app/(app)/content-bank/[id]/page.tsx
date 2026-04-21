@@ -531,8 +531,8 @@ export default function PostDetailPage() {
             <div className={`card p-5 space-y-4 transition-all ${approvedOption === 1 ? 'ring-2 ring-emerald-400' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Option 1: Instagram / Facebook</h2>
-                  <p className="text-xs text-stone-500 mt-0.5">2 to 4 sentences. Warm, flowing, and conversational.</p>
+                  <h2 className="text-sm font-semibold text-stone-900">Option 1</h2>
+                  <p className="text-xs text-stone-500 mt-0.5">Short and punchy. Lead with the fire, the process, or the food.</p>
                 </div>
                 <button
                   onClick={() => approveOption(1)}
@@ -602,8 +602,8 @@ export default function PostDetailPage() {
             <div className={`card p-5 space-y-4 transition-all ${approvedOption === 2 ? 'ring-2 ring-emerald-400' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Option 2: TikTok</h2>
-                  <p className="text-xs text-stone-500 mt-0.5">Short and punchy. 1 to 2 sentences. Let the video do the talking.</p>
+                  <h2 className="text-sm font-semibold text-stone-900">Option 2</h2>
+                  <p className="text-xs text-stone-500 mt-0.5">Warm and guest-focused. Center the couple, the crowd, or the moment.</p>
                 </div>
                 <button
                   onClick={() => approveOption(2)}
