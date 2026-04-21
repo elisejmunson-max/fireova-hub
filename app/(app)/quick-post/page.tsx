@@ -21,6 +21,7 @@ type PreviewPlatform = 'instagram' | 'facebook' | 'tiktok'
 
 const REVIEW_KEY    = 'fireova_review_posts'
 const APPROVED_KEY  = 'fireova_approved_posts'
+const DRAFT_KEY     = 'fireova_caption_draft'
 
 // ---------------------------------------------------------------------------
 // Page
@@ -82,6 +83,9 @@ export default function NewPostPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewPlatform, setPreviewPlatform] = useState<PreviewPlatform>('instagram')
 
+  // Draft recovery
+  const [draftRecovery, setDraftRecovery] = useState<{ option1: string; option2: string; option3: string; hashtags: string[]; shot_ideas: string[]; saved_at: string } | null>(null)
+
   // Save
   const [saving, setSaving]     = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -103,6 +107,14 @@ export default function NewPostPage() {
     supabaseRef.current
       .from('folders').select('id, name, parent_id').order('created_at')
       .then(({ data }) => { if (data && data.length > 0) setAllFolders(data as FolderItem[]) })
+    // Check for unsaved caption draft
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (raw) {
+        const draft = JSON.parse(raw)
+        if (draft.option1 || draft.option2 || draft.option3) setDraftRecovery(draft)
+      }
+    } catch {}
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -353,6 +365,17 @@ export default function NewPostPage() {
         while (shots.length < 3) shots.push('')
         setShotIdeas(shots)
       }
+      // Auto-save captions to localStorage so they survive accidental navigation
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          option1: data.option1 ?? '',
+          option2: data.option2 ?? '',
+          option3: data.option3 ?? '',
+          hashtags: data.hashtags ?? [],
+          shot_ideas: data.shot_ideas ?? [],
+          saved_at: new Date().toISOString(),
+        }))
+      } catch {}
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
@@ -467,6 +490,7 @@ export default function NewPostPage() {
         localStorage.setItem(APPROVED_KEY, JSON.stringify([...approvedSet]))
       } catch {}
     }
+    try { localStorage.removeItem(DRAFT_KEY) } catch {}
     setSaved(true)
     setTimeout(() => router.push('/content-bank'), 800)
   }
@@ -794,6 +818,42 @@ export default function NewPostPage() {
                   placeholder="Photographer, couple's names, venue..." className="input text-sm" />
               </div>
             </div>
+
+            {/* Draft recovery banner */}
+            {draftRecovery && !hasCaption && (
+              <div className="card p-4 border-amber-200 bg-amber-50 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Unsaved captions found</p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      From {new Date(draftRecovery.saved_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setDraftRecovery(null)}
+                    className="text-amber-400 hover:text-amber-600 text-sm leading-none">✕</button>
+                </div>
+                <button type="button"
+                  onClick={() => {
+                    if (draftRecovery.option1) setCaption1(draftRecovery.option1)
+                    if (draftRecovery.option2) setCaption2(draftRecovery.option2)
+                    if (draftRecovery.option3) setCaption3(draftRecovery.option3)
+                    if (draftRecovery.hashtags?.length) {
+                      const tags = [...draftRecovery.hashtags]
+                      while (tags.length < 4) tags.push('')
+                      setHashtags(tags)
+                    }
+                    if (draftRecovery.shot_ideas?.length) {
+                      const shots = [...draftRecovery.shot_ideas]
+                      while (shots.length < 3) shots.push('')
+                      setShotIdeas(shots)
+                    }
+                    setDraftRecovery(null)
+                  }}
+                  className="btn-primary w-full text-sm bg-amber-600 hover:bg-amber-700 border-amber-600">
+                  Restore captions
+                </button>
+              </div>
+            )}
 
             {/* Generate */}
             <div className="card p-4 space-y-4">
