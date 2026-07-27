@@ -1,0 +1,30 @@
+create table if not exists events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  event_name text not null default 'New Event',
+  event_date date,
+  leave_time text,
+  drive_time text,
+  on_site_time text,
+  food_service_time text,
+  guest_count integer,
+  confirmed boolean default false,
+  address text,
+  team_oven text,
+  team_stretch_top text,
+  team_expo text,
+  team_buffet text,
+  onsite_contact text,
+  cocktail_hour text,
+  dietary_meals text,
+  couples_meal text,
+  dinner_service text,
+  dessert_notes text,
+  special_notes text,
+  selected_menu_items jsonb not null default '[]',
+  checked_pack_items jsonb not null default '[]',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table events enable row level security;
+create policy "Users manage own events" on events for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
