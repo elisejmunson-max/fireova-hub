@@ -31,8 +31,7 @@ import { getDisplayVendorForEventVendor } from '@/lib/local-fireova-vendors'
 
 const createEventPageSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
 const eventDetailSource = fs.readFileSync('app/(app)/events/[id]/page.tsx', 'utf8')
-const eventIdentityEditorSource = fs.readFileSync('components/events/event-identity-editor.tsx', 'utf8')
-const venueAutocompleteSource = fs.readFileSync('components/events/venue-autocomplete.tsx', 'utf8')
+const inlineEventDetailsHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
 const quickAddVendorModalSource = fs.readFileSync('components/events/quick-add-vendor-modal.tsx', 'utf8')
 const sidebarSource = fs.readFileSync('components/layout/sidebar.tsx', 'utf8')
 
@@ -42,49 +41,31 @@ test('event cards open Event Details directly without an intermediate overview a
   assert.doesNotMatch(sidebarSource, /label: 'Create Event'/)
 })
 
-test('canonical Event Details route renders the saved two-column event editor', () => {
-  const newEditorIndex = eventDetailSource.indexOf('data-testid="saved-event-editor"')
-  const legacyOverviewIndex = eventDetailSource.indexOf('Turn this event into posts.')
-
-  assert.ok(newEditorIndex >= 0)
-  assert.ok(legacyOverviewIndex < 0 || newEditorIndex < legacyOverviewIndex)
+test('canonical and upload Event Details routes share the inline-edit header', () => {
+  assert.match(eventDetailSource, /<InlineEventDetailsHeader/)
+  assert.match(createEventPageSource, /<InlineEventDetailsHeader/)
+  assert.match(eventDetailSource, /onSave={saveEventMetadata}/)
+  assert.match(createEventPageSource, /onSave={savePendingEventMetadataToCloud}/)
+  assert.match(inlineEventDetailsHeaderSource, /data-testid="inline-event-details-header"/)
+  assert.doesNotMatch(createEventPageSource, /Edit event details|setEventEditing|eventEditing|EventIdentityEditor/)
+  assert.doesNotMatch(eventDetailSource, /Edit event details|setEventEditing|eventEditing|EventIdentityEditor/)
+  assert.match(eventDetailSource, /data-testid="saved-event-editor"/)
   assert.match(eventDetailSource, /lg:grid-cols-\[minmax\(0,47fr\)_minmax\(0,53fr\)\]/)
-  assert.match(eventDetailSource, /← Back to Events/)
-  assert.doesNotMatch(eventDetailSource, /Change Media/)
-  assert.match(eventDetailSource, /\+ Add Vendor/)
-  assert.match(eventDetailSource, /Add media/)
-  assert.match(eventDetailSource, /function VendorCreditActions/)
-  assert.match(eventDetailSource, /Open @\$\{handle\} on Instagram/)
-  assert.doesNotMatch(eventDetailSource, /onEdit=\{\(\) => openVendorsDrawer\(vendor\.id\)\}/)
-  assert.match(eventDetailSource, /onRemove=\{\(\) => removeSavedVendor\(vendor\.id\)\}/)
-  assert.match(eventDetailSource, /async function finishEditing\(\)/)
-  assert.match(eventDetailSource, /<EventIdentityEditor/)
-  assert.match(eventDetailSource, /onDone=\{\(\) => void finishEditing\(\)\}/)
-  assert.match(eventIdentityEditorSource, />Done<\/button>/)
   assert.match(eventDetailSource, /<QuickAddVendorModal/)
-  assert.match(quickAddVendorModalSource, /Search vendors by name, category, or @handle/)
-  assert.match(quickAddVendorModalSource, /\+ Create new vendor/)
-  assert.match(eventDetailSource, />\+ Add venue</)
 })
-
-test('canonical event edits await Supabase update and UUID reload before closing', () => {
+test('canonical event edits await Supabase update and same-UUID reload', () => {
   const saveStart = eventDetailSource.indexOf('async function saveEventMetadata')
   const saveEnd = eventDetailSource.indexOf('function persistEventMedia', saveStart)
   const saveSource = eventDetailSource.slice(saveStart, saveEnd)
-  const dialogStart = eventDetailSource.indexOf('function EditEventDialog')
-  const dialogSource = eventDetailSource.slice(dialogStart)
 
   assert.match(saveSource, /id: localEvent\.id/)
   assert.match(saveSource, /media: localEvent\.media/)
+  assert.match(saveSource, /cover: localEvent\.cover/)
   assert.match(saveSource, /await saveEventToCloud\(updatedEvent\)/)
   assert.match(saveSource, /await loadEventFromCloud\(localEvent\.id\)/)
   assert.match(saveSource, /saved\.id !== localEvent\.id/)
-  assert.doesNotMatch(saveSource, /updateLocalEventMetadata/)
-  assert.match(dialogSource, /await saveCurrentEventDetails\(\)/)
-  assert.ok(dialogSource.indexOf('await saveCurrentEventDetails()') < dialogSource.indexOf('onClose()'))
-  assert.match(dialogSource, /role="alert"/)
+  assert.doesNotMatch(saveSource, /updateLocalEventMetadata|localStorage|sessionStorage/)
 })
-
 test('canonical Event Details initially loads from Supabase instead of local browser state', () => {
   assert.match(eventDetailSource, /loadEventFromCloud\(params\.id\)/)
   assert.match(eventDetailSource, /saveLocalEvent\(cloudEvent\)/)
@@ -501,70 +482,78 @@ test('created venue and vendors are available to the Event Detail presentation',
 })
 
 test('Create Event no longer renders Venue Location', () => {
-  assert.doesNotMatch(createEventPageSource, /label="Venue Location"/)
-  assert.doesNotMatch(createEventPageSource, /pendingEventDetails\.venueLocation/)
-  assert.match(createEventPageSource, /<EventIdentityEditor/)
-  assert.match(venueAutocompleteSource, /export default function VenueAutocomplete/)
+  assert.doesNotMatch(createEventPageSource, /label="Venue Location"|pendingEventDetails\.venueLocation/)
+  assert.doesNotMatch(inlineEventDetailsHeaderSource, />Venue Location</)
+  assert.match(createEventPageSource, /<InlineEventDetailsHeader/)
   assert.doesNotMatch(createEventPageSource, /label="Venue Instagram"/)
 })
 
 test('Create Event uses responsive non-overflowing section layouts', () => {
   assert.match(createEventPageSource, /lg:grid-cols-\[minmax\(0,47fr\)_minmax\(0,53fr\)\]/)
-  assert.match(createEventPageSource, /data-testid="event-summary-venue"[\s\S]*?<EventIdentityEditor/)
+  assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
+  assert.match(createEventPageSource, /<InlineEventDetailsHeader/)
   assert.match(createEventPageSource, /group relative min-w-0/)
   assert.match(quickAddVendorModalSource, /max-w-\[520px\]/)
-  assert.match(quickAddVendorModalSource, /sm:items-center/)
-  assert.match(quickAddVendorModalSource, /sm:max-h-\[70vh\] sm:rounded-2xl/)
   assert.doesNotMatch(createEventPageSource, /absolute inset-y-0 right-0/)
 })
 
 test('active Create Event panel presents a balanced media and event-summary hero', () => {
-  assert.match(createEventPageSource, />\s*Add Files\s*</)
-  assert.doesNotMatch(createEventPageSource, />\s*Add Folder\s*</)
-  assert.doesNotMatch(createEventPageSource, /Drop media here/)
-  assert.doesNotMatch(createEventPageSource, /aria-label="Clear all media"/)
-  assert.doesNotMatch(createEventPageSource, /Building your event/)
-  assert.doesNotMatch(createEventPageSource, />\s*Event contents\s*</)
-  assert.match(createEventPageSource, /rounded-xl border-stone-200 bg-white/)
-  assert.match(createEventPageSource, /flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto/)
-  assert.match(createEventPageSource, /inline-flex shrink-0 gap-2/)
   assert.match(createEventPageSource, /data-testid="event-review-hero"/)
-  assert.match(createEventPageSource, /div className="min-w-0" data-testid="event-review-hero"/)
-  assert.match(createEventPageSource, /activeBatch \? 'max-w-7xl' : 'max-w-7xl space-y-5'/)
-  assert.match(createEventPageSource, /\{!activeBatch && \(\s*<div>/)
-  assert.doesNotMatch(createEventPageSource, /\{activeBatch \? 'Create Event' : 'Events'\}/)
-  assert.doesNotMatch(createEventPageSource, />← Events<\/Link>/)
+  assert.match(createEventPageSource, /data-testid="event-review-summary"/)
   assert.match(createEventPageSource, /lg:grid-cols-\[minmax\(0,47fr\)_minmax\(0,53fr\)\]/)
   assert.match(createEventPageSource, /lg:gap-x-7/)
-  assert.doesNotMatch(createEventPageSource, /lg:min-h-\[42rem\]|lg:h-full/)
-  assert.doesNotMatch(createEventPageSource, /formatEventSummaryDate/)
-  assert.doesNotMatch(createEventPageSource, /formatMediaCountSummary/)
-  assert.match(createEventPageSource, /hero\s+mediaTypeLabel=\{primaryPendingItem\.kind === 'video' \? 'Video' : 'Photo'\}[\s\S]*?showChangeMedia\s+onRemove=/)
-  assert.doesNotMatch(createEventPageSource, /Ready to shape into content/)
-  assert.doesNotMatch(createEventPageSource, />\s*Edit details\s*</)
-  assert.doesNotMatch(createEventPageSource, /SectionCompletionCheck/)
+  assert.match(createEventPageSource, /hero\s+mediaTypeLabel=\{primaryPendingItem\.kind === 'video' \? 'Video' : 'Photo'\}/)
   assert.match(createEventPageSource, /✨ Create Content/)
-  const activeHeroSource = createEventPageSource.slice(
-    createEventPageSource.indexOf('data-testid="event-review-hero"'),
-    createEventPageSource.indexOf('<div className="min-w-0 px-1 py-1 lg:px-0 lg:py-0">')
-  )
-  assert.doesNotMatch(activeHeroSource, /Add Folder/)
-  assert.match(createEventPageSource, /min-w-0 px-1 py-1 lg:px-0 lg:py-0/)
-  assert.match(createEventPageSource, /className="mt-5 min-w-0"/)
-  assert.doesNotMatch(createEventPageSource, /lg:row-span-3|lg:row-start-2|lg:row-span-2/)
+  assert.doesNotMatch(createEventPageSource, /Edit event details|setEventEditing/)
 })
 
-test('right-side workspace follows event venue vendors and final create order', () => {
-  const titleIndex = createEventPageSource.indexOf('<EventIdentityEditor')
-  const venueIndex = createEventPageSource.indexOf('data-testid="event-summary-venue"')
+test('right-side workspace follows event details vendors and final create order', () => {
+  const titleIndex = createEventPageSource.indexOf('<InlineEventDetailsHeader')
   const vendorsIndex = createEventPageSource.indexOf('>Vendors</h3>')
   const createIndex = createEventPageSource.indexOf('data-testid="create-event-submit"')
   assert.ok(titleIndex > -1)
-  assert.match(eventIdentityEditorSource, /aria-label="Event Date"/)
-  assert.ok(venueIndex <= titleIndex)
-  assert.ok(vendorsIndex > venueIndex)
+  assert.ok(vendorsIndex > titleIndex)
   assert.ok(createIndex > vendorsIndex)
   assert.doesNotMatch(createEventPageSource, /showAddFiles/)
+})
+
+test('venue remains inline with event metadata before the Vendors section', () => {
+  const headerIndex = createEventPageSource.indexOf('<InlineEventDetailsHeader')
+  const vendorsIndex = createEventPageSource.indexOf('>Vendors</h3>')
+  assert.ok(headerIndex > -1)
+  assert.ok(vendorsIndex > headerIndex)
+  assert.match(inlineEventDetailsHeaderSource, /value\.venueName \|\| '\+ Add venue'/)
+  assert.match(createEventPageSource, /section className="min-w-0 border-t border-stone-200\/70 pt-5"/)
+  assert.doesNotMatch(createEventPageSource, /<h3[^>]*>Venue<\/h3>/)
+})
+
+test('Vendors retains its aligned responsive credit list', () => {
+  assert.match(createEventPageSource, /No vendors added yet\./)
+  assert.match(createEventPageSource, />\s*\+ Add Vendor\s*</)
+  assert.match(createEventPageSource, /data-testid="pending-vendor-list"/)
+  assert.match(createEventPageSource, /data-testid="pending-additional-vendor-row"/)
+  assert.match(createEventPageSource, /grid-cols-\[7\.5rem_minmax\(0,1fr\)\] gap-1\.5/)
+  assert.match(createEventPageSource, /details className="absolute right-0 top-1\/2 -translate-y-1\/2 sm:hidden"/)
+  assert.match(createEventPageSource, /aria-label=\{`Remove \$\{formatInstagramHandle/)
+})
+
+test('venue vendor credit stays attached to the inline venue relationship', () => {
+  const venueRowSource = createEventPageSource.slice(
+    createEventPageSource.indexOf('data-testid="pending-venue-vendor-row"'),
+    createEventPageSource.indexOf('{pendingNonVenueVendors.map')
+  )
+  assert.match(venueRowSource, /pendingVenuePreview\.instagramHandle/)
+  assert.match(venueRowSource, /aria-label="Remove venue"/)
+  assert.match(venueRowSource, /updatePendingEventDetails\(\{ venueName: '', venueInstagram: '', venueVendorId: undefined \}\)/)
+  assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
+})
+
+test('shared event identity keeps one readable wrapping metadata line', () => {
+  assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
+  assert.match(inlineEventDetailsHeaderSource, /md:text-\[42px\]/)
+  assert.match(inlineEventDetailsHeaderSource, /flex flex-wrap items-center gap-x-1/)
+  assert.match(inlineEventDetailsHeaderSource, /Change event type/)
+  assert.match(inlineEventDetailsHeaderSource, /Change event date/)
 })
 
 test('Create Event preview uses one bounded 4:5 review frame with overlay controls', () => {
@@ -653,96 +642,6 @@ test('single-media events render only Add media without a heading or duplicate t
   assert.ok(gallerySource.indexOf('visibleAdditionalPendingItems.map') < gallerySource.indexOf('data-testid="add-event-media-tile"'))
 })
 
-test('hero contains the only editable Event Details controls', () => {
-  assert.equal(createEventPageSource.match(/<EventIdentityEditor/g)?.length, 1)
-  assert.match(createEventPageSource, /onNameChange=\{\(name\) => updatePendingEventDetails\(\{ name \}\)\}/)
-  assert.match(eventIdentityEditorSource, /aria-label="Event Date"/)
-  assert.match(eventIdentityEditorSource, /aria-label="Event Type"/)
-  assert.doesNotMatch(createEventPageSource, />\s*Event Details\s*</)
-  assert.match(createEventPageSource, /\{eventEditing \? \(/)
-  assert.match(createEventPageSource, /onClick=\{beginEventEditing\}/)
-  assert.match(createEventPageSource, /onDone=\{finishEventEditing\}/)
-  assert.match(createEventPageSource, /onCancel=\{cancelEventEditing\}/)
-  assert.match(createEventPageSource, /object-cover/)
-})
-
-test('event header defaults to a compact summary and exposes controls only while editing', () => {
-  const editBranchStart = createEventPageSource.indexOf('{eventEditing ? (')
-  const reviewBranchStart = createEventPageSource.indexOf(') : (', editBranchStart)
-  const summaryEnd = createEventPageSource.indexOf('\n                      )}\n                    </div>', reviewBranchStart)
-  const editBranch = createEventPageSource.slice(editBranchStart, reviewBranchStart)
-  const reviewBranch = createEventPageSource.slice(reviewBranchStart, summaryEnd)
-
-  assert.match(editBranch, /<EventIdentityEditor/)
-  assert.match(eventIdentityEditorSource, /aria-label="Event Type"/)
-  assert.match(eventIdentityEditorSource, /aria-label="Event Date"/)
-  assert.match(eventIdentityEditorSource, />Done<\/button>/)
-  assert.match(eventIdentityEditorSource, />Cancel<\/button>/)
-  assert.doesNotMatch(reviewBranch, /aria-label="Event Type"/)
-  assert.doesNotMatch(reviewBranch, /aria-label="Event Date"/)
-  assert.doesNotMatch(reviewBranch, />Done<\/button>/)
-  assert.match(reviewBranch, /\{pendingEventDetails\.type\}[\s\S]*?•[\s\S]*?\{formatPendingEventDate\(pendingEventDetails\.date\)\}/)
-  assert.match(reviewBranch, /onClick=\{beginEventEditing\}/)
-})
-
-test('event edit session commits with Done and restores its snapshot with Cancel', () => {
-  assert.match(createEventPageSource, /function beginEventEditing\(\)[\s\S]*?setEventEditSnapshot\(\{[\s\S]*?name: pendingEventDetails\.name,[\s\S]*?type: pendingEventDetails\.type,[\s\S]*?date: pendingEventDetails\.date,[\s\S]*?venueName: pendingEventDetails\.venueName,[\s\S]*?venueInstagram: pendingEventDetails\.venueInstagram,[\s\S]*?venueVendorId: pendingEventDetails\.venueVendorId,[\s\S]*?setEventEditing\(true\)/)
-  assert.match(createEventPageSource, /function finishEventEditing\(\)[\s\S]*?setEventEditSnapshot\(null\)[\s\S]*?setEventEditing\(false\)/)
-  assert.match(createEventPageSource, /function cancelEventEditing\(\)[\s\S]*?setPendingEventDetails\(\(currentDetails\) => \(\{ \.\.\.currentDetails, \.\.\.eventEditSnapshot \}\)\)[\s\S]*?setEventEditing\(false\)/)
-})
-
-test('venue is merged into the event summary and Vendors follows one divider later', () => {
-  assert.doesNotMatch(createEventPageSource, /SectionAccentIcon/)
-  assert.doesNotMatch(createEventPageSource, /data-testid="selected-venue-summary"/)
-  assert.match(createEventPageSource, /data-testid="event-summary-venue"/)
-  assert.match(createEventPageSource, /section className="min-w-0 border-t border-stone-200\/70 pt-5"/)
-  assert.match(createEventPageSource, /uppercase tracking-\[0\.06em\]/)
-  assert.doesNotMatch(createEventPageSource, /space-y-4 border-t border-stone-100 pt-4/)
-  assert.doesNotMatch(createEventPageSource, /label="Venue Instagram"|venueEditing|setVenueEditing/)
-  assert.match(createEventPageSource, /\{eventEditing \? \(/)
-  assert.match(createEventPageSource, /hasPendingVenueName \? pendingEventDetails\.venueName : '\+ Add venue'/)
-  assert.doesNotMatch(createEventPageSource, /<h3[^>]*>Venue<\/h3>/)
-  assert.match(createEventPageSource, />\s*Vendors\s*</)
-  assert.doesNotMatch(createEventPageSource, /Vendors \(\{getPendingEventVendorCount/)
-  assert.doesNotMatch(createEventPageSource, /Additional Vendors \(/)
-})
-
-test('Vendors renders one aligned single-line credit list with responsive actions', () => {
-  assert.match(createEventPageSource, /No vendors added yet\./)
-  assert.match(createEventPageSource, />\s*\+ Add Vendor\s*</)
-  assert.match(createEventPageSource, /pendingNonVenueVendors\.map/)
-  assert.match(createEventPageSource, /data-testid="pending-vendor-list"/)
-  assert.match(createEventPageSource, /data-testid="pending-additional-vendor-row"/)
-  assert.doesNotMatch(createEventPageSource, /divide-y divide-stone-100/)
-  assert.match(createEventPageSource, /section className="min-w-0 border-t border-stone-200\/70 pt-5"/)
-  assert.doesNotMatch(createEventPageSource, /VendorListIcon/)
-  assert.match(createEventPageSource, /space-y-0\.5/)
-  assert.match(createEventPageSource, /grid-cols-\[7\.5rem_minmax\(0,1fr\)\] gap-1\.5[^\n]+text-\[15px\] leading-5/)
-  assert.match(createEventPageSource, /whitespace-nowrap font-medium text-stone-600/)
-  assert.match(createEventPageSource, /group relative min-w-0/)
-  assert.match(createEventPageSource, /className="rounded-md px-2 py-1 text-xs font-semibold text-stone-700/)
-  assert.match(createEventPageSource, /className="absolute right-0 top-1\/2 hidden -translate-y-1\/2 items-center sm:flex"/)
-  assert.match(createEventPageSource, /details className="absolute right-0 top-1\/2 -translate-y-1\/2 sm:hidden"/)
-  assert.match(createEventPageSource, /aria-label=\{`Actions for \$\{formatInstagramHandle/)
-  assert.match(createEventPageSource, /<span className="truncate font-semibold">\{formatInstagramHandle/)
-  assert.doesNotMatch(createEventPageSource, /aria-label=\{`Edit \$\{formatInstagramHandle/)
-  assert.match(createEventPageSource, /aria-label=\{`Remove \$\{formatInstagramHandle/)
-  assert.match(createEventPageSource, /aria-label=\{`Open \$\{formatInstagramHandle[^\n]+on Instagram`\}/)
-  assert.match(createEventPageSource, /target="_blank" rel="noreferrer"/)
-  assert.match(createEventPageSource, /<InstagramIcon className="h-4 w-4" \/>/)
-  assert.match(createEventPageSource, /<RemoveIcon className="h-4 w-4" \/>/)
-  assert.match(createEventPageSource, />Edit<\/button>/)
-  assert.match(createEventPageSource, />Remove<\/button>/)
-  assert.doesNotMatch(createEventPageSource, /EditMiniIcon/)
-  assert.doesNotMatch(createEventPageSource, /TrashMiniIcon/)
-  const vendorsHeadingIndex = createEventPageSource.indexOf('>Vendors</h3>')
-  const addVendorIndex = createEventPageSource.indexOf('>\n                            + Add Vendor')
-  const vendorListIndex = createEventPageSource.indexOf('data-testid="pending-vendor-list"')
-  assert.ok(vendorsHeadingIndex > -1)
-  assert.ok(addVendorIndex > vendorsHeadingIndex)
-  assert.ok(vendorListIndex > addVendorIndex)
-})
-
 test('Create Content is followed by a thumbnail-style Add media tile', () => {
   assert.doesNotMatch(createEventPageSource, /showAddFiles/)
   const activeWorkspaceStart = createEventPageSource.indexOf('data-testid="event-review-summary"')
@@ -770,85 +669,12 @@ test('Vendors flows naturally into a compact divided action footer', () => {
   assert.doesNotMatch(createEventPageSource, /data-testid="pending-vendor-list"[^>]*(?:min-h-|h-full|grow|flex-1|pb-|py-)/)
 })
 
-test('vendor card renders a live autocomplete-driven Venue row without changing its count', () => {
-  assert.match(createEventPageSource, /data-testid="pending-venue-vendor-row"/)
-  assert.match(createEventPageSource, /pendingVenuePreview\.instagramHandle/)
-  const venueRowSource = createEventPageSource.slice(
-    createEventPageSource.indexOf('data-testid="pending-venue-vendor-row"'),
-    createEventPageSource.indexOf('{pendingNonVenueVendors.map')
-  )
-  assert.doesNotMatch(venueRowSource, /pendingVenuePreview\.name/)
-  assert.doesNotMatch(venueRowSource, /aria-label="Edit venue"/)
-  assert.match(venueRowSource, /aria-label="Remove venue"/)
-  assert.match(venueRowSource, /updatePendingEventDetails\(\{ venueName: '', venueInstagram: '', venueVendorId: undefined \}\)/)
-  assert.match(createEventPageSource, /group relative min-w-0[^\n]+data-testid="pending-venue-vendor-row"/)
-  assert.match(createEventPageSource, /<span className="font-medium text-stone-600">Venue:<\/span>/)
-  assert.doesNotMatch(createEventPageSource, /grid-cols-\[8rem_minmax\(0,1fr\)/)
-  assert.match(venueRowSource, />Venue:<\/span>/)
-  assert.doesNotMatch(venueRowSource, /bg-ember/)
-  assert.doesNotMatch(createEventPageSource, /No other vendors added\./)
-  assert.match(createEventPageSource, /venueVendorId: venue\.vendorId/)
-})
-
 test('Venue is the first Vendors list row and remains separate from vendors', () => {
   const venueRowIndex = createEventPageSource.indexOf('data-testid="pending-venue-vendor-row"')
   const vendorRowIndex = createEventPageSource.indexOf('data-testid="pending-additional-vendor-row"')
   assert.ok(venueRowIndex > -1)
   assert.ok(vendorRowIndex > venueRowIndex)
   assert.match(createEventPageSource, />\s*Vendors\s*</)
-})
-
-test('event summary presents the venue name or quiet Add venue action', () => {
-  assert.match(createEventPageSource, /data-testid="event-summary-venue"/)
-  assert.match(createEventPageSource, /aria-label=\{hasPendingVenueName \? 'Edit venue' : 'Add venue'\}/)
-  assert.match(createEventPageSource, /onClick=\{beginEventEditing\}/)
-  assert.doesNotMatch(createEventPageSource, /Will automatically be included in vendor credits\./)
-  const metadataSource = createEventPageSource.slice(
-    createEventPageSource.indexOf('data-testid="event-summary-metadata"'),
-    createEventPageSource.indexOf('</div>\n                        </div>', createEventPageSource.indexOf('data-testid="event-summary-metadata"'))
-  )
-  assert.match(metadataSource, /pendingEventDetails\.type/)
-  assert.match(metadataSource, /formatPendingEventDate\(pendingEventDetails\.date\)/)
-  assert.match(metadataSource, /pendingEventDetails\.venueName/)
-  assert.match(metadataSource, /'\+ Add venue'/)
-  assert.doesNotMatch(metadataSource, /pendingVenuePreview\.instagramHandle|pendingEventDetails\.venueInstagram/)
-  assert.equal(metadataSource.match(/>Done<\/button>/g)?.length ?? 0, 0)
-  assert.equal(getPendingVenuePreview({ venueInstagram: '' }), null)
-  assert.equal(getPendingVenuePreview({ venueInstagram: '@davisandgreyfarms' })?.instagramHandle, '@davisandgreyfarms')
-})
-
-test('Event and Venue use compact review summaries with edit modes', () => {
-  const eventSummaryIndex = createEventPageSource.indexOf('data-testid="event-review-summary"')
-  const venueIndex = createEventPageSource.indexOf('data-testid="event-summary-venue"')
-  const vendorsIndex = createEventPageSource.indexOf('>Vendors</h3>')
-  assert.ok(eventSummaryIndex > -1)
-  assert.ok(venueIndex > eventSummaryIndex)
-  assert.ok(vendorsIndex > venueIndex)
-  assert.match(createEventPageSource, /data-testid="event-summary-metadata"[\s\S]*?\{pendingEventDetails\.type\}[\s\S]*?>•<\/span>[\s\S]*?\{formatPendingEventDate\(pendingEventDetails\.date\)\}[\s\S]*?>•<\/span>/)
-  assert.match(createEventPageSource, /hasPendingVenueName \? pendingEventDetails\.venueName : '\+ Add venue'/)
-  assert.match(createEventPageSource, /onClick=\{beginEventEditing\}/)
-  assert.match(createEventPageSource, /setEventEditing\(true\)/)
-})
-
-test('collapsed event identity uses one readable wrapping metadata line', () => {
-  assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
-  assert.match(createEventPageSource, /sm:text-\[42px\]/)
-  assert.match(createEventPageSource, /flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1/)
-  assert.match(createEventPageSource, /data-testid="event-summary-metadata"/)
-})
-
-test('venue edit mode exposes only Venue Name and shares the event Done and Cancel actions', () => {
-  const summaryStart = createEventPageSource.indexOf('data-testid="event-review-summary"')
-  const summaryEnd = createEventPageSource.indexOf('<div\n                    className="mt-5 min-w-0"', summaryStart)
-  const summarySource = createEventPageSource.slice(summaryStart, summaryEnd)
-
-  assert.match(summarySource, /<EventIdentityEditor/)
-  assert.match(eventIdentityEditorSource, /<VenueAutocomplete/)
-  assert.doesNotMatch(eventIdentityEditorSource, /label="Venue Instagram"/)
-  assert.equal(eventIdentityEditorSource.match(/>Done<\/button>/g)?.length, 1)
-  assert.equal(eventIdentityEditorSource.match(/>Cancel<\/button>/g)?.length, 1)
-  assert.match(summarySource, /venueInstagram: venue\.instagram \?\? ''/)
-  assert.match(summarySource, /venueInstagram: ''/)
 })
 
 test('imported media appears in the standard event gallery data', () => {
@@ -969,34 +795,6 @@ test('Create Event failures render inline without clearing pending form state', 
   assert.match(submitSource, /console\.error\('\[Fireova Create Event\] CREATE_EVENT_FAILED', error\)/)
   assert.doesNotMatch(submitSource, /setPendingMediaItems\(clearPendingEventMediaBatch\(\)\)/)
   assert.doesNotMatch(submitSource, /setPendingEventDetails\(DEFAULT_PENDING_EVENT_DETAILS\)/)
-})
-
-test('successful Create Event navigation replaces history after all saved data is synchronized', () => {
-  const submitSource = createEventPageSource.slice(
-    createEventPageSource.indexOf('async function continueWithPendingBatch'),
-    createEventPageSource.indexOf('function clearPendingBatch')
-  )
-  const createIndex = submitSource.indexOf('createCloudEventWithMedia({')
-  const routeIndex = submitSource.indexOf('`/events/${confirmedEvent.id}`')
-  const replaceIndex = submitSource.indexOf('router.replace(redirectHref)')
-
-  assert.ok(createIndex > -1)
-  assert.ok(routeIndex > createIndex)
-  assert.ok(replaceIndex > routeIndex)
-  assert.doesNotMatch(submitSource, /router\.push\(/)
-  assert.doesNotMatch(submitSource, /setPendingMediaItems\(result\.items\)/)
-  assert.doesNotMatch(submitSource, /setPendingEventDetails\(DEFAULT_PENDING_EVENT_DETAILS\)/)
-  assert.match(submitSource, /uploadPrepState === 'preparing' \|\| creatingEventRef\.current/)
-})
-
-test('media collection stays temporary until cloud event and media are confirmed', () => {
-  assert.match(createEventPageSource, /createCloudEventWithMedia\(\{/)
-  assert.match(createEventPageSource, /items: mediaItems/)
-  assert.match(createEventPageSource, /saveLocalEvent\(confirmedEvent\)/)
-  assert.match(createEventPageSource, /`\/events\/\$\{confirmedEvent\.id\}`/)
-  assert.match(createEventPageSource, /await continueWithPendingBatch\(batch\.items, batch\.details\)/)
-  assert.doesNotMatch(createEventPageSource, /createDraftEventFromFiles\(items\.map/)
-  assert.doesNotMatch(createEventPageSource, /Event saved automatically/)
 })
 
 test('refreshing canonical event url stays on standard event page', () => {

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import LocalMedia from '@/components/local-media'
 import QuickAddVendorModal from '@/components/events/quick-add-vendor-modal'
+import InlineEventDetailsHeader from '@/components/events/inline-event-details-header'
 import { deleteIndexedDbMediaByIds } from '@/lib/local-fireova-media'
 import {
   CONTENT_BANK_CATEGORIES,
@@ -39,14 +40,10 @@ import {
   deleteLocalEvent,
   dedupeMedia,
   FIREOVA_EVENTS_CHANGED_EVENT,
-  FIREOVA_EVENT_TYPES,
-  getEventTypeLabel,
-  normalizeEventType,
   readLocalEvents,
   readLocalGeneratedPosts,
   readLocalPostStatuses,
   saveLocalEvent,
-  type FireovaEventType,
   type LocalFireovaEvent,
   type LocalEventMetadataUpdate,
   type LocalEventVendor,
@@ -88,28 +85,11 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const [galleryExpanded, setGalleryExpanded] = useState(false)
   const [selectedMediaId, setSelectedMediaId] = useState('')
   const [mediaSaving, setMediaSaving] = useState(false)
-  const [nameEditing, setNameEditing] = useState(false)
-  const [typeEditing, setTypeEditing] = useState(false)
-  const [dateEditing, setDateEditing] = useState(false)
-  const [venueEditing, setVenueEditing] = useState(false)
-  const [nameDraft, setNameDraft] = useState('')
-  const [typeDraft, setTypeDraft] = useState<FireovaEventType>('Wedding')
-  const [dateDraft, setDateDraft] = useState('')
-  const [venueDraft, setVenueDraft] = useState('')
-  const [inlineSaveStatus, setInlineSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [inlineSaveError, setInlineSaveError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const typeSelectRef = useRef<HTMLSelectElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
-  const venueSelectRef = useRef<HTMLSelectElement>(null)
   const [loaded, setLoaded] = useState(false)
   const [eventLoadError, setEventLoadError] = useState('')
   const vendorsButtonRef = useRef<HTMLButtonElement>(null)
   const automaticReviewStartedRef = useRef('')
-  const inlineSaveRequestRef = useRef<Promise<LocalFireovaEvent> | null>(null)
-  const inlineSaveKeyRef = useRef('')
-  const lastInlineUpdateRef = useRef<Partial<LocalEventMetadataUpdate> | null>(null)
-  const inlineSaveStatusTimerRef = useRef<number | null>(null)
   const event = localEvent
   const legacyImportedQueryActive = searchParams?.get('imported') === '1' || searchParams?.get('draft') === '1'
 
@@ -146,36 +126,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     window.addEventListener(FIREOVA_EVENTS_CHANGED_EVENT, refreshEvent)
     return () => window.removeEventListener(FIREOVA_EVENTS_CHANGED_EVENT, refreshEvent)
   }, [params.id])
-
-  useEffect(() => {
-    if (!localEvent) return
-    if (!nameEditing) setNameDraft(localEvent.name)
-    setTypeDraft(normalizeEventType(localEvent.type))
-    setDateDraft(toDateInputValue(localEvent.date))
-    setVenueDraft(localEvent.venueName ? `name:${localEvent.venueName}` : '')
-  }, [localEvent, nameEditing])
-
-  useEffect(() => () => {
-    if (inlineSaveStatusTimerRef.current) window.clearTimeout(inlineSaveStatusTimerRef.current)
-  }, [])
-
-  useEffect(() => {
-    if (!typeEditing) return
-    typeSelectRef.current?.focus()
-    ;(typeSelectRef.current as HTMLSelectElement & { showPicker?: () => void })?.showPicker?.()
-  }, [typeEditing])
-
-  useEffect(() => {
-    if (!dateEditing) return
-    dateInputRef.current?.focus()
-    dateInputRef.current?.showPicker?.()
-  }, [dateEditing])
-
-  useEffect(() => {
-    if (!venueEditing) return
-    venueSelectRef.current?.focus()
-    ;(venueSelectRef.current as HTMLSelectElement & { showPicker?: () => void })?.showPicker?.()
-  }, [venueEditing])
 
   useEffect(() => {
     if (!legacyImportedQueryActive) return
@@ -276,45 +226,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     setVendors(readLocalVendors())
     await syncEventsWithCloud()
     return cached
-  }
-
-  async function saveInlineEventFields(updates: Partial<LocalEventMetadataUpdate>) {
-    const requestKey = JSON.stringify(updates)
-    if (inlineSaveRequestRef.current && inlineSaveKeyRef.current === requestKey) {
-      return inlineSaveRequestRef.current
-    }
-
-    if (inlineSaveStatusTimerRef.current) window.clearTimeout(inlineSaveStatusTimerRef.current)
-    setInlineSaveStatus('saving')
-    setInlineSaveError('')
-    lastInlineUpdateRef.current = updates
-    inlineSaveKeyRef.current = requestKey
-    const request = saveEventMetadata(updates)
-    inlineSaveRequestRef.current = request
-
-    try {
-      const savedEvent = await request
-      setInlineSaveStatus('saved')
-      inlineSaveStatusTimerRef.current = window.setTimeout(() => setInlineSaveStatus('idle'), 1800)
-      return savedEvent
-    } catch (error) {
-      setInlineSaveStatus('error')
-      setInlineSaveError(error instanceof Error ? error.message : 'The event could not be saved to Fireova Cloud.')
-      throw error
-    } finally {
-      if (inlineSaveRequestRef.current === request) inlineSaveRequestRef.current = null
-    }
-  }
-
-  function saveEventName() {
-    const nextName = nameDraft.trim()
-    if (!localEvent || !nextName || nextName === localEvent.name) {
-      if (nextName) setNameEditing(false)
-      return
-    }
-    void saveInlineEventFields({ name: nextName })
-      .then(() => setNameEditing(false))
-      .catch(() => undefined)
   }
 
   function persistEventMedia(nextMedia: LocalFireovaEvent['media']) {
@@ -437,15 +348,12 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   }
 
   const mediaTiles = dedupeMedia(event.media.length > 0 ? event.media : [event.cover])
-  const eventType = getEventTypeLabel(event.type)
   const venueInstagramHandle = normalizeVendorHandle(event.venueInstagram)
   const savedVenueOptions = getSavedVenueOptions(readLocalEvents(), vendors)
   const eventVendorDisplays = (event.vendors ?? [])
     .map((eventVendor) => getDisplayVendorForEventVendor(eventVendor, vendors))
     .filter((vendor) => vendor.category !== 'Venue' && (vendor.businessName || vendor.instagramHandle))
   const hasGeneratedPosts = postDrafts.length > 0
-  const needsEventName = isPlaceholderEventName(event.name)
-  const eventDisplayName = needsEventName ? 'Name this event' : event.name
   const contentActionHref = getEventContentStudioEntryHref(event, postDrafts)
   const galleryCapped = mediaTiles.length > 20 && !galleryExpanded
   const visibleGalleryTiles = galleryCapped ? mediaTiles.slice(0, EVENT_MEDIA_PREVIEW_LIMIT) : mediaTiles
@@ -586,179 +494,19 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
             <section className="min-w-0" aria-label="Event Details">
               <div className="flex min-w-0 items-center justify-between gap-3 md:items-start md:gap-4">
-                <div className="min-w-0 flex-1">
-                  {nameEditing ? (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <input
-                        autoFocus
-                        value={nameDraft}
-                        onChange={(changeEvent) => setNameDraft(changeEvent.target.value)}
-                        onBlur={saveEventName}
-                        onKeyDown={(keyEvent) => {
-                          if (keyEvent.key === 'Enter') {
-                            keyEvent.preventDefault()
-                            saveEventName()
-                          }
-                          if (keyEvent.key === 'Escape') {
-                            setNameDraft(event.name)
-                            setNameEditing(false)
-                          }
-                        }}
-                        className="min-h-11 min-w-0 flex-1 border-b border-stone-300 bg-transparent text-[28px] font-semibold leading-[1.05] tracking-[-0.035em] text-stone-950 outline-none focus:border-stone-950 md:text-[42px]"
-                        aria-label="Event name"
-                      />
-                      <button type="button" onMouseDown={(mouseEvent) => mouseEvent.preventDefault()} onClick={saveEventName} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-semibold text-stone-700 hover:bg-stone-100" aria-label="Save event name">✓</button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setNameDraft(event.name); setNameEditing(true) }}
-                      className="min-h-11 max-w-full rounded-md text-left text-[28px] font-semibold leading-[1.05] tracking-[-0.035em] text-stone-950 outline-none hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-stone-950 md:text-[42px]"
-                      aria-label={`Edit event name: ${eventDisplayName}`}
-                    >
-                      {eventDisplayName}
-                    </button>
-                  )}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1 text-sm font-medium text-stone-500">
-                    {typeEditing ? (
-                      <select
-                        ref={typeSelectRef}
-                        value={typeDraft}
-                        disabled={inlineSaveStatus === 'saving'}
-                        onBlur={() => {
-                          if (inlineSaveStatus !== 'saving') setTypeEditing(false)
-                        }}
-                        onKeyDown={(keyEvent) => {
-                          if (keyEvent.key === 'Escape') {
-                            setTypeDraft(normalizeEventType(event.type))
-                            setTypeEditing(false)
-                          }
-                        }}
-                        onChange={(changeEvent) => {
-                          const nextType = changeEvent.target.value as FireovaEventType
-                          setTypeDraft(nextType)
-                          void saveInlineEventFields({ type: nextType })
-                            .then(() => setTypeEditing(false))
-                            .catch(() => undefined)
-                        }}
-                        className="min-h-11 max-w-[12rem] cursor-pointer rounded-md bg-white px-2 font-medium text-stone-700 outline-none ring-1 ring-stone-300 focus:ring-2 focus:ring-stone-950"
-                        aria-label="Event type"
-                      >
-                        {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setTypeEditing(true)}
-                        className="min-h-11 rounded-md px-1 text-left font-medium text-stone-500 outline-none hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-950"
-                        aria-label={`Change event type: ${eventType}`}
-                      >
-                        {eventType}
-                      </button>
-                    )}
-                    <span className="text-stone-300" aria-hidden="true">•</span>
-                    {dateEditing ? (
-                      <input
-                        ref={dateInputRef}
-                        type="date"
-                        value={dateDraft}
-                        disabled={inlineSaveStatus === 'saving'}
-                        onBlur={() => {
-                          if (inlineSaveStatus !== 'saving') setDateEditing(false)
-                        }}
-                        onKeyDown={(keyEvent) => {
-                          if (keyEvent.key === 'Escape') {
-                            setDateDraft(toDateInputValue(event.date))
-                            setDateEditing(false)
-                          }
-                        }}
-                        onChange={(changeEvent) => {
-                          const nextDate = changeEvent.target.value
-                          setDateDraft(nextDate)
-                          if (nextDate) {
-                            void saveInlineEventFields({ date: formatDateInputForDisplay(nextDate) })
-                              .then(() => setDateEditing(false))
-                              .catch(() => undefined)
-                          }
-                        }}
-                        className="min-h-11 cursor-pointer rounded-md bg-white px-2 font-medium text-stone-700 outline-none ring-1 ring-stone-300 focus:ring-2 focus:ring-stone-950"
-                        aria-label="Event date"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setDateEditing(true)}
-                        className="min-h-11 rounded-md px-1 text-left font-medium text-stone-500 outline-none hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-950"
-                        aria-label={`Change event date: ${event.date}`}
-                      >
-                        {event.date}
-                      </button>
-                    )}
-                    <span className="text-stone-300" aria-hidden="true">•</span>
-                    {venueEditing ? (
-                      <select
-                        ref={venueSelectRef}
-                        value={venueDraft}
-                        disabled={inlineSaveStatus === 'saving'}
-                        onBlur={() => {
-                          if (inlineSaveStatus !== 'saving') setVenueEditing(false)
-                        }}
-                        onKeyDown={(keyEvent) => {
-                          if (keyEvent.key === 'Escape') {
-                            setVenueDraft(event.venueName ? `name:${event.venueName}` : '')
-                            setVenueEditing(false)
-                          }
-                        }}
-                        onChange={(changeEvent) => {
-                          const nextValue = changeEvent.target.value
-                          setVenueDraft(nextValue)
-                          const venue = savedVenueOptions.find((option) => `name:${option.name}` === nextValue)
-                          const update = venue ? {
-                            venueName: venue.name,
-                            venueLocation: '',
-                            venueInstagram: venue.instagram ?? '',
-                            venueVendorId: venue.vendorId,
-                          } : {
-                            venueName: '',
-                            venueLocation: '',
-                            venueInstagram: '',
-                            venueVendorId: undefined,
-                          }
-                          void saveInlineEventFields(update)
-                            .then(() => setVenueEditing(false))
-                            .catch(() => undefined)
-                        }}
-                        className="min-h-11 max-w-full cursor-pointer rounded-md bg-white px-2 font-medium text-stone-700 outline-none ring-1 ring-stone-300 focus:ring-2 focus:ring-stone-950"
-                        aria-label="Venue"
-                      >
-                        <option value="">{event.venueName ? 'Remove venue' : 'Choose venue'}</option>
-                        {event.venueName && !savedVenueOptions.some((option) => option.name === event.venueName) && (
-                          <option value={`name:${event.venueName}`}>{event.venueName}</option>
-                        )}
-                        {savedVenueOptions.map((option) => <option key={option.name} value={`name:${option.name}`}>{option.name}</option>)}
-                      </select>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setVenueEditing(true)}
-                        className="min-h-11 max-w-full rounded-md px-1 text-left font-medium text-stone-500 outline-none hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-950"
-                        aria-label={event.venueName ? `Change or remove venue: ${event.venueName}` : 'Add venue'}
-                      >
-                        {event.venueName || '+ Add venue'}
-                      </button>
-                    )}
-                  </div>
-                  <div className="min-h-5 pt-0.5 text-xs font-semibold" aria-live="polite">
-                    {inlineSaveStatus === 'saving' && <span className="text-stone-400">Saving…</span>}
-                    {inlineSaveStatus === 'saved' && <span className="text-emerald-700">Saved</span>}
-                    {inlineSaveStatus === 'error' && (
-                      <span className="text-red-600">{inlineSaveError} <button type="button" onClick={() => {
-                        if (nameEditing) saveEventName()
-                        else if (lastInlineUpdateRef.current) void saveInlineEventFields(lastInlineUpdateRef.current).catch(() => undefined)
-                      }} className="min-h-11 underline underline-offset-2">Retry</button></span>
-                    )}
-                  </div>
-                </div>
+                <InlineEventDetailsHeader
+                  value={{
+                    name: event.name,
+                    type: event.type,
+                    date: event.date,
+                    venueName: event.venueName,
+                    venueLocation: event.venueLocation,
+                    venueInstagram: event.venueInstagram,
+                    venueVendorId: event.venueVendorId,
+                  }}
+                  venues={savedVenueOptions}
+                  onSave={saveEventMetadata}
+                />
                 <div className="relative md:hidden">
                   <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-stone-50 text-xl font-semibold text-stone-700 ring-1 ring-stone-200" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
                   {mobileActionsOpen && (
@@ -1861,48 +1609,6 @@ function DotsMiniIcon({ className }: { className?: string }) {
       <circle cx="19" cy="12" r="1.7" fill="currentColor" />
     </svg>
   )
-}
-
-function isPlaceholderEventName(value: string) {
-  const name = value.trim()
-  if (!name) return true
-  return /^(untitled|new|imported)(\s+event)?\b/i.test(name)
-}
-
-function toDateInputValue(value: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-
-  const timestamp = Date.parse(value)
-  if (Number.isNaN(timestamp)) return ''
-
-  const date = new Date(timestamp)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function formatDateInputForDisplay(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  if (!year || !month || !day) return value
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, day))
-}
-
-function formatMobileEventDate(value: string) {
-  const normalized = toDateInputValue(value)
-  const [year, month, day] = normalized.split('-').map(Number)
-  if (!year || !month || !day) return value
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, day))
 }
 
 function DeleteEventDialog({

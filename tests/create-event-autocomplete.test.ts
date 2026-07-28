@@ -11,8 +11,7 @@ import {
 import { getSavedVenueOptions, searchSavedVenues } from '@/lib/local-fireova-venues'
 
 const createEventPageSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
-const eventIdentityEditorSource = fs.readFileSync('components/events/event-identity-editor.tsx', 'utf8')
-const venueAutocompleteSource = fs.readFileSync('components/events/venue-autocomplete.tsx', 'utf8')
+const inlineEventDetailsHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
 
 test('saved event venues are deduplicated case-insensitively and missing Instagram is merged', () => {
   const venues = getSavedVenueOptions([
@@ -42,10 +41,12 @@ test('Venue autocomplete includes category-Venue records from the Vendor Directo
 })
 
 test('venue autocomplete supports selecting saved venues and retaining a brand-new venue', () => {
-  assert.match(createEventPageSource, /onVenueSelect=\{\(venue\) => updatePendingEventDetails\(\{ venueName: venue\.name, venueInstagram: venue\.instagram \?\? '', venueVendorId: venue\.vendorId \}\)\}/)
-  assert.match(createEventPageSource, /onVenueChange=\{\(venueName\) => updatePendingEventDetails\(\{ venueName, venueInstagram: '', venueVendorId: undefined \}\)\}/)
-  assert.match(eventIdentityEditorSource, /<VenueAutocomplete/)
-  assert.match(venueAutocompleteSource, /Use new venue/)
+  assert.match(createEventPageSource, /venues=\{savedVenueOptions\}/)
+  assert.match(inlineEventDetailsHeaderSource, /const venue = venues\.find/)
+  assert.match(inlineEventDetailsHeaderSource, /venueName: venue\.name/)
+  assert.match(inlineEventDetailsHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
+  assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
+  assert.match(inlineEventDetailsHeaderSource, /value\.venueName && !venues\.some/)
 
   const event = buildDraftEventFromMedia([
     { id: 'new-venue-photo', type: 'photo', src: 'fireova-idb-media://new-venue-photo', alt: 'Venue' },
@@ -123,9 +124,10 @@ test('directory synchronization follows confirmed cloud event persistence', () =
     createEventPageSource.indexOf('function handleCreateEventClick')
   )
   assert.doesNotMatch(createEventPageSource, /createLocalVendor|writeLocalVendors/)
-  assert.match(createEventSection, /createCloudEventWithMedia/)
-  assert.match(createEventSection, /saveLocalEvent\(confirmedEvent\)/)
-  assert.match(createEventSection, /`\/events\/\$\{confirmedEvent\.id\}`/)
+  assert.match(createEventSection, /ensurePendingCloudEvent/)
+  assert.match(createEventSection, /saveEventToCloud\(updatedEvent\)/)
+  assert.match(createEventSection, /loadEventFromCloud\(currentCloudEvent\.id\)/)
+  assert.match(createEventSection, /router\.replace\(`\/events\/\$\{reloadedEvent\.id\}`\)/)
 })
 
 test('Instagram handles render with exactly one normalized leading at-sign', () => {

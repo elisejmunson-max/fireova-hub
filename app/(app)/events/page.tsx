@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent,
 import { useRouter } from 'next/navigation'
 import LocalMedia from '@/components/local-media'
 import QuickAddVendorModal from '@/components/events/quick-add-vendor-modal'
-import EventIdentityEditor from '@/components/events/event-identity-editor'
+import InlineEventDetailsHeader from '@/components/events/inline-event-details-header'
 import { isMediaIdReferencedElsewhere } from '@/lib/local-fireova-content-bank'
 import { deleteIndexedDbMediaByIds } from '@/lib/local-fireova-media'
 import {
@@ -34,7 +34,7 @@ import {
   type PendingEventDetailsValidation,
   type PendingEventMediaItem,
 } from '@/lib/local-fireova-event-upload'
-import { deleteEventFromCloud } from '@/lib/shared-fireova-events'
+import { deleteEventFromCloud, loadEventFromCloud, saveEventToCloud } from '@/lib/shared-fireova-events'
 import { createCloudEventWithMedia } from '@/lib/cloud-event-creation'
 import {
   deleteLocalEvent,
@@ -44,8 +44,6 @@ import {
   readLocalEvent,
   readLocalEvents,
   saveLocalEvent,
-  updateLocalEventMetadata,
-  verifyLocalEventPersistence,
   readLocalGeneratedPosts,
   FIREOVA_EVENT_TYPES,
   type LocalFireovaEvent,
@@ -109,8 +107,6 @@ export default function EventsPage() {
   const [pendingEventDetails, setPendingEventDetails] = useState<PendingEventDetails>(DEFAULT_PENDING_EVENT_DETAILS)
   const [pendingEventDetailErrors, setPendingEventDetailErrors] = useState<PendingEventDetailsValidation>({})
   const [pendingEventDateTouched, setPendingEventDateTouched] = useState(false)
-  const [eventEditing, setEventEditing] = useState(false)
-  const [eventEditSnapshot, setEventEditSnapshot] = useState<Pick<PendingEventDetails, 'name' | 'type' | 'date' | 'venueName' | 'venueInstagram' | 'venueVendorId'> | null>(null)
   const [pendingVendorDrawerOpen, setPendingVendorDrawerOpen] = useState(false)
   const [editingPendingVendorId, setEditingPendingVendorId] = useState<string | null>(null)
   const [pendingVendorForm, setPendingVendorForm] = useState<PendingVendorForm>(EMPTY_PENDING_VENDOR_FORM)
@@ -122,9 +118,11 @@ export default function EventsPage() {
   const uploadDragDepthRef = useRef(0)
   const creatingEventRef = useRef(false)
   const autoSavedEventIdRef = useRef<string | null>(null)
-  const autoSavedMediaSignatureRef = useRef('')
-  const autoSavePromiseRef = useRef<Promise<LocalFireovaEvent | null>>(Promise.resolve(null))
   const cloudCreationKeyRef = useRef<string | null>(null)
+  const cloudEventPromiseRef = useRef<Promise<LocalFireovaEvent> | null>(null)
+  const pendingInlineSaveRef = useRef<Promise<LocalFireovaEvent> | null>(null)
+  const pendingMediaItemsRef = useRef<PendingEventMediaItem[]>([])
+  const pendingEventDetailsRef = useRef<PendingEventDetails>(DEFAULT_PENDING_EVENT_DETAILS)
   const additionFeedbackTimersRef = useRef<number[]>([])
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchContainerRef = useRef<HTMLDivElement | null>(null)
@@ -137,7 +135,6 @@ export default function EventsPage() {
     [localEvents, vendorDirectory]
   )
   const pendingVenuePreview = getPendingVenuePreview(pendingEventDetails)
-  const hasPendingVenueName = Boolean(pendingEventDetails.venueName?.trim())
   const pendingNonVenueVendors = getPendingNonVenueVendors(pendingEventDetails)
 
   useEffect(() => {
@@ -163,6 +160,14 @@ export default function EventsPage() {
       setSelectedPendingMediaId(pendingMediaItems[0].id)
     }
   }, [pendingMediaItems, selectedPendingMediaId])
+
+  useEffect(() => {
+    pendingMediaItemsRef.current = pendingMediaItems
+  }, [pendingMediaItems])
+
+  useEffect(() => {
+    pendingEventDetailsRef.current = pendingEventDetails
+  }, [pendingEventDetails])
 
   useEffect(() => {
     folderInputRef.current?.setAttribute('webkitdirectory', '')
@@ -349,7 +354,6 @@ export default function EventsPage() {
     const validationErrors = validatePendingEventDetails(mediaItems, eventDetails)
     setPendingEventDetailErrors(validationErrors)
     if (hasPendingEventDetailErrors(validationErrors)) {
-      if (validationErrors.name || validationErrors.date || validationErrors.type) setEventEditing(true)
       setUploadPrepState('error')
       const validationMessage = validationErrors.media ?? 'Check the event details before creating this event.'
       setUploadPrepMessage(validationMessage)
@@ -362,26 +366,14 @@ export default function EventsPage() {
     creatingEventRef.current = true
 
     try {
-      const creationKey = cloudCreationKeyRef.current ?? crypto.randomUUID()
-      cloudCreationKeyRef.current = creationKey
-      const confirmedEvent = await createCloudEventWithMedia({
-        creationKey,
-        items: mediaItems,
-        details: eventDetails,
-        onProgress: ({ stage, completed, total, fileName }) => {
-          if (stage === 'starting') setUploadPrepMessage('Creating event in Fireova Cloud...')
-          else if (stage === 'uploading') setUploadPrepMessage(`Uploading ${fileName ?? 'media'} (${completed + 1} of ${total})...`)
-          else setUploadPrepMessage('Confirming event and media in Fireova Cloud...')
-        },
-      })
-      saveLocalEvent(confirmedEvent)
-      autoSavedEventIdRef.current = confirmedEvent.id
-      setLocalEvents(readLocalEvents())
-      const redirectHref = `/events/${confirmedEvent.id}`
-
+      const confirmedEvent = await ensurePendingCloudEvent(mediaItems, eventDetails)
+      if (pendingInlineSaveRef.current) await pendingInlineSaveRef.current
       setUploadPrepMessage('Opening saved event...')
       await waitForReviewTransition()
-      router.replace(redirectHref)
+      if (pendingInlineSaveRef.current) await pendingInlineSaveRef.current
+      const reloadedEvent = await loadEventFromCloud(confirmedEvent.id)
+      saveLocalEvent(reloadedEvent)
+      router.replace(`/events/${reloadedEvent.id}`)
     } catch (error) {
       console.error('[Fireova Create Event] CREATE_EVENT_FAILED', error)
       const errorMessage = error instanceof Error && error.message
@@ -391,6 +383,88 @@ export default function EventsPage() {
       setUploadPrepMessage(errorMessage)
       setCreateEventError(errorMessage)
       creatingEventRef.current = false
+    }
+  }
+
+  function ensurePendingCloudEvent(
+    mediaItems = pendingMediaItemsRef.current,
+    eventDetails = pendingEventDetailsRef.current
+  ) {
+    const eventId = autoSavedEventIdRef.current
+    if (eventId) return loadEventFromCloud(eventId)
+    if (cloudEventPromiseRef.current) return cloudEventPromiseRef.current
+
+    const creationKey = cloudCreationKeyRef.current ?? crypto.randomUUID()
+    cloudCreationKeyRef.current = creationKey
+    const request = createCloudEventWithMedia({
+      creationKey,
+      items: mediaItems,
+      details: eventDetails,
+      onProgress: ({ stage, completed, total, fileName }) => {
+        if (stage === 'starting') setUploadPrepMessage('Creating event in Fireova Cloud...')
+        else if (stage === 'uploading') setUploadPrepMessage(`Uploading ${fileName ?? 'media'} (${completed + 1} of ${total})...`)
+        else setUploadPrepMessage('Confirming event and media in Fireova Cloud...')
+      },
+    }).then((confirmedEvent) => {
+      saveLocalEvent(confirmedEvent)
+      autoSavedEventIdRef.current = confirmedEvent.id
+      setLocalEvents(readLocalEvents())
+      return confirmedEvent
+    })
+    cloudEventPromiseRef.current = request
+    void request.finally(() => {
+      if (cloudEventPromiseRef.current === request) cloudEventPromiseRef.current = null
+    }).catch(() => undefined)
+    return request
+  }
+
+  async function savePendingEventMetadataToCloud(updates: Partial<LocalEventMetadataUpdate>) {
+    const pendingUpdates: Partial<PendingEventDetails> = {}
+    if (typeof updates.name === 'string') pendingUpdates.name = updates.name
+    if (typeof updates.type === 'string') pendingUpdates.type = updates.type as PendingEventDetails['type']
+    if (typeof updates.date === 'string') {
+      pendingUpdates.date = updates.date
+      setPendingEventDateTouched(true)
+    }
+    if ('venueName' in updates) pendingUpdates.venueName = updates.venueName
+    if ('venueInstagram' in updates) pendingUpdates.venueInstagram = updates.venueInstagram
+    if ('venueVendorId' in updates) pendingUpdates.venueVendorId = updates.venueVendorId
+
+    const nextDetails = { ...pendingEventDetailsRef.current, ...pendingUpdates }
+    pendingEventDetailsRef.current = nextDetails
+    updatePendingEventDetails(pendingUpdates)
+
+    const request = (async () => {
+      const createdEvent = await ensurePendingCloudEvent(pendingMediaItemsRef.current, nextDetails)
+      const currentCloudEvent = await loadEventFromCloud(createdEvent.id)
+      const updatedEvent: LocalFireovaEvent = {
+        ...currentCloudEvent,
+        ...updates,
+        id: currentCloudEvent.id,
+        media: currentCloudEvent.media,
+        cover: currentCloudEvent.cover,
+        createdAt: currentCloudEvent.createdAt,
+        updatedAt: new Date().toISOString(),
+      }
+      const savedEvent = await saveEventToCloud(updatedEvent)
+      if (savedEvent.id !== currentCloudEvent.id) {
+        throw new Error('Fireova Cloud returned a different event while saving.')
+      }
+      const confirmedEvent = await loadEventFromCloud(currentCloudEvent.id)
+      if (confirmedEvent.id !== currentCloudEvent.id) {
+        throw new Error('The saved event UUID could not be confirmed.')
+      }
+      saveLocalEvent(confirmedEvent)
+      autoSavedEventIdRef.current = confirmedEvent.id
+      setLocalEvents(readLocalEvents())
+      return confirmedEvent
+    })()
+
+    pendingInlineSaveRef.current = request
+    try {
+      return await request
+    } finally {
+      if (pendingInlineSaveRef.current === request) pendingInlineSaveRef.current = null
     }
   }
 
@@ -406,13 +480,17 @@ export default function EventsPage() {
     const autoSavedEvent = autoSavedEventId ? readLocalEvent(autoSavedEventId) : null
     if (autoSavedEvent) {
       deleteLocalEvent(autoSavedEvent.id)
+      void deleteEventFromCloud(autoSavedEvent.id).catch((error) => {
+        console.error('[Fireova Create Event] CLEAR_CLOUD_EVENT_FAILED', error)
+      })
       const autoSavedMediaIds = autoSavedEvent.media.map(getStoredMediaId).filter((id): id is string => Boolean(id))
       void deleteIndexedDbMediaByIds(autoSavedMediaIds)
       setLocalEvents(readLocalEvents())
     }
     autoSavedEventIdRef.current = null
-    autoSavedMediaSignatureRef.current = ''
-    autoSavePromiseRef.current = Promise.resolve(null)
+    cloudEventPromiseRef.current = null
+    pendingInlineSaveRef.current = null
+    cloudCreationKeyRef.current = null
     const shouldClearDetails = window.confirm('Clear the event details, venue, and vendors too?')
     setPendingMediaItems(clearPendingEventMediaBatch())
     if (shouldClearDetails) {
@@ -524,7 +602,11 @@ export default function EventsPage() {
   }
 
   function updatePendingEventDetails(updates: Partial<PendingEventDetails>) {
-    setPendingEventDetails((currentDetails) => ({ ...currentDetails, ...updates }))
+    setPendingEventDetails((currentDetails) => {
+      const nextDetails = { ...currentDetails, ...updates }
+      pendingEventDetailsRef.current = nextDetails
+      return nextDetails
+    })
     setPendingEventDetailErrors((currentErrors) => {
       const nextErrors = { ...currentErrors }
       Object.keys(updates).forEach((key) => {
@@ -536,37 +618,6 @@ export default function EventsPage() {
       setUploadPrepState('idle')
       setUploadPrepMessage('')
     }
-  }
-
-  function beginEventEditing() {
-    setEventEditSnapshot({
-      name: pendingEventDetails.name,
-      type: pendingEventDetails.type,
-      date: pendingEventDetails.date,
-      venueName: pendingEventDetails.venueName,
-      venueInstagram: pendingEventDetails.venueInstagram,
-      venueVendorId: pendingEventDetails.venueVendorId,
-    })
-    setEventEditing(true)
-  }
-
-  function finishEventEditing() {
-    setEventEditSnapshot(null)
-    setEventEditing(false)
-  }
-
-  function cancelEventEditing() {
-    if (eventEditSnapshot) {
-      setPendingEventDetails((currentDetails) => ({ ...currentDetails, ...eventEditSnapshot }))
-      setPendingEventDetailErrors((currentErrors) => ({
-        ...currentErrors,
-        name: undefined,
-        type: undefined,
-        date: undefined,
-      }))
-    }
-    setEventEditSnapshot(null)
-    setEventEditing(false)
   }
 
   const activeBatch = pendingSummary.total > 0
@@ -741,30 +792,21 @@ export default function EventsPage() {
 
                   <div className="min-w-0 px-1 py-1 lg:px-0 lg:py-0">
                     <div className="max-w-2xl" data-testid="event-review-summary">
-                      {eventEditing ? (
-                        <div data-testid="event-summary-venue"><EventIdentityEditor name={pendingEventDetails.name} date={pendingEventDetails.date} type={pendingEventDetails.type} venueName={pendingEventDetails.venueName ?? ''} venues={savedVenueOptions} disabled={uploadPrepState === 'preparing'} nameError={pendingEventDetailErrors.name} onNameChange={(name) => updatePendingEventDetails({ name })} onDateChange={(date) => { setPendingEventDateTouched(true); updatePendingEventDetails({ date }) }} onTypeChange={(type) => updatePendingEventDetails({ type })} onVenueChange={(venueName) => updatePendingEventDetails({ venueName, venueInstagram: '', venueVendorId: undefined })} onVenueSelect={(venue) => updatePendingEventDetails({ venueName: venue.name, venueInstagram: venue.instagram ?? '', venueVendorId: venue.vendorId })} onDone={finishEventEditing} onCancel={cancelEventEditing} /></div>
-                      ) : (
-                        <div className="min-w-0">
-                          <div className="flex min-w-0 items-start justify-between gap-4">
-                            <h2 className="min-w-0 text-3xl font-semibold leading-[1.05] tracking-[-0.035em] text-stone-950 sm:text-[42px]">{pendingEventDetails.name}</h2>
-                            <button type="button" onClick={beginEventEditing} aria-label="Edit event details" className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-stone-500 transition hover:bg-stone-50 hover:text-stone-900">Edit</button>
-                          </div>
-                          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-stone-500" data-testid="event-summary-metadata">
-                            <span>{pendingEventDetails.type}</span>
-                            <span className="text-stone-300" aria-hidden="true">•</span>
-                            <span>{formatPendingEventDate(pendingEventDetails.date)}</span>
-                            <span className="text-stone-300" aria-hidden="true">•</span>
-                            <button
-                              type="button"
-                              onClick={beginEventEditing}
-                              className={`min-w-0 rounded-sm text-left transition hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 ${hasPendingVenueName ? 'text-stone-600' : 'text-stone-500'}`}
-                              aria-label={hasPendingVenueName ? 'Edit venue' : 'Add venue'}
-                            >
-                              {hasPendingVenueName ? pendingEventDetails.venueName : '+ Add venue'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <InlineEventDetailsHeader
+                        value={{
+                          name: pendingEventDetails.name,
+                          type: pendingEventDetails.type,
+                          date: pendingEventDetails.date,
+                          venueName: pendingEventDetails.venueName,
+                          venueLocation: '',
+                          venueInstagram: pendingEventDetails.venueInstagram,
+                          venueVendorId: pendingEventDetails.venueVendorId,
+                        }}
+                        venues={savedVenueOptions}
+                        onSave={savePendingEventMetadataToCloud}
+                        dateValueMode="input"
+                        nameError={pendingEventDetailErrors.name}
+                      />
                     </div>
                   <div
                     className="mt-5 min-w-0"
@@ -1114,16 +1156,6 @@ export default function EventsPage() {
 
     </div>
   )
-}
-
-function formatPendingEventDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  if (!year || !month || !day) return 'Choose a date'
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, day))
 }
 
 function VenueAutocomplete({
