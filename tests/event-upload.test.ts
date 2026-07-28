@@ -780,9 +780,53 @@ test('the visible Create Event button invokes the guarded submit handler and exp
   assert.match(createEventPageSource, /data-testid="create-event-submit"/)
   assert.match(createEventPageSource, /onClick=\{handleCreateEventClick\}/)
   assert.match(createEventPageSource, /void continueWithPendingBatch\(\)/)
-  assert.match(createEventPageSource, /disabled=\{uploadPrepState === 'preparing' \|\| creatingEventRef\.current\}/)
-  assert.match(createEventPageSource, /\? 'Creating Content\.\.\.'/)
+  assert.match(createEventPageSource, /disabled=\{uploadBusy \|\| creatingEventRef\.current\}/)
+  assert.doesNotMatch(createEventPageSource, /Creating Content\.\.\./)
   assert.match(createEventPageSource, /✨ Create Content <span className="ml-1\.5 inline-block transition-transform duration-200 group-hover:translate-x-1">→<\/span>/)
+})
+
+test('upload preview exposes staged labels, activity feedback, and determinate progress', () => {
+  assert.match(createEventPageSource, /Preparing upload…/)
+  assert.match(createEventPageSource, /Uploading media…/)
+  assert.match(createEventPageSource, /Uploading \$\{current\} of \$\{progress\.total\}…/)
+  assert.match(createEventPageSource, /Saving event…/)
+  assert.match(createEventPageSource, /Opening event…/)
+  assert.match(createEventPageSource, /data-testid="event-upload-progress"/)
+  assert.match(createEventPageSource, /role="progressbar"/)
+  assert.match(createEventPageSource, /animate-spin/)
+  assert.match(createEventPageSource, /Keep this screen open while your media uploads\./)
+  assert.match(createEventPageSource, /Videos may take a little longer\./)
+})
+
+test('stalled uploads warn without automatically starting a duplicate request', () => {
+  assert.match(createEventPageSource, /setUploadStalled\(true\), 20_000/)
+  assert.match(createEventPageSource, /This is taking longer than expected, but the upload may still be processing\./)
+  assert.match(createEventPageSource, /if \(cloudEventPromiseRef\.current\) return cloudEventPromiseRef\.current/)
+  assert.doesNotMatch(createEventPageSource, /uploadStalled[\s\S]{0,300}continueWithPendingBatch/)
+})
+
+test('failed uploads preserve the preview form and provide stage-specific retry', () => {
+  const submitSource = createEventPageSource.slice(
+    createEventPageSource.indexOf('async function continueWithPendingBatch'),
+    createEventPageSource.indexOf('function clearPendingBatch')
+  )
+  assert.match(createEventPageSource, /Photo upload failed/)
+  assert.match(createEventPageSource, /Video upload failed/)
+  assert.match(createEventPageSource, /Event could not be saved/)
+  assert.match(createEventPageSource, />\s*Retry upload\s*</)
+  assert.match(createEventPageSource, /void continueWithPendingBatch\(\)/)
+  assert.doesNotMatch(submitSource, /setPendingMediaItems\(clearPendingEventMediaBatch\(\)\)/)
+  assert.doesNotMatch(submitSource, /setPendingEventDetails\(DEFAULT_PENDING_EVENT_DETAILS\)/)
+})
+
+test('successful upload reloads the same UUID with attached media before navigation', () => {
+  const submitSource = createEventPageSource.slice(
+    createEventPageSource.indexOf('async function continueWithPendingBatch'),
+    createEventPageSource.indexOf('function ensurePendingCloudEvent')
+  )
+  assert.match(submitSource, /const reloadedEvent = await loadEventFromCloud\(confirmedEvent\.id\)/)
+  assert.match(submitSource, /saveLocalEvent\(reloadedEvent\)/)
+  assert.match(submitSource, /router\.replace\(`\/events\/\$\{reloadedEvent\.id\}`\)/)
 })
 
 test('Create Event failures render inline without clearing pending form state', () => {

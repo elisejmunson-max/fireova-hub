@@ -14,7 +14,6 @@ import {
   DEFAULT_PENDING_EVENT_DETAILS,
   collectDroppedMediaFiles,
   collectPendingEventMedia,
-  DraftEventCreationError,
   getPendingEventDetailsWithMediaDate,
   getPendingEventMediaSummary,
   getPendingNonVenueVendors,
@@ -36,6 +35,7 @@ import {
 } from '@/lib/local-fireova-event-upload'
 import { deleteEventFromCloud, loadEventFromCloud, saveEventToCloud } from '@/lib/shared-fireova-events'
 import { createCloudEventWithMedia } from '@/lib/cloud-event-creation'
+import type { UploadProgress } from '@/lib/cloud-event-creation'
 import {
   deleteLocalEvent,
   FIREOVA_EVENTS_CHANGED_EVENT,
@@ -66,13 +66,9 @@ import { getSavedVenueOptions, searchSavedVenues, type SavedVenueOption } from '
 const EVENT_TYPE_OPTIONS = ['All Types', ...FIREOVA_EVENT_TYPES] as const
 const EVENT_UPLOAD_INPUT_ID = 'event-upload-input'
 const EVENT_FOLDER_UPLOAD_INPUT_ID = 'event-folder-upload-input'
-const EVENT_REVIEW_PROGRESS_MESSAGES = [
-  'Organizing your event...',
-  'Preparing your photos and videos',
-] as const
 const PENDING_MEDIA_PREVIEW_LIMIT = 16
 type EventTypeFilter = typeof EVENT_TYPE_OPTIONS[number]
-type UploadPrepState = 'idle' | 'preparing' | 'error'
+type UploadPrepState = 'idle' | 'preparing' | 'uploading' | 'saving' | 'opening' | 'error'
 type PendingVendorForm = {
   category: LocalEventVendorCategory
   instagram: string
@@ -100,6 +96,9 @@ export default function EventsPage() {
   const [uploadDragActive, setUploadDragActive] = useState(false)
   const [uploadPrepState, setUploadPrepState] = useState<UploadPrepState>('idle')
   const [uploadPrepMessage, setUploadPrepMessage] = useState('')
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
+  const [uploadActivity, setUploadActivity] = useState(0)
+  const [uploadStalled, setUploadStalled] = useState(false)
   const [createEventError, setCreateEventError] = useState('')
   const [additionFeedback, setAdditionFeedback] = useState<{ message: string; visible: boolean } | null>(null)
   const [pendingMediaItems, setPendingMediaItems] = useState<PendingEventMediaItem[]>([])
@@ -123,6 +122,7 @@ export default function EventsPage() {
   const pendingInlineSaveRef = useRef<Promise<LocalFireovaEvent> | null>(null)
   const pendingMediaItemsRef = useRef<PendingEventMediaItem[]>([])
   const pendingEventDetailsRef = useRef<PendingEventDetails>(DEFAULT_PENDING_EVENT_DETAILS)
+  const uploadProgressRef = useRef<UploadProgress | null>(null)
   const additionFeedbackTimersRef = useRef<number[]>([])
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchContainerRef = useRef<HTMLDivElement | null>(null)
@@ -136,6 +136,16 @@ export default function EventsPage() {
   )
   const pendingVenuePreview = getPendingVenuePreview(pendingEventDetails)
   const pendingNonVenueVendors = getPendingNonVenueVendors(pendingEventDetails)
+  const uploadBusy = uploadPrepState !== 'idle' && uploadPrepState !== 'error'
+
+  useEffect(() => {
+    if (!uploadBusy) {
+      setUploadStalled(false)
+      return
+    }
+    const timer = window.setTimeout(() => setUploadStalled(true), 20_000)
+    return () => window.clearTimeout(timer)
+  }, [uploadActivity, uploadBusy])
 
   useEffect(() => {
     setLocalEvents(readLocalEvents())
@@ -327,7 +337,7 @@ export default function EventsPage() {
   function openFilePickerFromZone(event: ReactMouseEvent<HTMLDivElement>) {
     if (!shouldOpenUploadPickerFromTray({
       activeBatch,
-      preparing: uploadPrepState === 'preparing',
+      preparing: uploadBusy,
       interactiveTarget: isInteractiveUploadControl(event.target),
     })) return
 
@@ -335,7 +345,7 @@ export default function EventsPage() {
   }
 
   function openUploadInputFromKeyboard(event: ReactKeyboardEvent, input: HTMLInputElement | null) {
-    if (uploadPrepState === 'preparing') return
+    if (uploadBusy) return
     if (event.key !== 'Enter' && event.key !== ' ') return
 
     event.preventDefault()
@@ -347,7 +357,7 @@ export default function EventsPage() {
     mediaItems = pendingMediaItems,
     eventDetails = pendingEventDetails
   ) {
-    if (uploadPrepState === 'preparing' || creatingEventRef.current) return
+    if (uploadBusy || creatingEventRef.current) return
 
     setCreateEventError('')
 
@@ -362,26 +372,29 @@ export default function EventsPage() {
     }
 
     setUploadPrepState('preparing')
-    setUploadPrepMessage('Creating event...')
+    setUploadPrepMessage('Preparing upload…')
+    setUploadProgress({ stage: 'preparing', completed: 0, total: mediaItems.length })
+    setUploadStalled(false)
+    setUploadActivity((activity) => activity + 1)
     creatingEventRef.current = true
 
     try {
       const confirmedEvent = await ensurePendingCloudEvent(mediaItems, eventDetails)
       if (pendingInlineSaveRef.current) await pendingInlineSaveRef.current
-      setUploadPrepMessage('Opening saved event...')
-      await waitForReviewTransition()
+      setUploadPrepState('opening')
+      setUploadPrepMessage('Opening event…')
       if (pendingInlineSaveRef.current) await pendingInlineSaveRef.current
       const reloadedEvent = await loadEventFromCloud(confirmedEvent.id)
       saveLocalEvent(reloadedEvent)
       router.replace(`/events/${reloadedEvent.id}`)
     } catch (error) {
       console.error('[Fireova Create Event] CREATE_EVENT_FAILED', error)
-      const errorMessage = error instanceof Error && error.message
-        ? error.message
-        : getDraftEventCreationErrorMessage(error)
+      const errorMessage = getCloudUploadFailureMessage(error, uploadProgressRef.current, mediaItems)
       setUploadPrepState('error')
       setUploadPrepMessage(errorMessage)
       setCreateEventError(errorMessage)
+      setUploadProgress(null)
+      setUploadStalled(false)
       creatingEventRef.current = false
     }
   }
@@ -400,10 +413,13 @@ export default function EventsPage() {
       creationKey,
       items: mediaItems,
       details: eventDetails,
-      onProgress: ({ stage, completed, total, fileName }) => {
-        if (stage === 'starting') setUploadPrepMessage('Creating event in Fireova Cloud...')
-        else if (stage === 'uploading') setUploadPrepMessage(`Uploading ${fileName ?? 'media'} (${completed + 1} of ${total})...`)
-        else setUploadPrepMessage('Confirming event and media in Fireova Cloud...')
+      onProgress: (progress) => {
+        uploadProgressRef.current = progress
+        setUploadProgress(progress)
+        setUploadPrepState(progress.stage)
+        setUploadPrepMessage(formatCloudUploadProgress(progress))
+        setUploadStalled(false)
+        setUploadActivity((activity) => activity + 1)
       },
     }).then((confirmedEvent) => {
       saveLocalEvent(confirmedEvent)
@@ -668,7 +684,7 @@ export default function EventsPage() {
                 if (activeBatch || isInteractiveUploadControl(event.target)) return
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
-                  if (uploadPrepState !== 'preparing') fileInputRef.current?.click()
+                  if (!uploadBusy) fileInputRef.current?.click()
                 }
               }}
               onDragEnter={(event) => {
@@ -734,8 +750,8 @@ export default function EventsPage() {
                   </span>
                   <div>
                     <h2 className="inline-flex items-center gap-2 text-base font-semibold text-stone-950 sm:text-lg">
-                      {uploadPrepState === 'preparing'
-                          ? EVENT_REVIEW_PROGRESS_MESSAGES[0]
+                      {uploadBusy
+                          ? uploadPrepMessage
                           : uploadDragActive
                             ? 'Drop to add'
                             : 'Upload Event'}
@@ -756,14 +772,14 @@ export default function EventsPage() {
                     <label
                       htmlFor={EVENT_UPLOAD_INPUT_ID}
                       role="button"
-                      tabIndex={uploadPrepState === 'preparing' ? -1 : 0}
+                      tabIndex={uploadBusy ? -1 : 0}
                       onClick={(event) => {
                         event.stopPropagation()
                       }}
                       onKeyDown={(event) => openUploadInputFromKeyboard(event, fileInputRef.current)}
-                      aria-disabled={uploadPrepState === 'preparing'}
+                      aria-disabled={uploadBusy}
                       className={`flex min-h-11 w-full items-center justify-center rounded-lg bg-stone-950 px-4 py-2 text-sm font-semibold text-white ring-1 ring-stone-950 transition hover:bg-stone-800 md:min-h-0 md:w-auto md:bg-white md:px-3 md:text-xs md:text-stone-700 md:ring-stone-200 md:hover:bg-stone-50 ${
-                        uploadPrepState === 'preparing' ? 'pointer-events-none cursor-wait opacity-60' : 'cursor-pointer'
+                        uploadBusy ? 'pointer-events-none cursor-wait opacity-75' : 'cursor-pointer'
                       }`}
                     >
                       <span className="md:hidden">Choose Photos &amp; Videos</span>
@@ -779,7 +795,7 @@ export default function EventsPage() {
                       {primaryPendingItem && (
                         <PendingMediaCard
                           item={primaryPendingItem}
-                          disabled={uploadPrepState === 'preparing'}
+                          disabled={uploadBusy}
                           compact={false}
                           hero
                           mediaTypeLabel={primaryPendingItem.kind === 'video' ? 'Video' : 'Photo'}
@@ -819,7 +835,7 @@ export default function EventsPage() {
                           <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-stone-700">Vendors</h3>
                           <button
                             type="button"
-                            disabled={uploadPrepState === 'preparing'}
+                            disabled={uploadBusy}
                             onClick={() => openPendingVendorDrawer()}
                             className="rounded-md px-2 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-stone-950 disabled:opacity-50"
                           >
@@ -874,13 +890,40 @@ export default function EventsPage() {
                       <button
                         type="button"
                         data-testid="create-event-submit"
-                        disabled={uploadPrepState === 'preparing' || creatingEventRef.current}
+                        disabled={uploadBusy || creatingEventRef.current}
                         onClick={handleCreateEventClick}
                         aria-describedby={createEventError ? 'create-event-submit-error' : undefined}
-                        className="group inline-flex min-h-[54px] w-full items-center justify-center whitespace-nowrap rounded-xl bg-stone-950 px-7 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:bg-stone-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                        className="group inline-flex min-h-[54px] w-full items-center justify-center whitespace-nowrap rounded-xl bg-stone-950 px-7 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:bg-stone-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-90"
                       >
-                        {uploadPrepState === 'preparing' ? 'Creating Content...' : <>✨ Create Content <span className="ml-1.5 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></>}
+                        {uploadBusy ? (
+                          <>
+                            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
+                            <span>{uploadPrepMessage}</span>
+                          </>
+                        ) : <>✨ Create Content <span className="ml-1.5 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></>}
                       </button>
+                      {uploadBusy && (
+                        <div className="mt-3 rounded-lg bg-stone-50 px-3 py-3 ring-1 ring-stone-200" data-testid="event-upload-progress" aria-live="polite">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-stone-800">
+                            <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" aria-hidden="true" />
+                            <span>{uploadPrepMessage}</span>
+                          </div>
+                          {typeof uploadProgress?.percent === 'number' && uploadProgress.stage === 'uploading' && (
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-200" role="progressbar" aria-label="Media upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress.percent}>
+                              <div className="h-full rounded-full bg-stone-900 transition-[width] duration-300" style={{ width: `${uploadProgress.percent}%` }} />
+                            </div>
+                          )}
+                          <p className="mt-2 text-xs font-medium leading-5 text-stone-500">Keep this screen open while your media uploads.</p>
+                          {pendingMediaItems.some((item) => item.kind === 'video') && (
+                            <p className="text-xs font-medium leading-5 text-stone-500">Videos may take a little longer.</p>
+                          )}
+                          {uploadStalled && (
+                            <p className="mt-2 text-xs font-semibold leading-5 text-amber-700" role="status">
+                              This is taking longer than expected, but the upload may still be processing.
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {createEventError && (
                         <p id="create-event-submit-error" role="alert" className="mt-2 text-xs font-semibold leading-5 text-red-600">{createEventError}</p>
                       )}
@@ -893,7 +936,7 @@ export default function EventsPage() {
                         {visibleAdditionalPendingItems.length > 0 && (
                           <div className="inline-flex shrink-0 gap-2">
                             {visibleAdditionalPendingItems.map((item) => (
-                              <PendingMediaCard key={item.id} item={item} disabled={uploadPrepState === 'preparing'} compact={compactMediaPreview} onSelect={() => setSelectedPendingMediaId(item.id)} onRemove={() => removePendingItem(item.id)} />
+                              <PendingMediaCard key={item.id} item={item} disabled={uploadBusy} compact={compactMediaPreview} onSelect={() => setSelectedPendingMediaId(item.id)} onRemove={() => removePendingItem(item.id)} />
                             ))}
                           </div>
                         )}
@@ -904,11 +947,11 @@ export default function EventsPage() {
                           htmlFor={EVENT_UPLOAD_INPUT_ID}
                           role="button"
                           data-testid="add-event-media-tile"
-                          tabIndex={uploadPrepState === 'preparing' ? -1 : 0}
+                          tabIndex={uploadBusy ? -1 : 0}
                           onClick={(event) => event.stopPropagation()}
                           onKeyDown={(event) => openUploadInputFromKeyboard(event, fileInputRef.current)}
-                          aria-disabled={uploadPrepState === 'preparing'}
-                          className={`flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone-300 bg-stone-50/60 text-center text-stone-600 transition hover:border-stone-400 hover:bg-stone-50 ${compactMediaPreview ? 'h-16 w-16' : 'h-20 w-20'} ${uploadPrepState === 'preparing' ? 'pointer-events-none cursor-wait opacity-60' : 'cursor-pointer'}`}
+                          aria-disabled={uploadBusy}
+                          className={`flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone-300 bg-stone-50/60 text-center text-stone-600 transition hover:border-stone-400 hover:bg-stone-50 ${compactMediaPreview ? 'h-16 w-16' : 'h-20 w-20'} ${uploadBusy ? 'pointer-events-none cursor-wait opacity-75' : 'cursor-pointer'}`}
                         >
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
                           <span className="text-[10px] font-semibold">Add media</span>
@@ -958,11 +1001,11 @@ export default function EventsPage() {
                     onClick={(event) => {
                       event.preventDefault()
                       event.stopPropagation()
-                      collectPendingMedia(lastUploadFilesRef.current)
+                      void continueWithPendingBatch()
                     }}
-                    className="w-fit rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100"
+                    className="min-h-11 w-fit rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm"
                   >
-                    Retry
+                    Retry upload
                   </button>
                 )}
               </div>
@@ -1591,31 +1634,35 @@ function getDataTransferDebug(dataTransfer: DataTransfer) {
   }
 }
 
-function getDraftEventCreationErrorMessage(error: unknown) {
-  if (error instanceof DraftEventCreationError) {
-    if (error.code === 'NO_SUPPORTED_MEDIA') return 'No supported photos or videos found. Add media and try again.'
-    if (error.code === 'MEDIA_SAVE_FAILED') return 'This browser could not save that media locally. Try a smaller file or a different browser.'
-    if (error.code === 'EVENT_SAVE_FAILED') return 'This event is too large for local storage. Remove a few large videos or photos and try again.'
+function formatCloudUploadProgress(progress: UploadProgress) {
+  if (progress.stage === 'preparing') return 'Preparing upload…'
+  if (progress.stage === 'saving') return 'Saving event…'
+  if (progress.total > 1) {
+    const current = Math.min(progress.completed + 1, progress.total)
+    const percentage = typeof progress.percent === 'number' ? ` ${progress.percent}%` : ''
+    return `Uploading ${current} of ${progress.total}…${percentage}`
   }
+  return 'Uploading media…'
+}
 
-  if (error instanceof Error && (error.message.includes('was not found after saving') || error.message.includes('did not match the saved event payload'))) {
-    return 'The event could not be verified after saving. Your media and event details are still here. Try creating the event again.'
+function getCloudUploadFailureMessage(
+  error: unknown,
+  progress: UploadProgress | null,
+  items: PendingEventMediaItem[]
+) {
+  const detail = error instanceof Error ? error.message : ''
+  const uploadFailed = progress?.stage === 'uploading' ||
+    /Media preparation|Storage upload|Thumbnail upload/i.test(detail)
+  if (uploadFailed) {
+    const mediaKind = progress?.mediaKind ?? (items.every((item) => item.kind === 'video') ? 'video' : 'photo')
+    return mediaKind === 'video' ? 'Video upload failed' : 'Photo upload failed'
   }
-
-  return 'Could not create the event. Try again or remove a few large videos.'
+  return 'Event could not be saved'
 }
 
 function debugEventUpload(...args: unknown[]) {
   if (process.env.NODE_ENV !== 'development') return
   console.debug('[Fireova event upload]', ...args)
-}
-
-function waitForReviewTransition() {
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return Promise.resolve()
-  }
-
-  return new Promise((resolve) => window.setTimeout(resolve, 350))
 }
 
 function formatPendingMediaSummary(summary: { photos: number; videos: number; folders: number }) {

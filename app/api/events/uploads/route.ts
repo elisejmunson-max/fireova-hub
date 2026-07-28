@@ -97,6 +97,21 @@ export async function POST(request: Request) {
           eventId,
           fileCount: payload.files.length,
         })
+      } else {
+        stage = 'event_projects retry update'
+        const { error } = await db.from('event_projects').update({
+          data: {
+            ...payload.event,
+            id: eventId,
+            media: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+          creation_status: 'uploading',
+          updated_at: now,
+          deleted_at: null,
+        }).eq('user_id', user.id).eq('id', eventId).eq('creation_status', 'uploading')
+        if (error) throw error
       }
 
       const filePaths = (payload.files as FileDescriptor[]).map((file) => ({
@@ -262,13 +277,23 @@ export async function DELETE(request: Request) {
   const { db, user } = await session()
   if (!user) return NextResponse.json({ error: 'Your session expired. Sign in again.' }, { status: 401 })
   const eventId = new URL(request.url).searchParams.get('eventId')
+  const preserveForRetry = new URL(request.url).searchParams.get('preserveForRetry') === '1'
   if (!eventId || !UUID_PATTERN.test(eventId)) return NextResponse.json({ error: 'Invalid event.' }, { status: 400 })
   try {
     const directory = `${user.id}/events/${eventId}`
     const { data: stored } = await db.storage.from('media').list(directory, { limit: 1000 })
     const paths = (stored ?? []).map((item: any) => `${directory}/${item.name}`)
     if (paths.length) await db.storage.from('media').remove(paths)
-    const { error } = await db.from('event_projects').delete()
+    const { error: mediaError } = await db.from('event_media').delete()
+      .eq('user_id', user.id).eq('event_id', eventId)
+    if (mediaError) throw mediaError
+    const query = preserveForRetry
+      ? db.from('event_projects').update({
+          creation_status: 'uploading',
+          updated_at: new Date().toISOString(),
+        })
+      : db.from('event_projects').delete()
+    const { error } = await query
       .eq('user_id', user.id).eq('id', eventId).eq('creation_status', 'uploading')
     if (error) throw error
     return NextResponse.json({ ok: true })

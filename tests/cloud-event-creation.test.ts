@@ -20,6 +20,24 @@ test('event creation uploads media before confirming and loading the canonical U
   assert.ok(confirm > complete)
 })
 
+test('cloud creation reports real preparation, upload, and saving boundaries', () => {
+  assert.match(creationSource, /stage: 'preparing'/)
+  assert.match(creationSource, /stage: 'uploading'/)
+  assert.match(creationSource, /stage: 'saving'/)
+  assert.match(creationSource, /percent: Math\.round\(\(\(index \+ 1\) \/ items\.length\) \* 100\)/)
+  assert.ok(creationSource.indexOf("stage: 'preparing'") < creationSource.indexOf("action: 'start'"))
+  assert.ok(creationSource.indexOf("stage: 'saving'") > creationSource.indexOf("uploadToSignedUrl"))
+})
+
+test('failed retry cleanup preserves the canonical event UUID without duplicate rows or media', () => {
+  assert.match(creationSource, /preserveForRetry=1/)
+  assert.match(uploadRouteSource, /const eventId = existing\?\.id \?\? crypto\.randomUUID\(\)/)
+  assert.match(uploadRouteSource, /event_projects retry update/)
+  assert.match(uploadRouteSource, /from\('event_media'\)\.delete\(\)/)
+  assert.match(uploadRouteSource, /preserveForRetry[\s\S]*?creation_status: 'uploading'/)
+  assert.match(uploadRouteSource, /\.upsert\(descriptors\.map/)
+})
+
 test('Create Event no longer calls the IndexedDB event builder', () => {
   assert.match(eventsSource, /createCloudEventWithMedia/)
   assert.match(eventsSource, /await continueWithPendingBatch\(batch\.items, batch\.details\)/)

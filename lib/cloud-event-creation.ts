@@ -6,11 +6,13 @@ import { loadEventFromCloud, saveEventToCloud } from '@/lib/shared-fireova-event
 import type { LocalFireovaEvent } from '@/lib/local-fireova-events'
 import { prepareCloudUploadFile } from '@/lib/cloud-upload-media'
 
-type UploadProgress = {
-  stage: 'starting' | 'uploading' | 'confirming'
+export type UploadProgress = {
+  stage: 'preparing' | 'uploading' | 'saving'
   completed: number
   total: number
   fileName?: string
+  mediaKind?: 'photo' | 'video'
+  percent?: number
 }
 
 async function responseBody(response: Response) {
@@ -40,6 +42,7 @@ export async function createCloudEventWithMedia({
   details: PendingEventDetails
   onProgress?: (progress: UploadProgress) => void
 }): Promise<LocalFireovaEvent> {
+  onProgress?.({ stage: 'preparing', completed: 0, total: items.length })
   let prepared
   try {
     prepared = await Promise.all(items.map(async (item) => {
@@ -80,7 +83,6 @@ export async function createCloudEventWithMedia({
     draftCount: 0,
   }
 
-  onProgress?.({ stage: 'starting', completed: 0, total: files.length })
   let start
   try {
     start = await responseBody(await fetch('/api/events/uploads', {
@@ -104,6 +106,8 @@ export async function createCloudEventWithMedia({
         completed: index,
         total: items.length,
         fileName: item.file.name,
+        mediaKind: item.kind,
+        percent: Math.round((index / items.length) * 100),
       })
       if (!descriptor?.storagePath || !descriptor?.uploadToken) {
         throw stepError('Storage upload', new Error('The authenticated upload authorization was missing.'))
@@ -128,9 +132,22 @@ export async function createCloudEventWithMedia({
           throw stepError('Thumbnail upload', new Error(`${item.file.name}: ${thumbnailError.message}`))
         }
       }
+      onProgress?.({
+        stage: 'uploading',
+        completed: index + 1,
+        total: items.length,
+        fileName: item.file.name,
+        mediaKind: item.kind,
+        percent: Math.round(((index + 1) / items.length) * 100),
+      })
     }
 
-    onProgress?.({ stage: 'confirming', completed: items.length, total: items.length })
+    onProgress?.({
+      stage: 'saving',
+      completed: items.length,
+      total: items.length,
+      percent: 100,
+    })
     try {
       await responseBody(await fetch('/api/events/uploads', {
         method: 'POST',
@@ -163,7 +180,7 @@ export async function createCloudEventWithMedia({
       throw stepError('Media reload', error)
     }
   } catch (error) {
-    await fetch(`/api/events/uploads?eventId=${encodeURIComponent(eventId)}`, {
+    await fetch(`/api/events/uploads?eventId=${encodeURIComponent(eventId)}&preserveForRetry=1`, {
       method: 'DELETE',
     }).catch(() => undefined)
     throw error
