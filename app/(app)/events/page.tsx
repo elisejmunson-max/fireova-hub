@@ -96,9 +96,7 @@ export default function EventsPage() {
   const [uploadDragActive, setUploadDragActive] = useState(false)
   const [uploadPrepState, setUploadPrepState] = useState<UploadPrepState>('idle')
   const [uploadPrepMessage, setUploadPrepMessage] = useState('')
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
-  const [uploadActivity, setUploadActivity] = useState(0)
-  const [uploadStalled, setUploadStalled] = useState(false)
+  const [uploadFailureActive, setUploadFailureActive] = useState(false)
   const [createEventError, setCreateEventError] = useState('')
   const [additionFeedback, setAdditionFeedback] = useState<{ message: string; visible: boolean } | null>(null)
   const [pendingMediaItems, setPendingMediaItems] = useState<PendingEventMediaItem[]>([])
@@ -137,15 +135,6 @@ export default function EventsPage() {
   const pendingVenuePreview = getPendingVenuePreview(pendingEventDetails)
   const pendingNonVenueVendors = getPendingNonVenueVendors(pendingEventDetails)
   const uploadBusy = uploadPrepState !== 'idle' && uploadPrepState !== 'error'
-
-  useEffect(() => {
-    if (!uploadBusy) {
-      setUploadStalled(false)
-      return
-    }
-    const timer = window.setTimeout(() => setUploadStalled(true), 20_000)
-    return () => window.clearTimeout(timer)
-  }, [uploadActivity, uploadBusy])
 
   useEffect(() => {
     setLocalEvents(readLocalEvents())
@@ -295,6 +284,7 @@ export default function EventsPage() {
     setPendingMediaItems(result.items)
     setPendingEventDetails(nextDetails)
     setUploadPrepState('idle')
+    setUploadFailureActive(false)
     setUploadPrepMessage(result.duplicateCount > 0 ? `${result.duplicateCount} duplicate item${result.duplicateCount === 1 ? '' : 's'} skipped.` : '')
     setPendingEventDetailErrors((currentErrors) => ({ ...currentErrors, media: undefined }))
     showAdditionFeedback(addedItems)
@@ -373,9 +363,7 @@ export default function EventsPage() {
 
     setUploadPrepState('preparing')
     setUploadPrepMessage('Preparing upload…')
-    setUploadProgress({ stage: 'preparing', completed: 0, total: mediaItems.length })
-    setUploadStalled(false)
-    setUploadActivity((activity) => activity + 1)
+    setUploadFailureActive(false)
     creatingEventRef.current = true
 
     try {
@@ -393,8 +381,7 @@ export default function EventsPage() {
       setUploadPrepState('error')
       setUploadPrepMessage(errorMessage)
       setCreateEventError(errorMessage)
-      setUploadProgress(null)
-      setUploadStalled(false)
+      setUploadFailureActive(true)
       creatingEventRef.current = false
     }
   }
@@ -415,11 +402,8 @@ export default function EventsPage() {
       details: eventDetails,
       onProgress: (progress) => {
         uploadProgressRef.current = progress
-        setUploadProgress(progress)
         setUploadPrepState(progress.stage)
         setUploadPrepMessage(formatCloudUploadProgress(progress))
-        setUploadStalled(false)
-        setUploadActivity((activity) => activity + 1)
       },
     }).then((confirmedEvent) => {
       saveLocalEvent(confirmedEvent)
@@ -521,6 +505,7 @@ export default function EventsPage() {
     }
     setUploadPrepState('idle')
     setUploadPrepMessage('')
+    setUploadFailureActive(false)
   }
 
   function openPendingVendorDrawer(vendor?: LocalEventVendor) {
@@ -615,6 +600,14 @@ export default function EventsPage() {
     setPendingEventDetailErrors((currentErrors) => ({ ...currentErrors, media: undefined }))
     setUploadPrepState('idle')
     setUploadPrepMessage('')
+    setUploadFailureActive(false)
+  }
+
+  function showPreservedUploadPreview() {
+    setUploadFailureActive(false)
+    setUploadPrepState('idle')
+    setUploadPrepMessage('')
+    setCreateEventError('')
   }
 
   function updatePendingEventDetails(updates: Partial<PendingEventDetails>) {
@@ -633,6 +626,7 @@ export default function EventsPage() {
     if (uploadPrepState === 'error') {
       setUploadPrepState('idle')
       setUploadPrepMessage('')
+      setUploadFailureActive(false)
     }
   }
 
@@ -740,6 +734,57 @@ export default function EventsPage() {
                 className="sr-only"
                 onChange={(event) => void handleUploadInput(event.target.files)}
               />
+              {uploadBusy ? (
+                <div
+                  className="flex min-h-[min(62vh,520px)] w-full items-center justify-center px-4 py-16 text-center sm:min-h-[440px]"
+                  data-testid="event-upload-focused-status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <div className="flex max-w-sm flex-col items-center">
+                    <span
+                      className="h-10 w-10 animate-spin rounded-full border-[3px] border-stone-200 border-t-stone-900 motion-reduce:animate-none"
+                      aria-hidden="true"
+                      data-testid="event-upload-spinner"
+                    />
+                    <p className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-stone-950 sm:text-3xl">Uploading…</p>
+                    <p className="mt-2 text-sm font-medium text-stone-500">Keep this screen open.</p>
+                    {pendingMediaItems.some((item) => item.kind === 'video') && (
+                      <p className="mt-1 text-sm font-medium text-stone-500">Videos may take a little longer.</p>
+                    )}
+                    <span className="sr-only">{uploadPrepMessage}</span>
+                  </div>
+                </div>
+              ) : uploadFailureActive && activeBatch ? (
+                <div
+                  className="flex min-h-[min(62vh,520px)] w-full items-center justify-center px-4 py-16 text-center sm:min-h-[440px]"
+                  data-testid="event-upload-failure"
+                >
+                  <div className="w-full max-w-sm">
+                    <h2 className="text-2xl font-semibold tracking-[-0.02em] text-stone-950 sm:text-3xl">Upload failed</h2>
+                    {createEventError && (
+                      <p className="mt-2 text-sm font-medium leading-6 text-red-700" role="alert">{createEventError}</p>
+                    )}
+                    <div className="mt-6 grid gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void continueWithPendingBatch()}
+                        className="min-h-11 rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
+                      >
+                        Retry upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={showPreservedUploadPreview}
+                        className="min-h-11 rounded-lg px-4 py-2.5 text-sm font-semibold text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
+                      >
+                        Go back
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (<>
               {!activeBatch && <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className={`flex shrink-0 items-center justify-center rounded-lg ${activeBatch ? 'h-8 w-8' : 'h-11 w-11'} ${uploadDragActive ? 'bg-white text-ember-700' : 'bg-white text-stone-700'} ring-1 ring-stone-200`}>
@@ -750,11 +795,7 @@ export default function EventsPage() {
                   </span>
                   <div>
                     <h2 className="inline-flex items-center gap-2 text-base font-semibold text-stone-950 sm:text-lg">
-                      {uploadBusy
-                          ? uploadPrepMessage
-                          : uploadDragActive
-                            ? 'Drop to add'
-                            : 'Upload Event'}
+                      {uploadDragActive ? 'Drop to add' : 'Upload Event'}
                     </h2>
                     <p className="mt-1 text-sm leading-5 text-stone-500 md:hidden">
                       Add photos and videos from this event
@@ -895,35 +936,8 @@ export default function EventsPage() {
                         aria-describedby={createEventError ? 'create-event-submit-error' : undefined}
                         className="group inline-flex min-h-[54px] w-full items-center justify-center whitespace-nowrap rounded-xl bg-stone-950 px-7 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:bg-stone-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-90"
                       >
-                        {uploadBusy ? (
-                          <>
-                            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
-                            <span>{uploadPrepMessage}</span>
-                          </>
-                        ) : <>✨ Create Content <span className="ml-1.5 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></>}
+                        <>✨ Create Content <span className="ml-1.5 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></>
                       </button>
-                      {uploadBusy && (
-                        <div className="mt-3 rounded-lg bg-stone-50 px-3 py-3 ring-1 ring-stone-200" data-testid="event-upload-progress" aria-live="polite">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-stone-800">
-                            <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" aria-hidden="true" />
-                            <span>{uploadPrepMessage}</span>
-                          </div>
-                          {typeof uploadProgress?.percent === 'number' && uploadProgress.stage === 'uploading' && (
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-200" role="progressbar" aria-label="Media upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress.percent}>
-                              <div className="h-full rounded-full bg-stone-900 transition-[width] duration-300" style={{ width: `${uploadProgress.percent}%` }} />
-                            </div>
-                          )}
-                          <p className="mt-2 text-xs font-medium leading-5 text-stone-500">Keep this screen open while your media uploads.</p>
-                          {pendingMediaItems.some((item) => item.kind === 'video') && (
-                            <p className="text-xs font-medium leading-5 text-stone-500">Videos may take a little longer.</p>
-                          )}
-                          {uploadStalled && (
-                            <p className="mt-2 text-xs font-semibold leading-5 text-amber-700" role="status">
-                              This is taking longer than expected, but the upload may still be processing.
-                            </p>
-                          )}
-                        </div>
-                      )}
                       {createEventError && (
                         <p id="create-event-submit-error" role="alert" className="mt-2 text-xs font-semibold leading-5 text-red-600">{createEventError}</p>
                       )}
@@ -987,8 +1001,9 @@ export default function EventsPage() {
                   )}
                 </div>
               )}
+              </>)}
             </div>
-            {uploadPrepMessage && uploadPrepState === 'error' && (
+            {uploadPrepMessage && uploadPrepState === 'error' && !uploadFailureActive && (
               <div className={`mt-4 flex flex-col gap-2 rounded-lg px-3 py-2 text-xs font-semibold ring-1 sm:flex-row sm:items-center sm:justify-between ${
                 uploadPrepState === 'error'
                   ? 'bg-red-50 text-red-700 ring-red-100'
