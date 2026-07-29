@@ -274,14 +274,12 @@ export default function InlineEventDetailsHeader({
                     updateForm({ date: event.target.value })
                     if (event.target.value) queueSave('date')
                   }}
-                  className={`${fieldClassName} max-w-full cursor-pointer pl-12 pr-10 text-left [min-inline-size:0] [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${mobileDateIsEmpty || !eventForm.date ? 'text-transparent md:text-stone-900' : ''}`}
+                  className={`${fieldClassName} max-w-full cursor-pointer pl-12 pr-10 text-left text-transparent [min-inline-size:0] [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:text-stone-900 md:[&::-webkit-calendar-picker-indicator]:opacity-100`}
                   aria-label="Event date"
                 />
-                {(mobileDateIsEmpty || !eventForm.date) && (
-                  <span className="pointer-events-none absolute left-12 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
-                    Event Date
-                  </span>
-                )}
+                <span className="pointer-events-none absolute left-12 right-10 top-1/2 -translate-y-1/2 truncate text-left text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
+                  {mobileDateIsEmpty || !eventForm.date ? 'Event Date' : formatDateInputForMobile(eventForm.date)}
+                </span>
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
               </div>
             </div>
@@ -361,6 +359,15 @@ function formatDateInputForDisplay(value: string) {
   const [year, month, day] = value.split('-').map(Number)
   return new Date(year, month - 1, day).toLocaleDateString('en-US', {
     month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function formatDateInputForMobile(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
