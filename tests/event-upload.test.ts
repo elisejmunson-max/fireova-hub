@@ -553,7 +553,7 @@ test('shared event identity always uses one responsive edit form', () => {
   assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
   assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-form"/)
   assert.match(inlineEventDetailsHeaderSource, /placeholder="Enter event name"/)
-  assert.match(inlineEventDetailsHeaderSource, /text-base font-semibold[\s\S]*?text-\[#171717\][\s\S]*?md:text-\[30px\]/)
+  assert.match(inlineEventDetailsHeaderSource, /text-base font-medium[\s\S]*?text-\[#111827\][\s\S]*?md:text-\[30px\][\s\S]*?md:font-semibold/)
   assert.match(inlineEventDetailsHeaderSource, /placeholder:text-base[\s\S]*?md:placeholder:text-\[26px\]/)
   assert.match(inlineEventDetailsHeaderSource, /md:grid-cols-3/)
   assert.match(inlineEventDetailsHeaderSource, />Event type<\/label>/)

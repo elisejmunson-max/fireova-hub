@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { searchSavedVenues, type SavedVenueOption } from '@/lib/local-fireova-venues'
 
-export default function VenueAutocomplete({ value, venues, disabled = false, placeholder = 'Venue Name', ariaLabel = 'Venue Name', inputId, inputClassName, showAddNew = false, onChange, onSelect, onAddNew }: {
+export default function VenueAutocomplete({ value, venues, disabled = false, placeholder = 'Venue Name', mobilePlaceholder, ariaLabel = 'Venue Name', inputId, inputClassName, showAddNew = false, onChange, onSelect, onAddNew }: {
   value: string
   venues: SavedVenueOption[]
   disabled?: boolean
   placeholder?: string
+  mobilePlaceholder?: string
   ariaLabel?: string
   inputId?: string
   inputClassName?: string
@@ -58,6 +59,11 @@ export default function VenueAutocomplete({ value, venues, disabled = false, pla
         placeholder={placeholder}
         className={inputClassName ?? 'min-h-[38px] w-full rounded-lg bg-white px-3 text-sm font-medium text-stone-950 ring-1 ring-stone-200 outline-none transition placeholder:text-stone-400 focus:ring-2 focus:ring-stone-950 disabled:bg-stone-100'}
       />
+      {mobilePlaceholder && !value && (
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
+          {mobilePlaceholder}
+        </span>
+      )}
       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400" aria-hidden="true">⌄</span>
       {open && (
         <div id="venue-autocomplete-results" role="listbox" className="absolute left-0 right-0 top-[42px] z-30 max-h-60 overflow-y-auto rounded-xl bg-white p-1.5 shadow-[0_16px_40px_rgba(28,25,23,0.14)] ring-1 ring-stone-200">
