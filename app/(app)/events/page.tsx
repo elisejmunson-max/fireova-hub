@@ -657,7 +657,7 @@ export default function EventsPage() {
           }
         }
       `}</style>
-      <div className={`px-4 pb-2 md:px-8 md:pb-3 ${activeBatch ? 'pt-2 md:pt-4' : 'pt-3 md:pt-8'}`}>
+      <div className={`px-4 pb-2 md:px-8 md:pb-3 ${uploadBusy ? 'pt-4' : activeBatch ? 'pt-2 md:pt-4' : 'pt-3 md:pt-8'}`}>
         <div className={`mx-auto ${activeBatch ? 'max-w-7xl' : 'max-w-7xl space-y-3 md:space-y-5'}`}>
           {!activeBatch && (
             <div>
@@ -708,6 +708,8 @@ export default function EventsPage() {
               className={`block border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 ${
                 uploadDragActive
                   ? 'rounded-xl border-ember-400 bg-ember-50 p-4 text-stone-950 shadow-[0_16px_48px_rgba(234,88,12,0.10)] sm:p-5'
+                  : uploadBusy
+                    ? 'w-full border-transparent bg-transparent p-0 text-stone-800 shadow-none md:rounded-xl md:border-stone-200 md:bg-white md:px-5 md:py-7 md:shadow-[0_8px_24px_rgba(28,25,23,0.05)]'
                   : activeBatch
                     ? 'rounded-xl border-stone-200 bg-white p-6 text-stone-800 shadow-[0_8px_24px_rgba(28,25,23,0.05)] sm:px-5 sm:py-7'
                     : 'cursor-pointer rounded-lg border-dashed border-stone-300 bg-stone-50 p-4 text-stone-800 hover:border-stone-400 hover:bg-stone-100/70 md:p-6'
@@ -736,7 +738,7 @@ export default function EventsPage() {
               />
               {uploadBusy ? (
                 <div
-                  className="flex min-h-[min(62vh,520px)] w-full items-center justify-center px-4 py-16 text-center sm:min-h-[440px]"
+                  className="flex min-h-[calc(100dvh-8rem)] w-full items-center justify-center px-6 py-12 text-center md:min-h-[440px] md:px-4 md:py-16"
                   data-testid="event-upload-focused-status"
                   role="status"
                   aria-live="polite"
@@ -748,11 +750,13 @@ export default function EventsPage() {
                       aria-hidden="true"
                       data-testid="event-upload-spinner"
                     />
-                    <p className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-stone-950 sm:text-3xl">Uploading…</p>
-                    <p className="mt-2 text-sm font-medium text-stone-500">Keep this screen open.</p>
-                    {pendingMediaItems.some((item) => item.kind === 'video') && (
-                      <p className="mt-1 text-sm font-medium text-stone-500">Videos may take a little longer.</p>
-                    )}
+                    <p className="mt-4 text-[29px] font-semibold tracking-[-0.02em] text-stone-950 md:mt-6 md:text-3xl">Uploading...</p>
+                    <div className="mt-2.5 text-[17px] font-medium leading-7 text-stone-500 md:mt-2 md:text-sm md:leading-normal">
+                      <p>Keep this screen open.</p>
+                      {pendingMediaItems.some((item) => item.kind === 'video') && (
+                        <p className="hidden md:mt-1 md:block">Videos may take a little longer.</p>
+                      )}
+                    </div>
                     <span className="sr-only">{uploadPrepMessage}</span>
                   </div>
                 </div>
