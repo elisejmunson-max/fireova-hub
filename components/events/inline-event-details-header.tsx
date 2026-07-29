@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import VenueAutocomplete from '@/components/events/venue-autocomplete'
 import {
   FIREOVA_EVENT_TYPES,
@@ -21,7 +21,6 @@ type InlineEventDetailsHeaderProps = {
   onSave: (updates: Partial<LocalEventMetadataUpdate>) => Promise<unknown>
   dateValueMode?: 'display' | 'input'
   nameError?: string
-  mobileActions?: ReactNode
 }
 
 type EventDetailsForm = {
@@ -39,7 +38,6 @@ export default function InlineEventDetailsHeader({
   onSave,
   dateValueMode = 'display',
   nameError,
-  mobileActions,
 }: InlineEventDetailsHeaderProps) {
   const [eventForm, setEventForm] = useState<EventDetailsForm>(() => createEventForm(value))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
@@ -220,34 +218,34 @@ export default function InlineEventDetailsHeader({
                 void flushSaves()
               }}
               placeholder="Enter event name"
-              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-medium leading-tight text-[#111827] shadow-sm outline-none transition placeholder:text-base placeholder:font-medium placeholder:text-[#111827] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:font-semibold md:tracking-[-0.02em] md:text-[#171717] md:placeholder:text-[26px] md:placeholder:font-normal md:placeholder:text-[#78716C]"
+              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-medium leading-tight text-[#111827] shadow-sm outline-none transition placeholder:text-transparent hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:font-semibold md:tracking-[-0.02em] md:text-[#171717] md:placeholder:text-[26px] md:placeholder:font-normal md:placeholder:text-[#78716C]"
               aria-invalid={Boolean(nameError)}
             />
+            {!eventForm.name && (
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
+                Event Name
+              </span>
+            )}
             {nameError && (
               <p className="mt-1 text-xs font-semibold text-red-600">{nameError}</p>
             )}
           </div>
 
-          <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-3 md:gap-3">
+          <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3">
             <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-3 md:gap-2">
-                <div className="relative min-w-0 flex-1">
-                  <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
-                  <select
-                    id="event-details-type"
-                    value={eventForm.type}
-                    onChange={(event) => {
-                      updateForm({ type: event.target.value as FireovaEventType })
-                      queueSave('type')
-                    }}
-                    className={`${fieldClassName} cursor-pointer`}
-                    aria-label="Event type"
-                  >
-                    {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                </div>
-                {mobileActions}
-              </div>
+              <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
+              <select
+                id="event-details-type"
+                value={eventForm.type}
+                onChange={(event) => {
+                  updateForm({ type: event.target.value as FireovaEventType })
+                  queueSave('type')
+                }}
+                className={`${fieldClassName} cursor-pointer`}
+                aria-label="Event type"
+              >
+                {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
             </div>
 
             <div className="relative min-w-0">
@@ -264,14 +262,19 @@ export default function InlineEventDetailsHeader({
                     updateForm({ date: event.target.value })
                     if (event.target.value) queueSave('date')
                   }}
-                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100`}
+                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${eventForm.date ? '' : 'text-transparent md:text-stone-900'}`}
                   aria-label="Event date"
                 />
+                {!eventForm.date && (
+                  <span className="pointer-events-none absolute left-12 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
+                    Event Date
+                  </span>
+                )}
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
               </div>
             </div>
 
-            <div className="relative min-w-0">
+            <div className="relative col-span-2 min-w-0 md:col-span-1">
               <label htmlFor="event-details-venue" className={mobileHiddenLabelClassName}>Venue</label>
               <VenueAutocomplete
                 value={eventForm.venueName}

@@ -81,7 +81,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const [vendorsPanelOpen, setVendorsPanelOpen] = useState(false)
   const [vendorToEditId, setVendorToEditId] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
   const [galleryExpanded, setGalleryExpanded] = useState(false)
   const [selectedMediaId, setSelectedMediaId] = useState('')
   const [mediaSaving, setMediaSaving] = useState(false)
@@ -506,19 +505,16 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   }}
                   venues={savedVenueOptions}
                   onSave={saveEventMetadata}
-                  mobileActions={(
-                    <div className="relative shrink-0 md:hidden">
-                      <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-[52px] w-11 shrink-0 items-center justify-center rounded-xl border border-[#E5E7EB] bg-stone-50 text-lg font-semibold text-stone-500" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
-                      {mobileActionsOpen && (
-                        <div className="absolute right-0 top-[60px] z-30 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-[0_16px_40px_rgba(28,25,23,0.18)] ring-1 ring-stone-200">
-                          <Link href="/events" className="flex min-h-11 items-center px-4 text-sm font-semibold text-stone-800">Back to Events</Link>
-                          <button type="button" onClick={() => { setMobileActionsOpen(false); setConfirmingDelete(true) }} className="min-h-11 w-full px-4 text-left text-sm font-semibold text-red-600">Delete Event</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 />
               </div>
+              <button
+                ref={vendorsButtonRef}
+                type="button"
+                onClick={() => openVendorsDrawer()}
+                className="mt-4 flex h-[52px] w-full items-center rounded-xl border border-[#E5E7EB] bg-white px-4 text-left text-base font-medium text-[#111827] shadow-sm md:hidden"
+              >
+                + Add Vendors
+              </button>
 
               <section className="mt-6 min-w-0 md:hidden" aria-label="Event media controls">
                 <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-stone-600">Media ({mediaTiles.length})</h2>
@@ -546,7 +542,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   <span aria-hidden="true" className="text-stone-400">⌄</span>
                 </summary>
                 <div className="pb-2 pt-1">
-                  <button ref={vendorsButtonRef} type="button" onClick={() => openVendorsDrawer()} className="mb-2 min-h-11 rounded-lg px-3 text-sm font-semibold text-stone-700 ring-1 ring-stone-200">+ Add Vendor</button>
                   <div className="space-y-1 text-sm leading-5">
                     {venueInstagramHandle && <p className="font-semibold text-stone-800">Venue · @{venueInstagramHandle}</p>}
                     {eventVendorDisplays.map((vendor) => <p key={vendor.id} className="font-semibold text-stone-800">{getVendorCreditCategoryLabel(vendor.category)} · @{normalizeVendorHandle(vendor.instagramHandle)}</p>)}
