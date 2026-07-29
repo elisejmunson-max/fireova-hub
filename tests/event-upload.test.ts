@@ -517,12 +517,13 @@ test('right-side workspace follows event details vendors and final create order'
   assert.doesNotMatch(createEventPageSource, /showAddFiles/)
 })
 
-test('venue remains inline with event metadata before the Vendors section', () => {
+test('venue remains in the labeled event form before the Vendors section', () => {
   const headerIndex = createEventPageSource.indexOf('<InlineEventDetailsHeader')
   const vendorsIndex = createEventPageSource.indexOf('>Vendors</h3>')
   assert.ok(headerIndex > -1)
   assert.ok(vendorsIndex > headerIndex)
-  assert.match(inlineEventDetailsHeaderSource, /value\.venueName \|\| '\+ Add venue'/)
+  assert.match(inlineEventDetailsHeaderSource, />Venue<\/label>/)
+  assert.match(inlineEventDetailsHeaderSource, /placeholder="Select or add venue"/)
   assert.match(createEventPageSource, /section className="min-w-0 border-t border-stone-200\/70 pt-5"/)
   assert.doesNotMatch(createEventPageSource, /<h3[^>]*>Venue<\/h3>/)
 })
@@ -548,12 +549,15 @@ test('venue vendor credit stays attached to the inline venue relationship', () =
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
 })
 
-test('shared event identity keeps one readable wrapping metadata line', () => {
+test('shared event identity uses clean read mode and one responsive edit form', () => {
   assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
-  assert.match(inlineEventDetailsHeaderSource, /md:text-\[42px\]/)
-  assert.match(inlineEventDetailsHeaderSource, /flex flex-wrap items-center gap-x-1/)
-  assert.match(inlineEventDetailsHeaderSource, /Change event type/)
-  assert.match(inlineEventDetailsHeaderSource, /Change event date/)
+  assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-read-mode"/)
+  assert.match(inlineEventDetailsHeaderSource, />\s*Edit event\s*</)
+  assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-edit-mode"/)
+  assert.match(inlineEventDetailsHeaderSource, /md:text-\[30px\]/)
+  assert.match(inlineEventDetailsHeaderSource, /md:grid-cols-3/)
+  assert.match(inlineEventDetailsHeaderSource, />Event type<\/span>/)
+  assert.match(inlineEventDetailsHeaderSource, />Event date<\/span>/)
 })
 
 test('Create Event preview uses one bounded 4:5 review frame with overlay controls', () => {

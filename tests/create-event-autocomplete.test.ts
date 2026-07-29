@@ -46,7 +46,9 @@ test('venue autocomplete supports selecting saved venues and retaining a brand-n
   assert.match(inlineEventDetailsHeaderSource, /venueName: venue\.name/)
   assert.match(inlineEventDetailsHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
-  assert.match(inlineEventDetailsHeaderSource, /value\.venueName && !venues\.some/)
+  assert.match(inlineEventDetailsHeaderSource, /venueName: trimmedVenueName/)
+  assert.match(inlineEventDetailsHeaderSource, /<VenueAutocomplete/)
+  assert.match(inlineEventDetailsHeaderSource, /showAddNew/)
 
   const event = buildDraftEventFromMedia([
     { id: 'new-venue-photo', type: 'photo', src: 'fireova-idb-media://new-venue-photo', alt: 'Venue' },

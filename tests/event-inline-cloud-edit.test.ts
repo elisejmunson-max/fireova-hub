@@ -6,7 +6,7 @@ const uploadRouteSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
 const savedRouteSource = fs.readFileSync('app/(app)/events/[id]/page.tsx', 'utf8')
 const inlineHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
 
-test('both Event Details flows render one shared inline-edit header without page-level Edit mode', () => {
+test('both Event Details flows render one shared section-level editor without route-level edit state', () => {
   assert.match(uploadRouteSource, /import InlineEventDetailsHeader/)
   assert.match(savedRouteSource, /import InlineEventDetailsHeader/)
   assert.match(uploadRouteSource, /<InlineEventDetailsHeader/)
@@ -15,18 +15,29 @@ test('both Event Details flows render one shared inline-edit header without page
   assert.doesNotMatch(savedRouteSource, /Edit event details|eventEditing|setEventEditing|EventIdentityEditor/)
 })
 
-test('event name saves on Enter blur or checkmark and Escape cancels', () => {
-  assert.match(inlineHeaderSource, /onBlur=\{saveName\}/)
-  assert.match(inlineHeaderSource, /event\.key === 'Enter'[\s\S]*?saveName\(\)/)
-  assert.match(inlineHeaderSource, /aria-label="Save event name"/)
-  assert.match(inlineHeaderSource, /event\.key === 'Escape'[\s\S]*?setNameDraft\(value\.name\)[\s\S]*?setNameEditing\(false\)/)
-  assert.match(inlineHeaderSource, /save\(\{ name: nextName \}\)/)
+test('read mode is clean and one Edit event action reveals the complete labeled form', () => {
+  assert.match(inlineHeaderSource, /data-testid="event-details-read-mode"/)
+  assert.match(inlineHeaderSource, />\s*Edit event\s*</)
+  assert.match(inlineHeaderSource, /data-testid="event-details-edit-mode"/)
+  assert.match(inlineHeaderSource, /const \[isEditingEvent, setIsEditingEvent\]/)
+  assert.match(inlineHeaderSource, /const \[eventForm, setEventForm\]/)
+  assert.match(inlineHeaderSource, />Event name<\/label>/)
+  assert.match(inlineHeaderSource, />Event type<\/span>/)
+  assert.match(inlineHeaderSource, />Event date<\/span>/)
+  assert.match(inlineHeaderSource, />Venue<\/label>/)
+  assert.match(inlineHeaderSource, /placeholder="Untitled Event"/)
+  assert.match(inlineHeaderSource, /md:grid-cols-3/)
+  assert.match(inlineHeaderSource, /md:text-\[30px\]/)
+  assert.doesNotMatch(inlineHeaderSource, /Save event name|>✓</)
 })
 
-test('event type and date selections persist through the shared cloud save callback', () => {
-  assert.match(inlineHeaderSource, /save\(\{ type: nextType \}\)/)
+test('one Save changes action persists changed name type and date through the shared cloud callback', () => {
+  assert.match(inlineHeaderSource, /if \(trimmedName !== savedForm\.name\) updates\.name = trimmedName/)
+  assert.match(inlineHeaderSource, /if \(eventForm\.type !== savedForm\.type\) updates\.type = eventForm\.type/)
   assert.match(inlineHeaderSource, /type="date"/)
-  assert.match(inlineHeaderSource, /save\(\{ date: storedDate \}\)/)
+  assert.match(inlineHeaderSource, /updates\.date = dateValueMode === 'input' \? eventForm\.date/)
+  assert.match(inlineHeaderSource, /\{saving \? 'Saving…' : 'Save changes'\}[\s\S]*?<\/button>/)
+  assert.match(inlineHeaderSource, /disabled=\{!canSave\}/)
   assert.match(uploadRouteSource, /onSave=\{savePendingEventMetadataToCloud\}/)
   assert.match(savedRouteSource, /onSave=\{saveEventMetadata\}/)
 })
@@ -35,17 +46,21 @@ test('venue selection and removal persist the existing cloud-backed relationship
   assert.match(inlineHeaderSource, /venueName: venue\.name/)
   assert.match(inlineHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineHeaderSource, /venueVendorId: venue\.vendorId/)
-  assert.match(inlineHeaderSource, /venueName: ''[\s\S]*?venueVendorId: undefined/)
-  assert.match(inlineHeaderSource, /value\.venueName \|\| '\+ Add venue'/)
+  assert.match(inlineHeaderSource, /venueName: trimmedVenueName[\s\S]*?venueVendorId: undefined/)
+  assert.match(inlineHeaderSource, /placeholder="Select or add venue"/)
+  assert.match(inlineHeaderSource, /<VenueAutocomplete/)
+  assert.match(inlineHeaderSource, /showAddNew/)
 })
 
-test('inline edits expose Saving Saved and retry feedback without per-keystroke requests', () => {
-  assert.match(inlineHeaderSource, />Saving…</)
+test('unified form preserves drafts on failure and Cancel restores saved values', () => {
+  assert.match(inlineHeaderSource, /saving \? 'Saving…' : 'Save changes'/)
   assert.match(inlineHeaderSource, />Saved</)
-  assert.match(inlineHeaderSource, />\s*Retry\s*</)
   assert.match(inlineHeaderSource, /const requestKey = JSON\.stringify\(updates\)/)
   assert.match(inlineHeaderSource, /requestRef\.current && requestKeyRef\.current === requestKey/)
-  assert.doesNotMatch(inlineHeaderSource, /onChange=\{[^}]*onSave/)
+  assert.match(inlineHeaderSource, /function cancelEditing\(\)[\s\S]*?setEventForm\(savedForm\)[\s\S]*?setIsEditingEvent\(false\)/)
+  assert.match(inlineHeaderSource, /catch \(error\)[\s\S]*?setSaveStatus\('error'\)/)
+  assert.doesNotMatch(inlineHeaderSource, /catch \(error\)[\s\S]*?setIsEditingEvent\(false\)/)
+  assert.doesNotMatch(inlineHeaderSource, /onChange=\{[\s\S]{0,180}onSave/)
 })
 
 test('upload-route edits reuse the canonical UUID and preserve attached media before reload', () => {
