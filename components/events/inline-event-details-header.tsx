@@ -183,9 +183,8 @@ export default function InlineEventDetailsHeader({
     void flushSaves()
   }
 
-  const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 pb-1 pt-5 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:py-0 md:text-sm md:placeholder:text-sm'
-  const labelClassName = 'pointer-events-none absolute left-4 top-2 z-10 text-[11px] font-semibold uppercase tracking-[0.05em] text-stone-500 md:static md:mb-1.5 md:block md:text-[11px] md:tracking-[0.06em]'
-  const eventNameLabelClassName = 'sr-only md:not-sr-only md:mb-1.5 md:block md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.06em] md:text-stone-500'
+  const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:py-0 md:text-sm md:placeholder:text-sm'
+  const mobileHiddenLabelClassName = 'sr-only md:not-sr-only md:mb-1.5 md:block md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.06em] md:text-stone-500'
 
   return (
     <div className="relative min-w-0 flex-1 pt-7 sm:pt-0" data-testid="inline-event-details-header">
@@ -207,7 +206,7 @@ export default function InlineEventDetailsHeader({
       </div>
       <div data-testid="event-details-form">
           <div className="relative min-w-0">
-            <label htmlFor="event-details-name" className={eventNameLabelClassName}>Event name</label>
+            <label htmlFor="event-details-name" className={mobileHiddenLabelClassName}>Event name</label>
             <input
               id="event-details-name"
               value={eventForm.name}
@@ -233,7 +232,7 @@ export default function InlineEventDetailsHeader({
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-3 md:gap-2">
                 <div className="relative min-w-0 flex-1">
-                  <label htmlFor="event-details-type" className={labelClassName}>Event type</label>
+                  <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
                   <select
                     id="event-details-type"
                     value={eventForm.type}
@@ -252,7 +251,7 @@ export default function InlineEventDetailsHeader({
             </div>
 
             <div className="relative min-w-0">
-              <label htmlFor="event-details-date" className={`${labelClassName} left-12 md:left-auto`}>Event date</label>
+              <label htmlFor="event-details-date" className={mobileHiddenLabelClassName}>Event date</label>
               <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
                   <CalendarIcon />
@@ -273,7 +272,7 @@ export default function InlineEventDetailsHeader({
             </div>
 
             <div className="relative min-w-0">
-              <label htmlFor="event-details-venue" className={labelClassName}>Venue</label>
+              <label htmlFor="event-details-venue" className={mobileHiddenLabelClassName}>Venue</label>
               <VenueAutocomplete
                 value={eventForm.venueName}
                 venues={venues}
