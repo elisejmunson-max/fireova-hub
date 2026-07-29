@@ -260,7 +260,7 @@ export default function InlineEventDetailsHeader({
             <div className="relative min-w-0">
               <label htmlFor="event-details-date" className={mobileHiddenLabelClassName}>Event date</label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
                   <CalendarIcon />
                 </span>
                 <input
@@ -281,7 +281,7 @@ export default function InlineEventDetailsHeader({
                     Event Date
                   </span>
                 )}
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
               </div>
             </div>
 
