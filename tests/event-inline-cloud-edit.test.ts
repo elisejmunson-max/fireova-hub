@@ -30,6 +30,8 @@ test('the complete labeled Event Details form is the default and only layout', (
   assert.match(inlineHeaderSource, /h-\[52px\][\s\S]*?rounded-xl[\s\S]*?border-\[#E5E7EB\]/)
   assert.match(inlineHeaderSource, /pointer-events-none absolute left-4 top-2[\s\S]*?md:static/)
   assert.match(inlineHeaderSource, /pb-1 pt-5 text-base/)
+  assert.match(inlineHeaderSource, /eventNameLabelClassName = 'sr-only md:not-sr-only/)
+  assert.match(inlineHeaderSource, /<label htmlFor="event-details-name" className=\{eventNameLabelClassName\}>/)
   assert.match(inlineHeaderSource, /<CalendarIcon \/>/)
   assert.match(inlineHeaderSource, /\[text-align:left\]/)
   assert.match(inlineHeaderSource, /\{mobileActions\}/)

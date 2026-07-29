@@ -185,6 +185,7 @@ export default function InlineEventDetailsHeader({
 
   const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 pb-1 pt-5 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:py-0 md:text-sm md:placeholder:text-sm'
   const labelClassName = 'pointer-events-none absolute left-4 top-2 z-10 text-[11px] font-semibold uppercase tracking-[0.05em] text-stone-500 md:static md:mb-1.5 md:block md:text-[11px] md:tracking-[0.06em]'
+  const eventNameLabelClassName = 'sr-only md:not-sr-only md:mb-1.5 md:block md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.06em] md:text-stone-500'
 
   return (
     <div className="relative min-w-0 flex-1 pt-7 sm:pt-0" data-testid="inline-event-details-header">
@@ -206,7 +207,7 @@ export default function InlineEventDetailsHeader({
       </div>
       <div data-testid="event-details-form">
           <div className="relative min-w-0">
-            <label htmlFor="event-details-name" className={labelClassName}>Event name</label>
+            <label htmlFor="event-details-name" className={eventNameLabelClassName}>Event name</label>
             <input
               id="event-details-name"
               value={eventForm.name}
@@ -220,7 +221,7 @@ export default function InlineEventDetailsHeader({
                 void flushSaves()
               }}
               placeholder="Enter event name"
-              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 pb-1 pt-5 text-base font-semibold leading-tight text-[#171717] shadow-sm outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:tracking-[-0.02em] md:placeholder:text-[26px]"
+              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-semibold leading-tight text-[#171717] shadow-sm outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:tracking-[-0.02em] md:placeholder:text-[26px]"
               aria-invalid={Boolean(nameError)}
             />
             {nameError && (
