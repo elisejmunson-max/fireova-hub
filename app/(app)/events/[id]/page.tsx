@@ -461,16 +461,16 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   return (
     <div className="min-h-full bg-white px-4 pb-24 pt-1 md:px-8 md:pb-10 md:pt-4">
       <div className="mx-auto max-w-7xl">
-        <Link href="/events" className="mb-1 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-stone-500 transition hover:text-stone-950 md:mb-4 md:min-h-0">
+        <Link href="/events" className="mb-4 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-stone-500 transition hover:text-stone-950 md:min-h-0">
           <span className="md:hidden">← Events</span>
           <span className="hidden md:inline">← Back to Events</span>
         </Link>
 
-        <main className="rounded-xl border border-stone-200 bg-white p-3 shadow-[0_8px_24px_rgba(28,25,23,0.05)] md:p-5" data-testid="saved-event-editor">
-          <div className="grid min-w-0 gap-2 md:gap-5 lg:grid-cols-[minmax(0,47fr)_minmax(0,53fr)] lg:items-start lg:gap-x-7">
+        <main className="bg-transparent md:rounded-xl md:border md:border-stone-200 md:bg-white md:p-5 md:shadow-[0_8px_24px_rgba(28,25,23,0.05)]" data-testid="saved-event-editor">
+          <div className="grid min-w-0 gap-6 md:gap-5 lg:grid-cols-[minmax(0,47fr)_minmax(0,53fr)] lg:items-start lg:gap-x-7">
             <section className="min-w-0" aria-label="Selected event media">
               {selectedMedia && (
-                <div className="relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-xl bg-stone-100 md:aspect-[4/5] md:max-h-[calc(100vh-175px)]" data-testid="saved-event-media-preview">
+                <div className="relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-stone-100 md:aspect-[4/5] md:max-h-[calc(100vh-175px)] md:rounded-xl" data-testid="saved-event-media-preview">
                   <LocalMedia media={selectedMedia} className="h-full w-full object-cover" controls={selectedMedia.type === 'video'} muted={false} />
                   <button
                     type="button"
@@ -493,7 +493,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
             </section>
 
             <section className="min-w-0" aria-label="Event Details">
-              <div className="flex min-w-0 items-center justify-between gap-3 md:items-start md:gap-4">
+              <div className="min-w-0">
                 <InlineEventDetailsHeader
                   value={{
                     name: event.name,
@@ -506,23 +506,25 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   }}
                   venues={savedVenueOptions}
                   onSave={saveEventMetadata}
-                />
-                <div className="relative md:hidden">
-                  <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-stone-50 text-xl font-semibold text-stone-700 ring-1 ring-stone-200" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
-                  {mobileActionsOpen && (
-                    <div className="absolute right-0 top-12 z-30 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-[0_16px_40px_rgba(28,25,23,0.18)] ring-1 ring-stone-200">
-                      <Link href="/events" className="flex min-h-11 items-center px-4 text-sm font-semibold text-stone-800">Back to Events</Link>
-                      <button type="button" onClick={() => { setMobileActionsOpen(false); setConfirmingDelete(true) }} className="min-h-11 w-full px-4 text-left text-sm font-semibold text-red-600">Delete Event</button>
+                  mobileActions={(
+                    <div className="relative shrink-0 md:hidden">
+                      <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-xl font-semibold text-stone-700 shadow-sm" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
+                      {mobileActionsOpen && (
+                        <div className="absolute right-0 top-[60px] z-30 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-[0_16px_40px_rgba(28,25,23,0.18)] ring-1 ring-stone-200">
+                          <Link href="/events" className="flex min-h-11 items-center px-4 text-sm font-semibold text-stone-800">Back to Events</Link>
+                          <button type="button" onClick={() => { setMobileActionsOpen(false); setConfirmingDelete(true) }} className="min-h-11 w-full px-4 text-left text-sm font-semibold text-red-600">Delete Event</button>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
+                />
               </div>
 
-              <section className="mt-2 min-w-0 border-t border-stone-200/70 pt-2 md:hidden" aria-label="Event media controls">
-                <h2 className="mb-2 text-xs font-semibold text-stone-600">Media ({mediaTiles.length})</h2>
-                <div className="-mx-1 flex max-w-[calc(100%+0.5rem)] snap-x snap-mandatory flex-nowrap items-center gap-2.5 overflow-x-auto px-1 pb-2">
+              <section className="mt-6 min-w-0 md:hidden" aria-label="Event media controls">
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-stone-600">Media ({mediaTiles.length})</h2>
+                <div className="flex max-w-full snap-x snap-mandatory flex-nowrap items-center gap-3 overflow-x-auto pb-2">
                   {mediaTiles.map((media) => (
-                    <div key={media.id} className="group relative h-24 w-24 shrink-0 snap-start">
+                    <div key={media.id} className="group relative h-[72px] w-[72px] shrink-0 snap-start">
                       <button type="button" onClick={() => setSelectedMediaId(media.id)} className={`h-full w-full overflow-hidden rounded-xl bg-stone-100 ring-2 ${media.id === selectedMedia?.id ? 'ring-ember-500' : 'ring-stone-200'}`} aria-label={`Select ${media.alt || 'event media'}`} aria-current={media.id === selectedMedia?.id ? 'true' : undefined}>
                         <LocalMedia media={media} className="h-full w-full object-cover" muted />
                       </button>
@@ -531,7 +533,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                       )}
                     </div>
                   ))}
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={mediaSaving} className="flex h-24 w-24 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl bg-stone-100 text-stone-600 ring-2 ring-stone-200 disabled:opacity-60">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={mediaSaving} className="flex h-[72px] w-[72px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl bg-stone-100 text-stone-600 ring-2 ring-stone-200 disabled:opacity-60">
                     <span className="text-xl leading-none">+</span>
                     <span className="text-[11px] font-semibold">Add media</span>
                   </button>
@@ -632,8 +634,8 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 px-4 pt-1.5 backdrop-blur md:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.375rem)' }}>
-        <Link href={contentActionHref} className="group inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-stone-950 px-7 text-sm font-semibold text-white shadow-sm">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 px-4 pt-2 backdrop-blur md:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}>
+        <Link href={contentActionHref} className="group inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-stone-950 px-7 text-sm font-semibold text-white shadow-sm">
           ✨ Create Content <span className="ml-1.5">→</span>
         </Link>
       </div>

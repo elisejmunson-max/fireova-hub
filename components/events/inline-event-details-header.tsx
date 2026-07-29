@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import VenueAutocomplete from '@/components/events/venue-autocomplete'
 import {
   FIREOVA_EVENT_TYPES,
@@ -21,6 +21,7 @@ type InlineEventDetailsHeaderProps = {
   onSave: (updates: Partial<LocalEventMetadataUpdate>) => Promise<unknown>
   dateValueMode?: 'display' | 'input'
   nameError?: string
+  mobileActions?: ReactNode
 }
 
 type EventDetailsForm = {
@@ -38,6 +39,7 @@ export default function InlineEventDetailsHeader({
   onSave,
   dateValueMode = 'display',
   nameError,
+  mobileActions,
 }: InlineEventDetailsHeaderProps) {
   const [eventForm, setEventForm] = useState<EventDetailsForm>(() => createEventForm(value))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
@@ -181,8 +183,8 @@ export default function InlineEventDetailsHeader({
     void flushSaves()
   }
 
-  const fieldClassName = 'min-h-11 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500'
-  const labelClassName = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-stone-500'
+  const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:text-sm md:placeholder:text-sm'
+  const labelClassName = 'mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-stone-500 md:mb-1.5 md:text-[11px]'
 
   return (
     <div className="relative min-w-0 flex-1 pt-7 sm:pt-0" data-testid="inline-event-details-header">
@@ -218,7 +220,7 @@ export default function InlineEventDetailsHeader({
                 void flushSaves()
               }}
               placeholder="Enter event name"
-              className="min-h-12 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[25px] font-semibold leading-tight tracking-[-0.02em] text-[#171717] shadow-sm outline-none transition placeholder:text-[22px] placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:text-[30px] md:placeholder:text-[26px]"
+              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-semibold leading-tight text-[#171717] shadow-sm outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:tracking-[-0.02em] md:placeholder:text-[26px]"
               aria-invalid={Boolean(nameError)}
             />
             {nameError && (
@@ -226,34 +228,44 @@ export default function InlineEventDetailsHeader({
             )}
           </div>
 
-          <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-3">
-            <label className="min-w-0">
-              <span className={labelClassName}>Event type</span>
-              <select
-                value={eventForm.type}
-                onChange={(event) => {
-                  updateForm({ type: event.target.value as FireovaEventType })
-                  queueSave('type')
-                }}
-                className={`${fieldClassName} cursor-pointer`}
-                aria-label="Event type"
-              >
-                {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </label>
+          <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-3 md:gap-3">
+            <div className="min-w-0">
+              <label htmlFor="event-details-type" className={labelClassName}>Event type</label>
+              <div className="flex min-w-0 items-center gap-3 md:gap-2">
+                <select
+                  id="event-details-type"
+                  value={eventForm.type}
+                  onChange={(event) => {
+                    updateForm({ type: event.target.value as FireovaEventType })
+                    queueSave('type')
+                  }}
+                  className={`${fieldClassName} flex-1 cursor-pointer`}
+                  aria-label="Event type"
+                >
+                  {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                {mobileActions}
+              </div>
+            </div>
 
             <label className="min-w-0">
               <span className={labelClassName}>Event date</span>
-              <input
-                type="date"
-                value={eventForm.date}
-                onChange={(event) => {
-                  updateForm({ date: event.target.value })
-                  if (event.target.value) queueSave('date')
-                }}
-                className={`${fieldClassName} cursor-pointer`}
-                aria-label="Event date"
-              />
+              <span className="relative block">
+                <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
+                  <CalendarIcon />
+                </span>
+                <input
+                  type="date"
+                  value={eventForm.date}
+                  onChange={(event) => {
+                    updateForm({ date: event.target.value })
+                    if (event.target.value) queueSave('date')
+                  }}
+                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100`}
+                  aria-label="Event date"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
+              </span>
             </label>
 
             <div className="min-w-0">
@@ -264,7 +276,7 @@ export default function InlineEventDetailsHeader({
                 placeholder="Select or add venue"
                 ariaLabel="Venue"
                 inputId="event-details-venue"
-                inputClassName={`${fieldClassName} pr-9`}
+                inputClassName={`${fieldClassName} pr-10`}
                 showAddNew
                 onChange={(venueName) => {
                   updateForm({ venueName })
@@ -287,6 +299,14 @@ export default function InlineEventDetailsHeader({
           )}
       </div>
     </div>
+  )
+}
+
+function CalendarIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3v3m10-3v3M4.5 9.5h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   )
 }
 
