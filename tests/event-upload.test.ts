@@ -552,7 +552,9 @@ test('venue vendor credit stays attached to the inline venue relationship', () =
 test('shared event identity always uses one responsive edit form', () => {
   assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
   assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-form"/)
-  assert.match(inlineEventDetailsHeaderSource, /md:text-\[30px\]/)
+  assert.match(inlineEventDetailsHeaderSource, /placeholder="Name of event"/)
+  assert.match(inlineEventDetailsHeaderSource, /text-\[26px\] font-semibold[\s\S]*?text-\[#171717\][\s\S]*?md:text-\[32px\]/)
+  assert.match(inlineEventDetailsHeaderSource, /placeholder:text-\[24px\][\s\S]*?md:placeholder:text-\[28px\]/)
   assert.match(inlineEventDetailsHeaderSource, /md:grid-cols-3/)
   assert.match(inlineEventDetailsHeaderSource, />Event type<\/span>/)
   assert.match(inlineEventDetailsHeaderSource, />Event date<\/span>/)

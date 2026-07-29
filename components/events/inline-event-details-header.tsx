@@ -70,8 +70,6 @@ export default function InlineEventDetailsHeader({
     if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current)
   }, [])
 
-  const trimmedName = eventForm.name.trim()
-
   function updateForm(updates: Partial<EventDetailsForm>) {
     const nextForm = { ...eventFormRef.current, ...updates }
     eventFormRef.current = nextForm
@@ -219,12 +217,12 @@ export default function InlineEventDetailsHeader({
                 nameTimerRef.current = null
                 void flushSaves()
               }}
-              placeholder="Untitled Event"
-              className="min-h-12 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[24px] font-semibold leading-tight tracking-[-0.02em] text-stone-950 shadow-sm outline-none transition placeholder:text-stone-300 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:text-[30px]"
-              aria-invalid={Boolean(nameError) || !trimmedName}
+              placeholder="Name of event"
+              className="min-h-12 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-[#171717] shadow-sm outline-none transition placeholder:text-[24px] placeholder:font-normal placeholder:text-[#A8A29E] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:text-[32px] md:placeholder:text-[28px]"
+              aria-invalid={Boolean(nameError)}
             />
-            {(nameError || !trimmedName) && (
-              <p className="mt-1 text-xs font-semibold text-red-600">{nameError || 'Enter an event name.'}</p>
+            {nameError && (
+              <p className="mt-1 text-xs font-semibold text-red-600">{nameError}</p>
             )}
           </div>
 
@@ -294,7 +292,7 @@ export default function InlineEventDetailsHeader({
 
 function createEventForm(value: InlineEventDetailsValue): EventDetailsForm {
   return {
-    name: value.name,
+    name: value.name.trim() === 'Untitled Event' ? '' : value.name,
     type: normalizeEventType(value.type),
     date: toDateInputValue(value.date),
     venueName: value.venueName?.trim() ?? '',
