@@ -234,7 +234,7 @@ export default function InlineEventDetailsHeader({
           </div>
 
           <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="relative min-w-0">
+            <div className="relative order-2 min-w-0 md:order-1">
               <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
               <select
                 id="event-details-type"
@@ -257,7 +257,7 @@ export default function InlineEventDetailsHeader({
               )}
             </div>
 
-            <div className="relative min-w-0">
+            <div className="relative order-1 min-w-0 md:order-2">
               <label htmlFor="event-details-date" className={mobileHiddenLabelClassName}>Event date</label>
               <div className="relative">
                 <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
@@ -285,7 +285,7 @@ export default function InlineEventDetailsHeader({
               </div>
             </div>
 
-            <div className="relative col-span-2 min-w-0 md:col-span-1">
+            <div className="relative order-3 col-span-2 min-w-0 md:col-span-1">
               <label htmlFor="event-details-venue" className={mobileHiddenLabelClassName}>Venue</label>
               <VenueAutocomplete
                 value={eventForm.venueName}
