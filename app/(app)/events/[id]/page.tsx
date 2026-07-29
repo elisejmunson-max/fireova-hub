@@ -511,9 +511,10 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                 ref={vendorsButtonRef}
                 type="button"
                 onClick={() => openVendorsDrawer()}
-                className="mt-4 flex h-[52px] w-full items-center rounded-xl border border-[#E5E7EB] bg-white px-4 text-left text-base font-medium text-[#111827] shadow-sm md:hidden"
+                className="mt-4 flex h-[52px] w-full items-center justify-between rounded-xl border border-[#E5E7EB] bg-white px-4 text-left text-base font-medium text-[#111827] shadow-sm md:hidden"
               >
-                + Add Vendors
+                <span>{eventVendorDisplays.length === 0 ? 'Vendors' : `${eventVendorDisplays.length} ${eventVendorDisplays.length === 1 ? 'Vendor' : 'Vendors'}`}</span>
+                <span aria-hidden="true" className="text-xs text-stone-400">⌄</span>
               </button>
 
               <section className="mt-6 min-w-0 md:hidden" aria-label="Event media controls">

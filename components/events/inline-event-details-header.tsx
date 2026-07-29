@@ -41,7 +41,7 @@ export default function InlineEventDetailsHeader({
 }: InlineEventDetailsHeaderProps) {
   const [eventForm, setEventForm] = useState<EventDetailsForm>(() => createEventForm(value))
   const [mobileTypeIsEmpty, setMobileTypeIsEmpty] = useState(() => isUnnamedDefaultType(value))
-  const [mobileDateIsEmpty, setMobileDateIsEmpty] = useState(() => isUnnamedDefaultDate(value))
+  const [mobileDateIsEmpty, setMobileDateIsEmpty] = useState(() => isDefaultMobileDate(value))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
   const savedFormRef = useRef<EventDetailsForm>(createEventForm(value))
@@ -341,8 +341,8 @@ function isUnnamedDefaultType(value: InlineEventDetailsValue) {
   return value.name.trim() === 'Untitled Event' && normalizeEventType(value.type) === 'Other'
 }
 
-function isUnnamedDefaultDate(value: InlineEventDetailsValue) {
-  return value.name.trim() === 'Untitled Event' && toDateInputValue(value.date) === toDateInputValue(new Date().toISOString())
+function isDefaultMobileDate(value: InlineEventDetailsValue) {
+  return toDateInputValue(value.date) === toDateInputValue(new Date().toISOString())
 }
 
 function toDateInputValue(value: string) {
