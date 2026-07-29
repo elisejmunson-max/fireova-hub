@@ -217,8 +217,8 @@ export default function InlineEventDetailsHeader({
                 nameTimerRef.current = null
                 void flushSaves()
               }}
-              placeholder="Name of event"
-              className="min-h-12 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-[#171717] shadow-sm outline-none transition placeholder:text-[24px] placeholder:font-normal placeholder:text-[#A8A29E] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:text-[32px] md:placeholder:text-[28px]"
+              placeholder="Enter event name"
+              className="min-h-12 w-full min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[25px] font-semibold leading-tight tracking-[-0.02em] text-[#171717] shadow-sm outline-none transition placeholder:text-[22px] placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:text-[30px] md:placeholder:text-[26px]"
               aria-invalid={Boolean(nameError)}
             />
             {nameError && (
