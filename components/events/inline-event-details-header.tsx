@@ -183,8 +183,8 @@ export default function InlineEventDetailsHeader({
     void flushSaves()
   }
 
-  const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:text-sm md:placeholder:text-sm'
-  const labelClassName = 'mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-stone-500 md:mb-1.5 md:text-[11px]'
+  const fieldClassName = 'h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 pb-1 pt-5 text-base font-medium text-stone-900 shadow-sm outline-none transition placeholder:text-base placeholder:text-stone-400 hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 disabled:text-stone-500 md:h-auto md:min-h-11 md:rounded-lg md:border-stone-200 md:px-3 md:py-0 md:text-sm md:placeholder:text-sm'
+  const labelClassName = 'pointer-events-none absolute left-4 top-2 z-10 text-[11px] font-semibold uppercase tracking-[0.05em] text-stone-500 md:static md:mb-1.5 md:block md:text-[11px] md:tracking-[0.06em]'
 
   return (
     <div className="relative min-w-0 flex-1 pt-7 sm:pt-0" data-testid="inline-event-details-header">
@@ -205,7 +205,7 @@ export default function InlineEventDetailsHeader({
         )}
       </div>
       <div data-testid="event-details-form">
-          <div className="min-w-0">
+          <div className="relative min-w-0">
             <label htmlFor="event-details-name" className={labelClassName}>Event name</label>
             <input
               id="event-details-name"
@@ -220,7 +220,7 @@ export default function InlineEventDetailsHeader({
                 void flushSaves()
               }}
               placeholder="Enter event name"
-              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 text-base font-semibold leading-tight text-[#171717] shadow-sm outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:tracking-[-0.02em] md:placeholder:text-[26px]"
+              className="h-[52px] w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-4 pb-1 pt-5 text-base font-semibold leading-tight text-[#171717] shadow-sm outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-[#78716C] hover:border-stone-300 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 disabled:cursor-wait disabled:bg-stone-50 md:h-auto md:min-h-12 md:rounded-lg md:border-stone-200 md:px-3 md:py-2 md:text-[30px] md:tracking-[-0.02em] md:placeholder:text-[26px]"
               aria-invalid={Boolean(nameError)}
             />
             {nameError && (
@@ -230,31 +230,34 @@ export default function InlineEventDetailsHeader({
 
           <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-3 md:gap-3">
             <div className="min-w-0">
-              <label htmlFor="event-details-type" className={labelClassName}>Event type</label>
               <div className="flex min-w-0 items-center gap-3 md:gap-2">
-                <select
-                  id="event-details-type"
-                  value={eventForm.type}
-                  onChange={(event) => {
-                    updateForm({ type: event.target.value as FireovaEventType })
-                    queueSave('type')
-                  }}
-                  className={`${fieldClassName} flex-1 cursor-pointer`}
-                  aria-label="Event type"
-                >
-                  {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
+                <div className="relative min-w-0 flex-1">
+                  <label htmlFor="event-details-type" className={labelClassName}>Event type</label>
+                  <select
+                    id="event-details-type"
+                    value={eventForm.type}
+                    onChange={(event) => {
+                      updateForm({ type: event.target.value as FireovaEventType })
+                      queueSave('type')
+                    }}
+                    className={`${fieldClassName} cursor-pointer`}
+                    aria-label="Event type"
+                  >
+                    {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </div>
                 {mobileActions}
               </div>
             </div>
 
-            <label className="min-w-0">
-              <span className={labelClassName}>Event date</span>
-              <span className="relative block">
+            <div className="relative min-w-0">
+              <label htmlFor="event-details-date" className={`${labelClassName} left-12 md:left-auto`}>Event date</label>
+              <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
                   <CalendarIcon />
                 </span>
                 <input
+                  id="event-details-date"
                   type="date"
                   value={eventForm.date}
                   onChange={(event) => {
@@ -265,10 +268,10 @@ export default function InlineEventDetailsHeader({
                   aria-label="Event date"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
-              </span>
-            </label>
+              </div>
+            </div>
 
-            <div className="min-w-0">
+            <div className="relative min-w-0">
               <label htmlFor="event-details-venue" className={labelClassName}>Venue</label>
               <VenueAutocomplete
                 value={eventForm.venueName}

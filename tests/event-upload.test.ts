@@ -557,7 +557,7 @@ test('shared event identity always uses one responsive edit form', () => {
   assert.match(inlineEventDetailsHeaderSource, /placeholder:text-base[\s\S]*?md:placeholder:text-\[26px\]/)
   assert.match(inlineEventDetailsHeaderSource, /md:grid-cols-3/)
   assert.match(inlineEventDetailsHeaderSource, />Event type<\/label>/)
-  assert.match(inlineEventDetailsHeaderSource, />Event date<\/span>/)
+  assert.match(inlineEventDetailsHeaderSource, />Event date<\/label>/)
   assert.doesNotMatch(inlineEventDetailsHeaderSource, /event-details-read-mode|event-details-edit-mode/)
   assert.doesNotMatch(inlineEventDetailsHeaderSource, /isEditingEvent|setIsEditingEvent|>\s*Edit event\s*<|>\s*Cancel\s*<|>\s*Save changes\s*</)
   assert.match(inlineEventDetailsHeaderSource, /queueSave\('name', 700\)/)

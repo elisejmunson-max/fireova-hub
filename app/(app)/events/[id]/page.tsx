@@ -467,7 +467,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
         </Link>
 
         <main className="bg-transparent md:rounded-xl md:border md:border-stone-200 md:bg-white md:p-5 md:shadow-[0_8px_24px_rgba(28,25,23,0.05)]" data-testid="saved-event-editor">
-          <div className="grid min-w-0 gap-6 md:gap-5 lg:grid-cols-[minmax(0,47fr)_minmax(0,53fr)] lg:items-start lg:gap-x-7">
+          <div className="grid min-w-0 gap-3 md:gap-5 lg:grid-cols-[minmax(0,47fr)_minmax(0,53fr)] lg:items-start lg:gap-x-7">
             <section className="min-w-0" aria-label="Selected event media">
               {selectedMedia && (
                 <div className="relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-stone-100 md:aspect-[4/5] md:max-h-[calc(100vh-175px)] md:rounded-xl" data-testid="saved-event-media-preview">
@@ -508,7 +508,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   onSave={saveEventMetadata}
                   mobileActions={(
                     <div className="relative shrink-0 md:hidden">
-                      <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-xl font-semibold text-stone-700 shadow-sm" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
+                      <button type="button" onClick={() => setMobileActionsOpen((open) => !open)} className="flex h-[52px] w-11 shrink-0 items-center justify-center rounded-xl border border-[#E5E7EB] bg-stone-50 text-lg font-semibold text-stone-500" aria-label="Event actions" aria-expanded={mobileActionsOpen}>•••</button>
                       {mobileActionsOpen && (
                         <div className="absolute right-0 top-[60px] z-30 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-[0_16px_40px_rgba(28,25,23,0.18)] ring-1 ring-stone-200">
                           <Link href="/events" className="flex min-h-11 items-center px-4 text-sm font-semibold text-stone-800">Back to Events</Link>
