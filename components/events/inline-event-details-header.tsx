@@ -233,8 +233,8 @@ export default function InlineEventDetailsHeader({
             )}
           </div>
 
-          <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="relative order-2 min-w-0 md:order-1">
+          <div className="mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 md:grid-cols-3">
+            <div className="relative order-2 min-w-0 overflow-hidden md:order-1 md:overflow-visible">
               <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
               <select
                 id="event-details-type"
@@ -245,7 +245,7 @@ export default function InlineEventDetailsHeader({
                   updateForm({ type: event.target.value as FireovaEventType })
                   queueSave('type')
                 }}
-                className={`${fieldClassName} cursor-pointer ${mobileTypeIsEmpty ? 'text-transparent md:text-stone-900' : ''}`}
+                className={`${fieldClassName} max-w-full cursor-pointer appearance-none pr-10 md:appearance-auto md:pr-3 ${mobileTypeIsEmpty ? 'text-transparent md:text-stone-900' : ''}`}
                 aria-label="Event type"
               >
                 {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -255,11 +255,12 @@ export default function InlineEventDetailsHeader({
                   Event Type
                 </span>
               )}
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
             </div>
 
-            <div className="relative order-1 min-w-0 md:order-2">
+            <div className="relative order-1 min-w-0 overflow-hidden md:order-2 md:overflow-visible">
               <label htmlFor="event-details-date" className={mobileHiddenLabelClassName}>Event date</label>
-              <div className="relative">
+              <div className="relative min-w-0 overflow-hidden md:overflow-visible">
                 <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
                   <CalendarIcon />
                 </span>
@@ -273,7 +274,7 @@ export default function InlineEventDetailsHeader({
                     updateForm({ date: event.target.value })
                     if (event.target.value) queueSave('date')
                   }}
-                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${mobileDateIsEmpty || !eventForm.date ? 'text-transparent md:text-stone-900' : ''}`}
+                  className={`${fieldClassName} max-w-full cursor-pointer pl-12 pr-10 text-left [min-inline-size:0] [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${mobileDateIsEmpty || !eventForm.date ? 'text-transparent md:text-stone-900' : ''}`}
                   aria-label="Event date"
                 />
                 {(mobileDateIsEmpty || !eventForm.date) && (
