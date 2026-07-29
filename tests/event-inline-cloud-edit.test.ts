@@ -61,6 +61,7 @@ test('serialized autosave preserves newer drafts and updates its saved baseline 
   assert.match(inlineHeaderSource, /if \(requestRef\.current \|\| pendingFieldsRef\.current\.size === 0\) return/)
   assert.match(inlineHeaderSource, /const formSnapshot = \{ \.\.\.eventFormRef\.current \}/)
   assert.match(inlineHeaderSource, /if \(pendingFieldsRef\.current\.size > 0\) \{[\s\S]*?await flushSaves\(\)/)
+  assert.match(inlineHeaderSource, /if \(!requestRef\.current && pendingFieldsRef\.current\.size === 0\) \{[\s\S]*?setSaveStatus\('saved'\)/)
   assert.match(inlineHeaderSource, /markFieldsSaved\(formSnapshot, fields\)/)
   assert.match(inlineHeaderSource, />Saved</)
   assert.match(inlineHeaderSource, /Saving…/)
@@ -75,6 +76,7 @@ test('failed autosave keeps the form value and exposes a compact Retry action', 
   assert.match(inlineHeaderSource, /function retrySave\(\)/)
   assert.match(inlineHeaderSource, /failedFieldsRef\.current\.forEach/)
   assert.match(inlineHeaderSource, /pendingFieldsRef\.current\.add\(field\)/)
+  assert.match(inlineHeaderSource, /if \(!venueName\.trim\(\)\) queueSave\('venueName'\)/)
   assert.doesNotMatch(inlineHeaderSource, /localStorage|sessionStorage/)
 })
 

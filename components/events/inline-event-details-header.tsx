@@ -167,10 +167,15 @@ export default function InlineEventDetailsHeader({
 
     if (pendingFieldsRef.current.size > 0) {
       await flushSaves()
-      return
     }
-    setSaveStatus('saved')
-    statusTimerRef.current = window.setTimeout(() => setSaveStatus('idle'), 1800)
+    if (!requestRef.current && pendingFieldsRef.current.size === 0) {
+      if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current)
+      setSaveStatus('saved')
+      statusTimerRef.current = window.setTimeout(() => {
+        statusTimerRef.current = null
+        setSaveStatus('idle')
+      }, 1800)
+    }
   }
 
   function retrySave() {
@@ -263,7 +268,10 @@ export default function InlineEventDetailsHeader({
                 inputId="event-details-venue"
                 inputClassName={`${fieldClassName} pr-9`}
                 showAddNew
-                onChange={(venueName) => updateForm({ venueName })}
+                onChange={(venueName) => {
+                  updateForm({ venueName })
+                  if (!venueName.trim()) queueSave('venueName')
+                }}
                 onSelect={(venue) => {
                   updateForm({ venueName: venue.name })
                   queueSave('venueName')
