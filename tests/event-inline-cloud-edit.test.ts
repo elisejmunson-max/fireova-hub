@@ -15,11 +15,8 @@ test('both Event Details flows render one shared section-level editor without ro
   assert.doesNotMatch(savedRouteSource, /Edit event details|eventEditing|setEventEditing|EventIdentityEditor/)
 })
 
-test('read mode is clean and one Edit event action reveals the complete labeled form', () => {
-  assert.match(inlineHeaderSource, /data-testid="event-details-read-mode"/)
-  assert.match(inlineHeaderSource, />\s*Edit event\s*</)
-  assert.match(inlineHeaderSource, /data-testid="event-details-edit-mode"/)
-  assert.match(inlineHeaderSource, /const \[isEditingEvent, setIsEditingEvent\]/)
+test('the complete labeled Event Details form is the default and only layout', () => {
+  assert.match(inlineHeaderSource, /data-testid="event-details-form"/)
   assert.match(inlineHeaderSource, /const \[eventForm, setEventForm\]/)
   assert.match(inlineHeaderSource, />Event name<\/label>/)
   assert.match(inlineHeaderSource, />Event type<\/span>/)
@@ -28,16 +25,24 @@ test('read mode is clean and one Edit event action reveals the complete labeled 
   assert.match(inlineHeaderSource, /placeholder="Untitled Event"/)
   assert.match(inlineHeaderSource, /md:grid-cols-3/)
   assert.match(inlineHeaderSource, /md:text-\[30px\]/)
+  assert.doesNotMatch(inlineHeaderSource, /event-details-read-mode|event-details-edit-mode/)
+  assert.doesNotMatch(inlineHeaderSource, /isEditingEvent|setIsEditingEvent|>\s*Edit event\s*<|>\s*Cancel\s*<|>\s*Save changes\s*</)
   assert.doesNotMatch(inlineHeaderSource, /Save event name|>✓</)
 })
 
-test('one Save changes action persists changed name type and date through the shared cloud callback', () => {
-  assert.match(inlineHeaderSource, /if \(trimmedName !== savedForm\.name\) updates\.name = trimmedName/)
-  assert.match(inlineHeaderSource, /if \(eventForm\.type !== savedForm\.type\) updates\.type = eventForm\.type/)
+test('name autosaves once after 700ms of inactivity and flushes immediately on blur', () => {
+  assert.match(inlineHeaderSource, /queueSave\('name', 700\)/)
+  assert.match(inlineHeaderSource, /if \(nameTimerRef\.current\) window\.clearTimeout\(nameTimerRef\.current\)/)
+  assert.match(inlineHeaderSource, /nameTimerRef\.current = window\.setTimeout\(\(\) => \{[\s\S]*?void flushSaves\(\)[\s\S]*?\}, delay\)/)
+  assert.match(inlineHeaderSource, /onBlur=\{\(\) => \{[\s\S]*?nameTimerRef\.current = null[\s\S]*?void flushSaves\(\)/)
+})
+
+test('type date and venue autosave immediately through the shared cloud callback', () => {
   assert.match(inlineHeaderSource, /type="date"/)
-  assert.match(inlineHeaderSource, /updates\.date = dateValueMode === 'input' \? eventForm\.date/)
-  assert.match(inlineHeaderSource, /\{saving \? 'Saving…' : 'Save changes'\}[\s\S]*?<\/button>/)
-  assert.match(inlineHeaderSource, /disabled=\{!canSave\}/)
+  assert.match(inlineHeaderSource, /queueSave\('type'\)/)
+  assert.match(inlineHeaderSource, /if \(event\.target\.value\) queueSave\('date'\)/)
+  assert.match(inlineHeaderSource, /onSelect=\{\(venue\) => \{[\s\S]*?queueSave\('venueName'\)/)
+  assert.match(inlineHeaderSource, /onAddNew=\{\(venueName\) => \{[\s\S]*?queueSave\('venueName'\)/)
   assert.match(uploadRouteSource, /onSave=\{savePendingEventMetadataToCloud\}/)
   assert.match(savedRouteSource, /onSave=\{saveEventMetadata\}/)
 })
@@ -46,21 +51,31 @@ test('venue selection and removal persist the existing cloud-backed relationship
   assert.match(inlineHeaderSource, /venueName: venue\.name/)
   assert.match(inlineHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineHeaderSource, /venueVendorId: venue\.vendorId/)
-  assert.match(inlineHeaderSource, /venueName: trimmedVenueName[\s\S]*?venueVendorId: undefined/)
+  assert.match(inlineHeaderSource, /venueName: nextVenueName[\s\S]*?venueVendorId: undefined/)
   assert.match(inlineHeaderSource, /placeholder="Select or add venue"/)
   assert.match(inlineHeaderSource, /<VenueAutocomplete/)
   assert.match(inlineHeaderSource, /showAddNew/)
 })
 
-test('unified form preserves drafts on failure and Cancel restores saved values', () => {
-  assert.match(inlineHeaderSource, /saving \? 'Saving…' : 'Save changes'/)
+test('serialized autosave preserves newer drafts and updates its saved baseline after success', () => {
+  assert.match(inlineHeaderSource, /if \(requestRef\.current \|\| pendingFieldsRef\.current\.size === 0\) return/)
+  assert.match(inlineHeaderSource, /const formSnapshot = \{ \.\.\.eventFormRef\.current \}/)
+  assert.match(inlineHeaderSource, /if \(pendingFieldsRef\.current\.size > 0\) \{[\s\S]*?await flushSaves\(\)/)
+  assert.match(inlineHeaderSource, /markFieldsSaved\(formSnapshot, fields\)/)
   assert.match(inlineHeaderSource, />Saved</)
-  assert.match(inlineHeaderSource, /const requestKey = JSON\.stringify\(updates\)/)
-  assert.match(inlineHeaderSource, /requestRef\.current && requestKeyRef\.current === requestKey/)
-  assert.match(inlineHeaderSource, /function cancelEditing\(\)[\s\S]*?setEventForm\(savedForm\)[\s\S]*?setIsEditingEvent\(false\)/)
+  assert.match(inlineHeaderSource, /Saving…/)
   assert.match(inlineHeaderSource, /catch \(error\)[\s\S]*?setSaveStatus\('error'\)/)
-  assert.doesNotMatch(inlineHeaderSource, /catch \(error\)[\s\S]*?setIsEditingEvent\(false\)/)
+  assert.doesNotMatch(inlineHeaderSource, /catch \(error\)[\s\S]*?setEventForm/)
   assert.doesNotMatch(inlineHeaderSource, /onChange=\{[\s\S]{0,180}onSave/)
+})
+
+test('failed autosave keeps the form value and exposes a compact Retry action', () => {
+  assert.match(inlineHeaderSource, /Couldn&apos;t save/)
+  assert.match(inlineHeaderSource, />\s*Retry\s*</)
+  assert.match(inlineHeaderSource, /function retrySave\(\)/)
+  assert.match(inlineHeaderSource, /failedFieldsRef\.current\.forEach/)
+  assert.match(inlineHeaderSource, /pendingFieldsRef\.current\.add\(field\)/)
+  assert.doesNotMatch(inlineHeaderSource, /localStorage|sessionStorage/)
 })
 
 test('upload-route edits reuse the canonical UUID and preserve attached media before reload', () => {

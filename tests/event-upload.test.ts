@@ -549,15 +549,19 @@ test('venue vendor credit stays attached to the inline venue relationship', () =
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
 })
 
-test('shared event identity uses clean read mode and one responsive edit form', () => {
+test('shared event identity always uses one responsive edit form', () => {
   assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
-  assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-read-mode"/)
-  assert.match(inlineEventDetailsHeaderSource, />\s*Edit event\s*</)
-  assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-edit-mode"/)
+  assert.match(inlineEventDetailsHeaderSource, /data-testid="event-details-form"/)
   assert.match(inlineEventDetailsHeaderSource, /md:text-\[30px\]/)
   assert.match(inlineEventDetailsHeaderSource, /md:grid-cols-3/)
   assert.match(inlineEventDetailsHeaderSource, />Event type<\/span>/)
   assert.match(inlineEventDetailsHeaderSource, />Event date<\/span>/)
+  assert.doesNotMatch(inlineEventDetailsHeaderSource, /event-details-read-mode|event-details-edit-mode/)
+  assert.doesNotMatch(inlineEventDetailsHeaderSource, /isEditingEvent|setIsEditingEvent|>\s*Edit event\s*<|>\s*Cancel\s*<|>\s*Save changes\s*</)
+  assert.match(inlineEventDetailsHeaderSource, /queueSave\('name', 700\)/)
+  assert.match(inlineEventDetailsHeaderSource, /queueSave\('type'\)/)
+  assert.match(inlineEventDetailsHeaderSource, /queueSave\('date'\)/)
+  assert.match(inlineEventDetailsHeaderSource, /queueSave\('venueName'\)/)
 })
 
 test('Create Event preview uses one bounded 4:5 review frame with overlay controls', () => {

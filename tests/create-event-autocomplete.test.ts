@@ -46,7 +46,7 @@ test('venue autocomplete supports selecting saved venues and retaining a brand-n
   assert.match(inlineEventDetailsHeaderSource, /venueName: venue\.name/)
   assert.match(inlineEventDetailsHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
-  assert.match(inlineEventDetailsHeaderSource, /venueName: trimmedVenueName/)
+  assert.match(inlineEventDetailsHeaderSource, /venueName: nextVenueName/)
   assert.match(inlineEventDetailsHeaderSource, /<VenueAutocomplete/)
   assert.match(inlineEventDetailsHeaderSource, /showAddNew/)
 
