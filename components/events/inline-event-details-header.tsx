@@ -40,6 +40,8 @@ export default function InlineEventDetailsHeader({
   nameError,
 }: InlineEventDetailsHeaderProps) {
   const [eventForm, setEventForm] = useState<EventDetailsForm>(() => createEventForm(value))
+  const [mobileTypeIsEmpty, setMobileTypeIsEmpty] = useState(() => isUnnamedDefaultType(value))
+  const [mobileDateIsEmpty, setMobileDateIsEmpty] = useState(() => isUnnamedDefaultDate(value))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
   const savedFormRef = useRef<EventDetailsForm>(createEventForm(value))
@@ -232,20 +234,27 @@ export default function InlineEventDetailsHeader({
           </div>
 
           <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="min-w-0">
+            <div className="relative min-w-0">
               <label htmlFor="event-details-type" className={mobileHiddenLabelClassName}>Event type</label>
               <select
                 id="event-details-type"
                 value={eventForm.type}
+                onPointerDown={() => setMobileTypeIsEmpty(false)}
                 onChange={(event) => {
+                  setMobileTypeIsEmpty(false)
                   updateForm({ type: event.target.value as FireovaEventType })
                   queueSave('type')
                 }}
-                className={`${fieldClassName} cursor-pointer`}
+                className={`${fieldClassName} cursor-pointer ${mobileTypeIsEmpty ? 'text-transparent md:text-stone-900' : ''}`}
                 aria-label="Event type"
               >
                 {FIREOVA_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
+              {mobileTypeIsEmpty && (
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
+                  Event Type
+                </span>
+              )}
             </div>
 
             <div className="relative min-w-0">
@@ -258,14 +267,16 @@ export default function InlineEventDetailsHeader({
                   id="event-details-date"
                   type="date"
                   value={eventForm.date}
+                  onPointerDown={() => setMobileDateIsEmpty(false)}
                   onChange={(event) => {
+                    setMobileDateIsEmpty(false)
                     updateForm({ date: event.target.value })
                     if (event.target.value) queueSave('date')
                   }}
-                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${eventForm.date ? '' : 'text-transparent md:text-stone-900'}`}
+                  className={`${fieldClassName} cursor-pointer pl-12 pr-10 text-left [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:[&::-webkit-calendar-picker-indicator]:opacity-100 ${mobileDateIsEmpty || !eventForm.date ? 'text-transparent md:text-stone-900' : ''}`}
                   aria-label="Event date"
                 />
-                {!eventForm.date && (
+                {(mobileDateIsEmpty || !eventForm.date) && (
                   <span className="pointer-events-none absolute left-12 top-1/2 -translate-y-1/2 text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
                     Event Date
                   </span>
@@ -324,6 +335,14 @@ function createEventForm(value: InlineEventDetailsValue): EventDetailsForm {
     date: toDateInputValue(value.date),
     venueName: value.venueName?.trim() ?? '',
   }
+}
+
+function isUnnamedDefaultType(value: InlineEventDetailsValue) {
+  return value.name.trim() === 'Untitled Event' && normalizeEventType(value.type) === 'Other'
+}
+
+function isUnnamedDefaultDate(value: InlineEventDetailsValue) {
+  return value.name.trim() === 'Untitled Event' && toDateInputValue(value.date) === toDateInputValue(new Date().toISOString())
 }
 
 function toDateInputValue(value: string) {

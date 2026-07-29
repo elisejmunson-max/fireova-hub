@@ -458,9 +458,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const selectedContentBankItem = selectedMedia ? getContentLibraryItemForMedia(selectedMedia.id) : null
 
   return (
-    <div className="min-h-full bg-white px-4 pb-24 pt-1 md:px-8 md:pb-10 md:pt-4">
+    <div className="-mt-1 min-h-full bg-white px-4 pb-24 pt-0 md:mt-0 md:px-8 md:pb-10 md:pt-4">
       <div className="mx-auto max-w-7xl">
-        <Link href="/events" className="mb-4 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-stone-500 transition hover:text-stone-950 md:min-h-0">
+        <Link href="/events" className="mb-2 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-stone-500 transition hover:text-stone-950 md:mb-4 md:min-h-0">
           <span className="md:hidden">← Events</span>
           <span className="hidden md:inline">← Back to Events</span>
         </Link>
