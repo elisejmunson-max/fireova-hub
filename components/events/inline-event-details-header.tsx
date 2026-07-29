@@ -258,9 +258,9 @@ export default function InlineEventDetailsHeader({
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-stone-400 md:hidden" aria-hidden="true">⌄</span>
             </div>
 
-            <div className="relative order-1 min-w-0 overflow-hidden md:order-2 md:overflow-visible">
+            <div className="relative order-1 min-w-0 md:order-2">
               <label htmlFor="event-details-date" className={mobileHiddenLabelClassName}>Event date</label>
-              <div className="relative min-w-0 overflow-hidden md:overflow-visible">
+              <div className="relative h-[52px] min-w-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm transition focus-within:border-stone-400 focus-within:ring-2 focus-within:ring-stone-200 md:contents">
                 <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-stone-500 md:hidden" aria-hidden="true">
                   <CalendarIcon />
                 </span>
@@ -274,7 +274,7 @@ export default function InlineEventDetailsHeader({
                     updateForm({ date: event.target.value })
                     if (event.target.value) queueSave('date')
                   }}
-                  className={`${fieldClassName} max-w-full cursor-pointer pl-12 pr-10 text-left text-transparent [min-inline-size:0] [text-align:left] [&::-webkit-calendar-picker-indicator]:opacity-0 md:px-3 md:text-stone-900 md:[&::-webkit-calendar-picker-indicator]:opacity-100`}
+                  className={`${fieldClassName} max-w-full cursor-pointer border-transparent bg-transparent pl-12 pr-10 text-left text-transparent shadow-none [min-inline-size:0] [text-align:left] hover:border-transparent focus:border-transparent focus:ring-0 [&::-webkit-calendar-picker-indicator]:opacity-0 md:border-stone-200 md:bg-white md:px-3 md:text-stone-900 md:shadow-sm md:hover:border-stone-300 md:focus:border-stone-400 md:focus:ring-2 md:[&::-webkit-calendar-picker-indicator]:opacity-100`}
                   aria-label="Event date"
                 />
                 <span className="pointer-events-none absolute left-12 right-10 top-1/2 -translate-y-1/2 truncate text-left text-base font-medium text-[#111827] md:hidden" aria-hidden="true">
