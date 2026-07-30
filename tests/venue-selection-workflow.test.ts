@@ -17,8 +17,19 @@ test('Venue row opens one responsive selection workflow on mobile and desktop', 
   assert.match(workflowSource, /'Select Venue'/)
   assert.match(workflowSource, /placeholder="Search venues\.\.\."/)
   assert.match(workflowSource, />\s*\+ Add New Venue\s*</)
+  assert.match(workflowSource, /aria-label="Clear venue search"/)
+  assert.match(workflowSource, />\s*Cancel\s*</)
   assert.match(workflowSource, />Saved Venues<\/h3>/)
   assert.match(workflowSource, /role="listbox"/)
+})
+
+test('venue search can always be cleared or dismissed without a dead end', () => {
+  assert.match(workflowSource, /onClick=\{closeSelector\}[\s\S]*?>\s*← Back\s*</)
+  assert.match(workflowSource, /function clearSearch\(\)[\s\S]*?setQuery\(''\)[\s\S]*?searchRef\.current\?\.focus\(\)/)
+  assert.match(workflowSource, /function cancelSearch\(\)[\s\S]*?setQuery\(''\)[\s\S]*?searchRef\.current\?\.blur\(\)/)
+  assert.match(workflowSource, /No venues found\./)
+  assert.match(workflowSource, /Add &quot;\{query\.trim\(\)\}&quot; as a new venue/)
+  assert.match(workflowSource, /!query\.trim\(\) && \([\s\S]*?>\s*\+ Add New Venue\s*</)
 })
 
 test('saved venue rows include location and return immediately after selection', () => {

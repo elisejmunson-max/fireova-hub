@@ -36,6 +36,7 @@ export default function VenueSelectionWorkflow({
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'list' | 'add'>('list')
   const [query, setQuery] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
   const [availableVenues, setAvailableVenues] = useState(() => mergeVenueOptions(venues))
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -112,8 +113,26 @@ export default function VenueSelectionWorkflow({
   function closeSelector() {
     setOpen(false)
     setMode('list')
+    setSearchFocused(false)
     setError('')
     window.setTimeout(() => triggerRef.current?.focus())
+  }
+
+  function startAddingVenue(name = '') {
+    setMode('add')
+    setNewVenue({ ...EMPTY_VENUE_FORM, name })
+    setError('')
+  }
+
+  function clearSearch() {
+    setQuery('')
+    searchRef.current?.focus()
+  }
+
+  function cancelSearch() {
+    setQuery('')
+    setSearchFocused(false)
+    searchRef.current?.blur()
   }
 
   function selectVenue(venue: SavedVenueOption) {
@@ -173,7 +192,7 @@ export default function VenueSelectionWorkflow({
             <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-stone-200 px-4">
               <button
                 type="button"
-                onClick={mode === 'add' ? () => { setMode('list'); setError('') } : closeSelector}
+                onClick={closeSelector}
                 className="min-h-11 justify-self-start rounded-lg px-1 text-sm font-semibold text-stone-600 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
               >
                 ← Back
@@ -193,24 +212,51 @@ export default function VenueSelectionWorkflow({
             {mode === 'list' ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="shrink-0 space-y-3 border-b border-stone-100 p-4 md:p-5">
-                  <label>
-                    <span className="sr-only">Search venues</span>
-                    <input
-                      ref={searchRef}
-                      type="search"
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Search venues..."
-                      className="h-12 w-full rounded-xl border border-stone-200 bg-white px-4 text-base text-stone-950 outline-none placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setMode('add'); setNewVenue({ ...EMPTY_VENUE_FORM, name: query.trim() }); setError('') }}
-                    className="flex min-h-12 w-full items-center rounded-xl border border-stone-300 px-4 text-left text-sm font-semibold text-stone-900 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
-                  >
-                    + Add New Venue
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <label className="relative min-w-0 flex-1">
+                      <span className="sr-only">Search venues</span>
+                      <input
+                        ref={searchRef}
+                        type="search"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        onFocus={() => setSearchFocused(true)}
+                        onBlur={() => setSearchFocused(false)}
+                        placeholder="Search venues..."
+                        className="h-12 w-full rounded-xl border border-stone-200 bg-white px-4 pr-11 text-base text-stone-950 outline-none placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 [&::-webkit-search-cancel-button]:appearance-none"
+                      />
+                      {query && (
+                        <button
+                          type="button"
+                          aria-label="Clear venue search"
+                          onPointerDown={(event) => event.preventDefault()}
+                          onClick={clearSearch}
+                          className="absolute right-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-full text-xl leading-none text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </label>
+                    {searchFocused && (
+                      <button
+                        type="button"
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={cancelSearch}
+                        className="min-h-11 shrink-0 rounded-lg px-1 text-base font-medium text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 md:hidden"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                  {!query.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => startAddingVenue()}
+                      className="flex min-h-12 w-full items-center rounded-xl border border-stone-300 px-4 text-left text-sm font-semibold text-stone-900 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                    >
+                      + Add New Venue
+                    </button>
+                  )}
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-4 md:px-5 md:pb-5">
@@ -237,7 +283,18 @@ export default function VenueSelectionWorkflow({
                       </button>
                     ))}
                     {!loading && matches.length === 0 && (
-                      <p className="py-8 text-center text-sm text-stone-500">No saved venues match your search.</p>
+                      <div className="flex flex-col items-center py-8 text-center">
+                        <p className="text-sm text-stone-500">No venues found.</p>
+                        {query.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => startAddingVenue(query.trim())}
+                            className="mt-3 min-h-11 rounded-lg px-3 text-sm font-semibold text-stone-900 underline decoration-stone-300 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                          >
+                            Add &quot;{query.trim()}&quot; as a new venue
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
