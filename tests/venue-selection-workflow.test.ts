@@ -13,6 +13,8 @@ test('Venue row opens one responsive selection workflow on mobile and desktop', 
   assert.match(workflowSource, /fixed inset-0 z-\[80\] bg-white/)
   assert.match(workflowSource, /md:flex md:items-center md:justify-center md:bg-black\/35/)
   assert.match(workflowSource, /md:max-w-2xl md:rounded-2xl md:shadow-2xl/)
+  assert.match(workflowSource, /min-h-\[calc\(3\.5rem\+env\(safe-area-inset-top\)\)\]/)
+  assert.match(workflowSource, /pt-\[env\(safe-area-inset-top\)\] md:min-h-14 md:pt-0/)
   assert.match(workflowSource, />\s*← Back\s*</)
   assert.match(workflowSource, /'Select Venue'/)
   assert.match(workflowSource, /placeholder="Search venues\.\.\."/)

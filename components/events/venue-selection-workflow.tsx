@@ -189,7 +189,7 @@ export default function VenueSelectionWorkflow({
             aria-labelledby="venue-selection-title"
             className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white md:h-auto md:max-h-[min(760px,calc(100vh-48px))] md:max-w-2xl md:rounded-2xl md:shadow-2xl"
           >
-            <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-stone-200 px-4">
+            <header className="grid min-h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-stone-200 px-4 pt-[env(safe-area-inset-top)] md:min-h-14 md:pt-0">
               <button
                 type="button"
                 onClick={closeSelector}
