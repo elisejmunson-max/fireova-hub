@@ -12,6 +12,7 @@ import { getSavedVenueOptions, searchSavedVenues } from '@/lib/local-fireova-ven
 
 const createEventPageSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
 const inlineEventDetailsHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
+const vendorSelectionWorkflowSource = fs.readFileSync('components/events/vendor-selection-workflow.tsx', 'utf8')
 
 test('saved event venues are deduplicated case-insensitively and missing Instagram is merged', () => {
   const venues = getSavedVenueOptions([
@@ -105,11 +106,11 @@ test('quick Add Vendor mode defaults to one search box without the long form', (
   assert.match(createEventPageSource, /quickSearchInputRef\.current\?\.focus\(\)/)
 })
 
-test('Add Vendor uses a centered desktop modal and compact mobile sheet', () => {
-  assert.match(createEventPageSource, /fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6/)
-  assert.match(createEventPageSource, /max-h-\[85vh\] w-full max-w-\[520px\]/)
-  assert.match(createEventPageSource, /sm:max-h-\[70vh\] sm:rounded-2xl/)
-  assert.doesNotMatch(createEventPageSource, /absolute inset-y-0 right-0/)
+test('Add Vendor uses full-screen mobile selection and a centered desktop modal', () => {
+  assert.match(createEventPageSource, /<VendorSelectionWorkflow/)
+  assert.match(vendorSelectionWorkflowSource, /fixed inset-0 z-\[80\] bg-white/)
+  assert.match(vendorSelectionWorkflowSource, /md:flex md:items-center md:justify-center md:bg-black\/35/)
+  assert.match(vendorSelectionWorkflowSource, /md:max-w-2xl md:rounded-2xl md:shadow-2xl/)
 })
 
 test('Add Vendor offers an explicit new-vendor path before searching', () => {

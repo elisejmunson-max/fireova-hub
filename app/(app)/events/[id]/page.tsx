@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import LocalMedia from '@/components/local-media'
-import QuickAddVendorModal from '@/components/events/quick-add-vendor-modal'
+import VendorSelectionWorkflow from '@/components/events/vendor-selection-workflow'
 import InlineEventDetailsHeader from '@/components/events/inline-event-details-header'
 import { deleteIndexedDbMediaByIds } from '@/lib/local-fireova-media'
 import {
@@ -352,6 +352,15 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const eventVendorDisplays = (event.vendors ?? [])
     .map((eventVendor) => getDisplayVendorForEventVendor(eventVendor, vendors))
     .filter((vendor) => vendor.category !== 'Venue' && (vendor.businessName || vendor.instagramHandle))
+  const selectedEventVendorIds = Array.from(new Set((event.vendors ?? []).flatMap((eventVendor) => {
+    if (eventVendor.category === 'Venue') return []
+    if (eventVendor.vendorId) return [eventVendor.vendorId]
+    const handle = normalizeInstagramHandle(eventVendor.instagramOverride ?? eventVendor.instagramHandle)
+    const match = handle
+      ? vendors.find((vendor) => normalizeInstagramHandle(vendor.instagramHandle) === handle)
+      : undefined
+    return match ? [match.id] : []
+  })))
   const hasGeneratedPosts = postDrafts.length > 0
   const contentActionHref = getEventContentStudioEntryHref(event, postDrafts)
   const galleryCapped = mediaTiles.length > 20 && !galleryExpanded
@@ -437,6 +446,39 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     })
     setVendors(readLocalVendors())
     return quickAddSavedVendor(vendor)
+  }
+
+  async function saveSelectedEventVendors(selectedVendors: FireovaVendor[]) {
+    if (!localEvent) throw new Error('The canonical event is not loaded.')
+    const existingVendors = localEvent.vendors ?? []
+    const nextVendors = selectedVendors.map((vendor) => {
+      const handle = normalizeInstagramHandle(vendor.instagramHandle)
+      const existing = existingVendors.find((item) =>
+        item.vendorId === vendor.id
+        || (handle && normalizeInstagramHandle(item.instagramOverride ?? item.instagramHandle) === handle)
+      )
+      return {
+        id: existing?.id ?? `event-vendor-${Date.now()}-${crypto.randomUUID()}`,
+        vendorId: vendor.id,
+        category: vendor.category,
+        notes: existing?.notes ?? vendor.notes ?? '',
+      }
+    })
+    const updatedEvent: LocalFireovaEvent = {
+      ...localEvent,
+      vendors: nextVendors,
+      id: localEvent.id,
+      media: localEvent.media,
+      cover: localEvent.cover,
+      createdAt: localEvent.createdAt,
+      updatedAt: new Date().toISOString(),
+    }
+    const saved = await saveEventToCloud(updatedEvent)
+    if (saved.id !== localEvent.id) throw new Error('Fireova returned a different event UUID.')
+    const confirmed = await loadEventFromCloud(localEvent.id)
+    if (confirmed.id !== localEvent.id) throw new Error('The saved vendors could not be confirmed by UUID.')
+    setLocalEvent(saveLocalEvent(confirmed))
+    await syncEventsWithCloud()
   }
 
   function removeSavedVenue() {
@@ -637,24 +679,13 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       {vendorsPanelOpen && (
-        vendorToEditId ? (
-          <VendorDrawer
-            event={event}
-            eventName={event.name}
-            vendors={eventVendorDisplays}
-            initialEditingVendorId={vendorToEditId}
-            onClose={closeVendorsDrawer}
-            onVendorsChange={saveEventVendors}
-            onDirectoryChange={() => setVendors(readLocalVendors())}
-          />
-        ) : (
-          <QuickAddVendorModal
-            directoryVendors={vendors}
-            onAddSaved={quickAddSavedVendor}
-            onAddNew={quickAddNewVendor}
-            onClose={closeVendorsDrawer}
-          />
-        )
+        <VendorSelectionWorkflow
+          directoryVendors={vendors}
+          selectedVendorIds={selectedEventVendorIds}
+          onDone={saveSelectedEventVendors}
+          onDirectoryChange={setVendors}
+          onClose={closeVendorsDrawer}
+        />
       )}
       {confirmingDelete && (
         <DeleteEventDialog eventName={event.name} onCancel={() => setConfirmingDelete(false)} onConfirm={() => void confirmDeleteEvent()} />

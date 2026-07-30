@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import LocalMedia from '@/components/local-media'
-import QuickAddVendorModal from '@/components/events/quick-add-vendor-modal'
+import VendorSelectionWorkflow from '@/components/events/vendor-selection-workflow'
 import InlineEventDetailsHeader from '@/components/events/inline-event-details-header'
 import { isMediaIdReferencedElsewhere } from '@/lib/local-fireova-content-bank'
 import { deleteIndexedDbMediaByIds } from '@/lib/local-fireova-media'
@@ -134,6 +134,9 @@ export default function EventsPage() {
   )
   const pendingVenuePreview = getPendingVenuePreview(pendingEventDetails)
   const pendingNonVenueVendors = getPendingNonVenueVendors(pendingEventDetails)
+  const selectedPendingVendorIds = pendingNonVenueVendors
+    .map((vendor) => vendor.vendorId)
+    .filter((vendorId): vendorId is string => Boolean(vendorId))
   const uploadBusy = uploadPrepState !== 'idle' && uploadPrepState !== 'error'
 
   useEffect(() => {
@@ -571,6 +574,28 @@ export default function EventsPage() {
     })
   }
 
+  function applyPendingVendorSelection(selectedVendors: FireovaVendor[]) {
+    const existingVendors = pendingEventDetails.vendors ?? []
+    const nextVendors = selectedVendors.map((vendor) => {
+      const handle = normalizeInstagramHandle(vendor.instagramHandle)
+      const existing = existingVendors.find((item) =>
+        item.vendorId === vendor.id
+        || (handle && normalizeInstagramHandle(item.instagramOverride ?? item.instagramHandle) === handle)
+      )
+      return {
+        id: existing?.id ?? `pending-event-vendor-${Date.now()}-${crypto.randomUUID()}`,
+        vendorId: vendor.id,
+        category: vendor.category,
+        businessName: vendor.businessName,
+        instagramOverride: handle ?? undefined,
+        notes: existing?.notes ?? vendor.notes,
+      }
+    })
+    updatePendingEventDetails({ vendors: nextVendors })
+    setEditingPendingVendorId(null)
+    setPendingVendorForm(EMPTY_PENDING_VENDOR_FORM)
+  }
+
   function removePendingVendor(vendorId: string) {
     updatePendingEventDetails({
       vendors: removePendingEventVendor(pendingEventDetails.vendors ?? [], vendorId),
@@ -979,23 +1004,11 @@ export default function EventsPage() {
                   </div>
                   </div>
                   {pendingVendorDrawerOpen && (
-                    editingPendingVendorId ? <PendingVendorDrawer
-                      mode={editingPendingVendorId ? 'edit' : 'add'}
-                      form={pendingVendorForm}
-                      savedVendors={vendorDirectory}
-                      onChange={(updates) => setPendingVendorForm((current) => ({ ...current, ...updates }))}
-                      onSave={savePendingVendor}
-                      onQuickAddSaved={quickAddSavedVendor}
-                      onQuickAddNew={quickAddNewVendor}
-                      onClose={() => {
-                        setPendingVendorDrawerOpen(false)
-                        setEditingPendingVendorId(null)
-                        setPendingVendorForm(EMPTY_PENDING_VENDOR_FORM)
-                      }}
-                    /> : <QuickAddVendorModal
+                    <VendorSelectionWorkflow
                       directoryVendors={vendorDirectory}
-                      onAddSaved={quickAddSavedVendor}
-                      onAddNew={quickAddNewVendor}
+                      selectedVendorIds={selectedPendingVendorIds}
+                      onDone={applyPendingVendorSelection}
+                      onDirectoryChange={setVendorDirectory}
                       onClose={() => {
                         setPendingVendorDrawerOpen(false)
                         setEditingPendingVendorId(null)

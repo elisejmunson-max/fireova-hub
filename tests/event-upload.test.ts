@@ -32,7 +32,7 @@ import { getDisplayVendorForEventVendor } from '@/lib/local-fireova-vendors'
 const createEventPageSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
 const eventDetailSource = fs.readFileSync('app/(app)/events/[id]/page.tsx', 'utf8')
 const inlineEventDetailsHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
-const quickAddVendorModalSource = fs.readFileSync('components/events/quick-add-vendor-modal.tsx', 'utf8')
+const vendorSelectionWorkflowSource = fs.readFileSync('components/events/vendor-selection-workflow.tsx', 'utf8')
 const sidebarSource = fs.readFileSync('components/layout/sidebar.tsx', 'utf8')
 
 test('event cards open Event Details directly without an intermediate overview action', () => {
@@ -51,7 +51,7 @@ test('canonical and upload Event Details routes share the inline-edit header', (
   assert.doesNotMatch(eventDetailSource, /Edit event details|setEventEditing|eventEditing|EventIdentityEditor/)
   assert.match(eventDetailSource, /data-testid="saved-event-editor"/)
   assert.match(eventDetailSource, /lg:grid-cols-\[minmax\(0,47fr\)_minmax\(0,53fr\)\]/)
-  assert.match(eventDetailSource, /<QuickAddVendorModal/)
+  assert.match(eventDetailSource, /<VendorSelectionWorkflow/)
 })
 test('canonical event edits await Supabase update and same-UUID reload', () => {
   const saveStart = eventDetailSource.indexOf('async function saveEventMetadata')
@@ -72,21 +72,19 @@ test('canonical Event Details initially loads from Supabase instead of local bro
   assert.match(eventDetailSource, /This event could not be loaded from Fireova Cloud/)
 })
 
-test('saved Event Details adds a selected directory vendor before closing the modal', () => {
-  const quickAddStart = eventDetailSource.indexOf('function quickAddSavedVendor')
-  const quickAddEnd = eventDetailSource.indexOf('function quickAddNewVendor', quickAddStart)
-  const quickAddSource = eventDetailSource.slice(quickAddStart, quickAddEnd)
-  const saveStart = eventDetailSource.indexOf('function saveEventVendors')
-  const saveEnd = eventDetailSource.indexOf('function removeSavedVendor', saveStart)
+test('saved Event Details saves selected directory vendors before closing the workflow', () => {
+  const saveStart = eventDetailSource.indexOf('async function saveSelectedEventVendors')
+  const saveEnd = eventDetailSource.indexOf('function removeSavedVenue', saveStart)
   const saveSource = eventDetailSource.slice(saveStart, saveEnd)
 
-  assert.match(saveSource, /saveLocalEvent\(\{ \.\.\.localEvent, vendors: nextVendors \}\)/)
-  assert.match(saveSource, /console\.error\('Unable to save event vendors'/)
-  assert.match(quickAddSource, /const updatedEvent = saveEventVendors/)
-  assert.match(quickAddSource, /if \(!updatedEvent\) return false/)
-  assert.ok(quickAddSource.indexOf('if (!updatedEvent) return false') < quickAddSource.indexOf('closeVendorsDrawer()'))
-  assert.match(quickAddVendorModalSource, /onClick=\{\(\) => select\(vendor\)\}/)
-  assert.match(quickAddVendorModalSource, /This vendor could not be added\. Please try again\./)
+  assert.match(saveSource, /await saveEventToCloud\(updatedEvent\)/)
+  assert.match(saveSource, /await loadEventFromCloud\(localEvent\.id\)/)
+  assert.match(saveSource, /saveLocalEvent\(confirmed\)/)
+  assert.match(vendorSelectionWorkflowSource, /await onDone\(availableVendors\.filter/)
+  const finishStart = vendorSelectionWorkflowSource.indexOf('async function finishSelection')
+  const finishEnd = vendorSelectionWorkflowSource.indexOf('async function saveNewVendor', finishStart)
+  const finishSource = vendorSelectionWorkflowSource.slice(finishStart, finishEnd)
+  assert.ok(finishSource.indexOf('await onDone') < finishSource.indexOf('onClose()'))
 })
 
 test('adding saved event media preserves the current main preview selection', () => {
@@ -493,7 +491,7 @@ test('Create Event uses responsive non-overflowing section layouts', () => {
   assert.match(createEventPageSource, /className="max-w-2xl" data-testid="event-review-summary"/)
   assert.match(createEventPageSource, /<InlineEventDetailsHeader/)
   assert.match(createEventPageSource, /group relative min-w-0/)
-  assert.match(quickAddVendorModalSource, /max-w-\[520px\]/)
+  assert.match(vendorSelectionWorkflowSource, /md:max-w-2xl/)
   assert.doesNotMatch(createEventPageSource, /absolute inset-y-0 right-0/)
 })
 
