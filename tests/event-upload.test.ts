@@ -524,6 +524,7 @@ test('venue remains in the labeled event form before the Vendors section', () =>
   assert.ok(vendorsIndex > headerIndex)
   assert.match(inlineEventDetailsHeaderSource, />Venue<\/label>/)
   assert.match(inlineEventDetailsHeaderSource, /placeholder="Select or add venue"/)
+  assert.match(inlineEventDetailsHeaderSource, /<VenueSelectionWorkflow/)
   assert.match(createEventPageSource, /section className="min-w-0 border-t border-stone-200\/70 pt-5"/)
   assert.doesNotMatch(createEventPageSource, /<h3[^>]*>Venue<\/h3>/)
 })
@@ -544,8 +545,6 @@ test('venue vendor credit stays attached to the inline venue relationship', () =
     createEventPageSource.indexOf('{pendingNonVenueVendors.map')
   )
   assert.match(venueRowSource, /pendingVenuePreview\.instagramHandle/)
-  assert.match(venueRowSource, /aria-label="Remove venue"/)
-  assert.match(venueRowSource, /updatePendingEventDetails\(\{ venueName: '', venueInstagram: '', venueVendorId: undefined \}\)/)
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
 })
 

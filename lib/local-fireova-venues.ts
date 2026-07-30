@@ -2,7 +2,10 @@ import type { LocalFireovaEvent } from '@/lib/local-fireova-events'
 import { formatInstagramHandle, normalizeInstagramHandle, type FireovaVendor } from '@/lib/local-fireova-vendors'
 
 export type SavedVenueOption = {
+  id?: string
   name: string
+  location?: string
+  notes?: string
   instagram?: string
   vendorId?: string
 }
@@ -17,8 +20,10 @@ export function getSavedVenueOptions(events: LocalFireovaEvent[], vendors: Fireo
     const key = normalizeVenueName(name)
     const current = venues.get(key)
     const instagram = formatInstagramHandle(event.venueInstagram)
+    const location = current?.location ?? event.venueLocation?.trim()
     venues.set(key, {
       name: current?.name ?? name,
+      ...(location ? { location } : {}),
       instagram: current?.instagram ?? instagram,
       ...((current?.vendorId ?? event.venueVendorId) ? { vendorId: current?.vendorId ?? event.venueVendorId } : {}),
     })
@@ -48,6 +53,7 @@ export function searchSavedVenues(venues: SavedVenueOption[], query: string) {
 
   return venues.filter((venue) =>
     normalizeVenueName(venue.name).includes(normalizedQuery) ||
+    venue.location?.toLowerCase().includes(normalizedQuery) ||
     normalizeInstagramHandle(venue.instagram)?.includes(normalizedQuery)
   )
 }

@@ -88,6 +88,7 @@ create table if not exists public.venues (
   name text not null,
   normalized_name text not null,
   location text,
+  notes text,
   instagram_handle text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

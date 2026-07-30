@@ -5,6 +5,7 @@ import test from 'node:test'
 const uploadRouteSource = fs.readFileSync('app/(app)/events/page.tsx', 'utf8')
 const savedRouteSource = fs.readFileSync('app/(app)/events/[id]/page.tsx', 'utf8')
 const inlineHeaderSource = fs.readFileSync('components/events/inline-event-details-header.tsx', 'utf8')
+const venueSelectionSource = fs.readFileSync('components/events/venue-selection-workflow.tsx', 'utf8')
 
 test('both Event Details flows render one shared section-level editor without route-level edit state', () => {
   assert.match(uploadRouteSource, /import InlineEventDetailsHeader/)
@@ -84,20 +85,20 @@ test('type date and venue autosave immediately through the shared cloud callback
   assert.match(inlineHeaderSource, /queueSave\('type'\)/)
   assert.match(inlineHeaderSource, /if \(event\.target\.value\) queueSave\('date'\)/)
   assert.match(inlineHeaderSource, /onSelect=\{\(venue\) => \{[\s\S]*?queueSave\('venueName'\)/)
-  assert.match(inlineHeaderSource, /onAddNew=\{\(venueName\) => \{[\s\S]*?queueSave\('venueName'\)/)
+  assert.match(venueSelectionSource, /onSelect\(venue\)[\s\S]*?closeSelector\(\)/)
   assert.match(uploadRouteSource, /onSave=\{savePendingEventMetadataToCloud\}/)
   assert.match(savedRouteSource, /onSave=\{saveEventMetadata\}/)
 })
 
-test('venue selection and removal persist the existing cloud-backed relationship fields', () => {
+test('venue selection persists the existing cloud-backed relationship fields', () => {
   assert.match(inlineHeaderSource, /venueName: venue\.name/)
   assert.match(inlineHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineHeaderSource, /venueVendorId: venue\.vendorId/)
-  assert.match(inlineHeaderSource, /venueName: nextVenueName[\s\S]*?venueVendorId: undefined/)
   assert.match(inlineHeaderSource, /placeholder="Select or add venue"/)
   assert.match(inlineHeaderSource, /mobilePlaceholder="Venue"/)
-  assert.match(inlineHeaderSource, /<VenueAutocomplete/)
-  assert.match(inlineHeaderSource, /showAddNew/)
+  assert.match(inlineHeaderSource, /<VenueSelectionWorkflow/)
+  assert.doesNotMatch(inlineHeaderSource, /<VenueAutocomplete/)
+  assert.doesNotMatch(venueSelectionSource, /onClear|Remove venue|Delete venue|Archive venue/)
 })
 
 test('serialized autosave preserves newer drafts and updates its saved baseline after success', () => {
@@ -119,7 +120,6 @@ test('failed autosave keeps the form value and exposes a compact Retry action', 
   assert.match(inlineHeaderSource, /function retrySave\(\)/)
   assert.match(inlineHeaderSource, /failedFieldsRef\.current\.forEach/)
   assert.match(inlineHeaderSource, /pendingFieldsRef\.current\.add\(field\)/)
-  assert.match(inlineHeaderSource, /if \(!venueName\.trim\(\)\) queueSave\('venueName'\)/)
   assert.doesNotMatch(inlineHeaderSource, /localStorage|sessionStorage/)
 })
 

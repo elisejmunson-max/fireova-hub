@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import VenueAutocomplete from '@/components/events/venue-autocomplete'
+import VenueSelectionWorkflow from '@/components/events/venue-selection-workflow'
 import {
   FIREOVA_EVENT_TYPES,
   normalizeEventType,
@@ -28,6 +28,7 @@ type EventDetailsForm = {
   type: FireovaEventType
   date: string
   venueName: string
+  venueLocation: string
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -51,6 +52,7 @@ export default function InlineEventDetailsHeader({
   const requestRef = useRef<Promise<unknown> | null>(null)
   const nameTimerRef = useRef<number | null>(null)
   const statusTimerRef = useRef<number | null>(null)
+  const selectedVenueRef = useRef<SavedVenueOption | null>(findVenue(venues, eventForm.venueName))
 
   useEffect(() => {
     const nextSavedForm = createEventForm(value)
@@ -63,9 +65,10 @@ export default function InlineEventDetailsHeader({
       savedFormRef.current = nextSavedForm
       const nextForm = hasUnsavedChanges ? currentForm : nextSavedForm
       eventFormRef.current = nextForm
+      if (!hasUnsavedChanges) selectedVenueRef.current = findVenue(venues, nextForm.venueName)
       return nextForm
     })
-  }, [value.date, value.name, value.type, value.venueName])
+  }, [value.date, value.name, value.type, value.venueLocation, value.venueName])
 
   useEffect(() => () => {
     if (nameTimerRef.current) window.clearTimeout(nameTimerRef.current)
@@ -90,12 +93,13 @@ export default function InlineEventDetailsHeader({
       updates.date = dateValueMode === 'input' ? form.date : formatDateInputForDisplay(form.date)
     }
     if (fields.has('venueName') && nextVenueName !== savedForm.venueName) {
-      const venue = venues.find((option) =>
-        option.name.localeCompare(nextVenueName, undefined, { sensitivity: 'accent' }) === 0
-      )
+      const selectedVenue = selectedVenueRef.current
+      const venue = selectedVenue && namesMatch(selectedVenue.name, nextVenueName)
+        ? selectedVenue
+        : findVenue(venues, nextVenueName)
       Object.assign(updates, venue ? {
         venueName: venue.name,
-        venueLocation: '',
+        venueLocation: venue.location ?? '',
         venueInstagram: venue.instagram ?? '',
         venueVendorId: venue.vendorId,
       } : {
@@ -112,7 +116,10 @@ export default function InlineEventDetailsHeader({
     const nextSavedForm = { ...savedFormRef.current }
     fields.forEach((field) => {
       if (field === 'name') nextSavedForm.name = form.name.trim()
-      else if (field === 'venueName') nextSavedForm.venueName = form.venueName.trim()
+      else if (field === 'venueName') {
+        nextSavedForm.venueName = form.venueName.trim()
+        nextSavedForm.venueLocation = form.venueLocation.trim()
+      }
       else if (field === 'type') nextSavedForm.type = form.type
       else nextSavedForm.date = form.date
     })
@@ -286,25 +293,16 @@ export default function InlineEventDetailsHeader({
 
             <div className="relative order-3 col-span-2 min-w-0 md:col-span-1">
               <label htmlFor="event-details-venue" className={mobileHiddenLabelClassName}>Venue</label>
-              <VenueAutocomplete
+              <VenueSelectionWorkflow
                 value={eventForm.venueName}
                 venues={venues}
                 placeholder="Select or add venue"
                 mobilePlaceholder="Venue"
-                ariaLabel="Venue"
                 inputId="event-details-venue"
-                inputClassName={`${fieldClassName} pr-10 placeholder:text-transparent md:placeholder:text-stone-400`}
-                showAddNew
-                onChange={(venueName) => {
-                  updateForm({ venueName })
-                  if (!venueName.trim()) queueSave('venueName')
-                }}
+                buttonClassName={`${fieldClassName} flex items-center justify-between pr-4 text-left`}
                 onSelect={(venue) => {
-                  updateForm({ venueName: venue.name })
-                  queueSave('venueName')
-                }}
-                onAddNew={(venueName) => {
-                  updateForm({ venueName })
+                  selectedVenueRef.current = venue
+                  updateForm({ venueName: venue.name, venueLocation: venue.location ?? '' })
                   queueSave('venueName')
                 }}
               />
@@ -333,6 +331,7 @@ function createEventForm(value: InlineEventDetailsValue): EventDetailsForm {
     type: normalizeEventType(value.type),
     date: toDateInputValue(value.date),
     venueName: value.venueName?.trim() ?? '',
+    venueLocation: value.venueLocation?.trim() ?? '',
   }
 }
 
@@ -379,5 +378,16 @@ function formsMatch(left: EventDetailsForm, right: EventDetailsForm) {
     && left.type === right.type
     && left.date === right.date
     && left.venueName.trim() === right.venueName
+    && left.venueLocation.trim() === right.venueLocation
   )
+}
+
+function namesMatch(left: string, right: string) {
+  return left.localeCompare(right, undefined, { sensitivity: 'accent' }) === 0
+}
+
+function findVenue(venues: SavedVenueOption[], name: string) {
+  const normalizedName = name.trim()
+  if (!normalizedName) return null
+  return venues.find((venue) => namesMatch(venue.name, normalizedName)) ?? null
 }

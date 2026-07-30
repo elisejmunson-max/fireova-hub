@@ -1,6 +1,6 @@
 'use client'
 
-import VenueAutocomplete from '@/components/events/venue-autocomplete'
+import VenueSelectionWorkflow from '@/components/events/venue-selection-workflow'
 import { FIREOVA_EVENT_TYPES, type FireovaEventType } from '@/lib/local-fireova-events'
 import type { SavedVenueOption } from '@/lib/local-fireova-venues'
 
@@ -34,7 +34,15 @@ export default function EventIdentityEditor({ name, date, type, venueName, venue
         <select value={type} disabled={disabled} onChange={(event) => onTypeChange(event.target.value as FireovaEventType)} className="min-h-9 rounded-lg bg-white px-3 text-sm ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-900" aria-label="Event Type">{FIREOVA_EVENT_TYPES.map((eventType) => <option key={eventType} value={eventType}>{eventType}</option>)}</select>
         <input type="date" value={date} disabled={disabled} onChange={(event) => onDateChange(event.target.value)} className="min-h-9 rounded-lg bg-white px-3 text-sm ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-900" aria-label="Event Date" />
       </div>
-      <VenueAutocomplete value={venueName} venues={venues} disabled={disabled} onChange={onVenueChange} onSelect={onVenueSelect} />
+      <VenueSelectionWorkflow
+        value={venueName}
+        venues={venues}
+        disabled={disabled}
+        onSelect={(venue) => {
+          onVenueChange(venue.name)
+          onVenueSelect(venue)
+        }}
+      />
     </div>
   )
 }

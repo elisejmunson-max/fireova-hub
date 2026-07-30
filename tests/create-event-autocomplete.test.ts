@@ -40,15 +40,16 @@ test('Venue autocomplete includes category-Venue records from the Vendor Directo
   }])
 })
 
-test('venue autocomplete supports selecting saved venues and retaining a brand-new venue', () => {
+test('venue selection supports saved and newly created cloud venues', () => {
   assert.match(createEventPageSource, /venues=\{savedVenueOptions\}/)
-  assert.match(inlineEventDetailsHeaderSource, /const venue = venues\.find/)
+  assert.match(inlineEventDetailsHeaderSource, /const venue = selectedVenue/)
   assert.match(inlineEventDetailsHeaderSource, /venueName: venue\.name/)
+  assert.match(inlineEventDetailsHeaderSource, /venueLocation: venue\.location \?\? ''/)
   assert.match(inlineEventDetailsHeaderSource, /venueInstagram: venue\.instagram \?\? ''/)
   assert.match(inlineEventDetailsHeaderSource, /venueVendorId: venue\.vendorId/)
   assert.match(inlineEventDetailsHeaderSource, /venueName: nextVenueName/)
-  assert.match(inlineEventDetailsHeaderSource, /<VenueAutocomplete/)
-  assert.match(inlineEventDetailsHeaderSource, /showAddNew/)
+  assert.match(inlineEventDetailsHeaderSource, /<VenueSelectionWorkflow/)
+  assert.doesNotMatch(inlineEventDetailsHeaderSource, /<VenueAutocomplete/)
 
   const event = buildDraftEventFromMedia([
     { id: 'new-venue-photo', type: 'photo', src: 'fireova-idb-media://new-venue-photo', alt: 'Venue' },
