@@ -2,76 +2,38 @@
 
 import { useState } from 'react'
 
-type ReviewItem = {
-  id: string
-  kind: 'Photo' | 'Video'
-  status: 'Strong' | 'Edit' | 'Skip'
-  title: string
-  reason: string
-  categories: string[]
-  uses: string[]
-  edit?: string
-}
+type Status='Strong'|'Edit'|'Skip'
+type ReviewItem={id:string;kind:'Photo'|'Video';status:Status;title:string;reason:string;categories:string[];uses:string[];edit?:string;frames?:string[]}
+const ITEMS:ReviewItem[]=[
+{id:'1',kind:'Photo',status:'Strong',title:'Happy guests near the oven',reason:'Faces are visible, the energy feels warm, and the Fireova experience is obvious without explanation.',categories:['People','Experience','Wedding'],uses:['Reel cover','Feed photo','Carousel opener']},
+{id:'2',kind:'Photo',status:'Edit',title:'Buffet + grazing table detail',reason:'Strong composition and useful food detail, but the image needs a quick lighting/color correction before posting.',categories:['Food','Charcuterie','Details'],uses:['Feed photo','Carousel detail'],edit:'Reduce the yellow cast, lift shadows slightly, and keep the food color natural. No heavy filter.'},
+{id:'3',kind:'Video',status:'Strong',title:'Pizza coming out of the oven',reason:'Clear action, good movement, and an immediate wood-fired cue. Strong short-form video moment.',categories:['Pizza','Process','Experience'],uses:['Reel opening','B-roll','Story'],frames:['0:01','0:03','0:05','0:07']},
+{id:'4',kind:'Photo',status:'Skip',title:'Soft duplicate from the same moment',reason:'The subject is slightly soft and a stronger version of this same moment already exists.',categories:['Duplicate'],uses:[]},]
+const style={Strong:'bg-emerald-50 text-emerald-700 border-emerald-200',Edit:'bg-amber-50 text-amber-700 border-amber-200',Skip:'bg-stone-100 text-stone-500 border-stone-200'}
 
-const ITEMS: ReviewItem[] = [
-  { id: '1', kind: 'Photo', status: 'Strong', title: 'Happy guests near the oven', reason: 'Faces are visible, the energy feels warm, and the Fireova experience is obvious without explanation.', categories: ['People', 'Experience', 'Wedding'], uses: ['Reel cover', 'Feed photo', 'Carousel opener'] },
-  { id: '2', kind: 'Photo', status: 'Edit', title: 'Buffet + grazing table detail', reason: 'Strong composition and useful food detail, but the image needs a quick lighting/color correction before posting.', categories: ['Food', 'Charcuterie', 'Details'], uses: ['Feed photo', 'Carousel detail'], edit: 'Correct white balance, lift shadows, keep food color natural.' },
-  { id: '3', kind: 'Video', status: 'Strong', title: 'Pizza coming out of the oven', reason: 'Clear action, good movement, and an immediate wood-fired cue. Strong short-form video moment.', categories: ['Pizza', 'Process', 'Experience'], uses: ['Reel opening', 'B-roll', 'Story'] },
-  { id: '4', kind: 'Photo', status: 'Skip', title: 'Soft duplicate from the same moment', reason: 'The subject is slightly soft and a stronger version of this same moment already exists.', categories: ['Duplicate'], uses: [] },
-]
-
-const style = {
-  Strong: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Edit: 'bg-amber-50 text-amber-700 border-amber-200',
-  Skip: 'bg-stone-100 text-stone-500 border-stone-200',
-}
-
-export default function MediaIntelligencePreview() {
-  const [selected, setSelected] = useState(ITEMS[0])
-  return (
-    <section className="mb-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">AI Media Review</p>
-          <h1 className="text-xl font-semibold text-stone-900 mt-1">Drop the event. We sort the content.</h1>
-          <p className="text-sm text-stone-500 mt-1 max-w-2xl">Every photo and video gets a quality decision, a reason, content categories, and suggested post uses. You only spend editing time on content worth keeping.</p>
-        </div>
-        <span className="badge bg-ember-50 text-ember-700 whitespace-nowrap">Preview workflow</span>
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="grid grid-cols-3 border-b border-stone-100 bg-stone-50/60">
-          <div className="p-4 text-center"><p className="text-2xl font-semibold text-emerald-600">2</p><p className="text-xs text-stone-500 mt-1">Strong</p></div>
-          <div className="p-4 text-center border-x border-stone-100"><p className="text-2xl font-semibold text-amber-600">1</p><p className="text-xs text-stone-500 mt-1">Worth editing</p></div>
-          <div className="p-4 text-center"><p className="text-2xl font-semibold text-stone-500">1</p><p className="text-xs text-stone-500 mt-1">Skip</p></div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_.9fr] min-h-[350px]">
-          <div className="divide-y divide-stone-100 border-r border-stone-100">
-            {ITEMS.map((item) => (
-              <button key={item.id} onClick={() => setSelected(item)} className={`w-full p-4 text-left hover:bg-stone-50 transition ${selected.id === item.id ? 'bg-stone-50' : ''}`}>
-                <div className="flex items-start gap-3">
-                  <div className="w-16 h-14 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-xs text-stone-400 flex-shrink-0">{item.kind === 'Video' ? '▶ Video' : 'Photo'}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-stone-900 truncate">{item.title}</p><span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${style[item.status]}`}>{item.status === 'Edit' ? 'EDIT FIRST' : item.status.toUpperCase()}</span></div>
-                    <p className="text-xs text-stone-500 mt-1 line-clamp-2">{item.reason}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-2">{item.categories.slice(0,3).map(c => <span key={c} className="badge bg-stone-100 text-stone-500">{c}</span>)}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="p-5 bg-white">
-            <div className="aspect-[4/3] rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400 mb-4">Selected media preview</div>
-            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">AI decision</p><p className="text-base font-semibold text-stone-900 mt-1">{selected.status === 'Edit' ? 'Usable after edit' : selected.status}</p></div><span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${style[selected.status]}`}>{selected.status === 'Edit' ? 'EDIT FIRST' : selected.status.toUpperCase()}</span></div>
-            <p className="text-sm leading-6 text-stone-600 mt-3">{selected.reason}</p>
-            {selected.edit && <div className="mt-4 rounded-lg bg-amber-50 border border-amber-100 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Suggested edit</p><p className="text-xs leading-5 text-amber-900 mt-1">{selected.edit}</p></div>}
-            {selected.uses.length > 0 && <div className="mt-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Best uses</p><div className="flex flex-wrap gap-2">{selected.uses.map(u => <span key={u} className="badge bg-ember-50 text-ember-700">{u}</span>)}</div></div>}
-            <div className="mt-5 pt-4 border-t border-stone-100 flex gap-2"><button className="btn-secondary flex-1 justify-center">Change decision</button><button className="btn-primary flex-1 justify-center">Keep learning</button></div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
+export default function MediaIntelligencePreview(){
+ const [items,setItems]=useState(ITEMS);const [selectedId,setSelectedId]=useState('1');const [changing,setChanging]=useState(false);const [newStatus,setNewStatus]=useState<Status>('Strong');const [why,setWhy]=useState('');const [saved,setSaved]=useState<string|null>(null)
+ const selected=items.find(i=>i.id===selectedId)??items[0]
+ const counts={Strong:items.filter(i=>i.status==='Strong').length,Edit:items.filter(i=>i.status==='Edit').length,Skip:items.filter(i=>i.status==='Skip').length}
+ const beginChange=()=>{setNewStatus(selected.status==='Skip'?'Strong':selected.status);setWhy('');setChanging(true);setSaved(null)}
+ const saveChange=()=>{if(!why.trim())return;setItems(xs=>xs.map(x=>x.id===selected.id?{...x,status:newStatus}:x));setChanging(false);setSaved('Saved. This reason becomes part of Fireova’s media rules.')}
+ return <section className="mb-6">
+  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-stone-400">AI Media Review</p><h1 className="text-xl font-semibold text-stone-900 mt-1">Drop the event. We sort the content.</h1><p className="text-sm text-stone-500 mt-1 max-w-2xl">Every photo and video gets a decision, reason, categories and possible uses. If you disagree, tell us why once so the system can learn.</p></div><span className="badge bg-ember-50 text-ember-700">Preview workflow</span></div>
+  <div className="card overflow-hidden">
+   <div className="grid grid-cols-3 border-b border-stone-100 bg-stone-50/60"><div className="p-4 text-center"><p className="text-2xl font-semibold text-emerald-600">{counts.Strong}</p><p className="text-xs text-stone-500 mt-1">Strong</p></div><div className="p-4 text-center border-x border-stone-100"><p className="text-2xl font-semibold text-amber-600">{counts.Edit}</p><p className="text-xs text-stone-500 mt-1">Worth editing</p></div><div className="p-4 text-center"><p className="text-2xl font-semibold text-stone-500">{counts.Skip}</p><p className="text-xs text-stone-500 mt-1">Skip</p></div></div>
+   <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] min-h-[410px]">
+    <div className="divide-y divide-stone-100 border-r border-stone-100">{items.map(item=><button key={item.id} onClick={()=>{setSelectedId(item.id);setChanging(false);setSaved(null)}} className={`w-full p-4 text-left hover:bg-stone-50 transition relative ${selected.id===item.id?'bg-ember-50/40 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-ember-500':''}`}><div className="flex items-start gap-3"><div className="w-16 h-14 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-xs text-stone-400 flex-shrink-0">{item.kind==='Video'?'▶ Video':'Photo'}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-stone-900 truncate">{item.title}</p><span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${style[item.status]}`}>{item.status==='Edit'?'EDIT FIRST':item.status.toUpperCase()}</span></div><p className="text-xs text-stone-500 mt-1 line-clamp-2">{item.reason}</p><div className="flex flex-wrap gap-1.5 mt-2">{item.categories.map(c=><span key={c} className="badge bg-stone-100 text-stone-500">{c}</span>)}</div></div></div></button>)}</div>
+    <div className="p-5 bg-white">
+     <div className="aspect-[16/10] rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400">Selected media preview</div>
+     {selected.kind==='Video'&&<div className="mt-2 grid grid-cols-4 gap-2">{selected.frames?.map((f,i)=><div key={f} className="aspect-video rounded-md bg-stone-100 border border-stone-200 flex items-end p-1.5"><span className="text-[9px] bg-white/90 rounded px-1 text-stone-500">{f}</span></div>)}</div>}
+     <div className="mt-4 flex items-center justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">AI decision</p><p className="text-base font-semibold text-stone-900 mt-1">{selected.status==='Edit'?'Worth editing':selected.status}</p></div><span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${style[selected.status]}`}>{selected.status==='Edit'?'EDIT FIRST':selected.status.toUpperCase()}</span></div>
+     <p className="text-sm leading-6 text-stone-600 mt-3">{selected.reason}</p>
+     {selected.edit&&<div className="mt-4 rounded-lg bg-amber-50 border border-amber-100 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Exact edit recommendation</p><p className="text-xs leading-5 text-amber-900 mt-1">{selected.edit}</p></div>}
+     <div className="mt-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Possible uses</p>{selected.uses.length?<div className="flex flex-wrap gap-2">{selected.uses.map(u=><span key={u} className="badge bg-ember-50 text-ember-700">{u}</span>)}</div>:<p className="text-xs text-stone-400">AI would not use this in a post unless you override the decision.</p>}</div>
+     {changing?<div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-900">Teach the system</p><p className="text-xs text-stone-500 mt-1">What should this media be instead?</p><div className="grid grid-cols-3 gap-2 mt-3">{(['Strong','Edit','Skip'] as Status[]).map(s=><button key={s} onClick={()=>setNewStatus(s)} className={`py-2 rounded-lg border text-xs font-semibold ${newStatus===s?style[s]:'bg-white border-stone-200 text-stone-500'}`}>{s==='Edit'?'Worth editing':s}</button>)}</div><label className="text-xs font-semibold text-stone-700 block mt-4 mb-2">Why?</label><textarea value={why} onChange={e=>setWhy(e.target.value)} placeholder="Example: The photo is good, it just needs the yellow cast corrected." className="input min-h-20 resize-none bg-white"/><div className="flex gap-2 mt-3"><button onClick={()=>setChanging(false)} className="btn-secondary flex-1 justify-center">Cancel</button><button onClick={saveChange} disabled={!why.trim()} className="btn-primary flex-1 justify-center disabled:opacity-40">Save + Learn</button></div></div>:<div className="mt-5 pt-4 border-t border-stone-100"><button onClick={beginChange} className="btn-secondary w-full justify-center">{selected.status==='Skip'?'Use anyway / change decision':'I disagree with this decision'}</button></div>}
+     {saved&&<p className="mt-3 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-3">✓ {saved}</p>}
+    </div>
+   </div>
+  </div>
+ </section>
 }
