@@ -2,56 +2,38 @@
 
 import { useState } from 'react'
 
-type PreviewPost = {
-  id: string
-  day: string
-  time: string
-  format: string
-  category: string
-  idea: string
-  caption: string
-  tags: string
-  reason: string
-  visual: string
-}
+type PreviewPost={id:string;day:string;time:string;format:string;category:string;idea:string;caption:string;tags:string;reason:string;visual:string}
+const POSTS:PreviewPost[]=[
+{id:'experience',day:'Tuesday',time:'11:30 AM',format:'Reel',category:'Experience',idea:'Guests gathering around the oven',caption:'The best part of what we do isn’t the pizza… it’s watching people gather around it. 🍕🔥',tags:'#DFWCatering #EventCatering #WoodFiredPizza #FireovaPizza',reason:'Strong people + experience moment. Leads the week with what makes Fireova feel different.',visual:'Guests + oven + team interaction'},
+{id:'food',day:'Thursday',time:'6:15 PM',format:'Photo',category:'Food',idea:'Salami rose detail',caption:'Meet the salami rose. 🌹\n\nOne of our favorite details on every grazing table. Each one has its own personality, and we love the way they bring the whole table together.',tags:'#GrazingTable #Charcuterie #DFWCatering #EventCatering',reason:'Breaks up event content with a recognizable food detail and keeps the feed visually varied.',visual:'Close-up food detail'},
+{id:'inspiration',day:'Saturday',time:'10:00 AM',format:'Carousel',category:'Planning Inspiration',idea:'Pizza-themed wedding details',caption:'Wedding decor, but make it pizza themed. 🍕🤍\n\nFrom custom pizza boxes and personalized cutters to signed pizza peels and menus, there are so many fun ways to work pizza into the details of your wedding day.\n\nSave this one for a little pizza-themed wedding inspo.',tags:'#WeddingInspo #DFWWeddings #WeddingCatering #FireovaPizza',reason:'Useful, saveable content. Adds wedding relevance without making the whole week wedding recaps.',visual:'3–5 decor/detail images'}]
 
-const PREVIEW_POSTS: PreviewPost[] = [
-  { id:'experience', day:'Tuesday', time:'11:30 AM', format:'Reel', category:'Experience', idea:'Guests gathering around the oven', caption:'The best part of what we do isn’t the pizza… it’s watching people gather around it. 🍕🔥', tags:'#DFWCatering #EventCatering #WoodFiredPizza #FireovaPizza', reason:'Strong people + experience moment. Leads the week with what makes Fireova feel different.', visual:'Guests + oven + team interaction' },
-  { id:'food', day:'Thursday', time:'6:15 PM', format:'Photo', category:'Food', idea:'Salami rose detail', caption:'Meet the salami rose. 🌹\n\nOne of our favorite details on every grazing table. Each one has its own personality, and we love the way they bring the whole table together.', tags:'#GrazingTable #Charcuterie #DFWCatering #EventCatering', reason:'Breaks up event content with a recognizable food detail and keeps the feed visually varied.', visual:'Close-up food detail' },
-  { id:'inspiration', day:'Saturday', time:'10:00 AM', format:'Carousel', category:'Planning Inspiration', idea:'Pizza-themed wedding details', caption:'Wedding decor, but make it pizza themed. 🍕🤍\n\nFrom custom pizza boxes and personalized cutters to signed pizza peels and menus, there are so many fun ways to work pizza into the details of your wedding day.\n\nSave this one for a little pizza-themed wedding inspo.', tags:'#WeddingInspo #DFWWeddings #WeddingCatering #FireovaPizza', reason:'Useful, saveable content. Adds wedding relevance without making the whole week wedding recaps.', visual:'3–5 decor/detail images' },
-]
-
-export default function WeeklyPlan() {
-  const [statuses, setStatuses] = useState<Record<string,'ready'|'approved'|'rejected'>>({ experience:'ready', food:'ready', inspiration:'ready' })
-  const [rejecting, setRejecting] = useState<string|null>(null)
-  const [feedback, setFeedback] = useState<Record<string,string>>({})
-  const approve = (id:string) => setStatuses(s => ({...s,[id]:'approved'}))
-  const reject = (id:string) => { if (rejecting !== id) { setRejecting(id); return } setStatuses(s=>({...s,[id]:'rejected'})); setRejecting(null) }
-
-  return <section>
-    <div className="flex items-end justify-between gap-4 mb-3">
-      <div><h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">This Week</h2><p className="text-sm text-stone-500 mt-1">Three posts. Different jobs. One Fireova brand.</p></div>
-      <span className="badge bg-ember-50 text-ember-700">Preview recommendations</span>
-    </div>
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-      {PREVIEW_POSTS.map(post => {
-        const status=statuses[post.id]
-        return <article key={post.id} className="card overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-stone-100 flex items-start justify-between gap-3">
-            <div><div className="flex items-center gap-2 mb-1.5"><span className="text-xs font-semibold text-stone-900">{post.day}</span><span className="text-[11px] text-stone-400">{post.time}</span></div><div className="flex flex-wrap gap-1.5"><span className="badge bg-stone-100 text-stone-600">{post.format}</span><span className="badge bg-ember-50 text-ember-700">{post.category}</span></div></div>
-            {status==='approved'&&<span className="text-xs font-semibold text-emerald-600">✓ Approved</span>}{status==='rejected'&&<span className="text-xs font-semibold text-red-500">Rejected</span>}
-          </div>
-          <div className="aspect-[4/3] bg-stone-100 border-b border-stone-200 flex flex-col items-center justify-center text-center px-6"><div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-3 text-ember-600">{post.format==='Reel'?'▶':post.format==='Carousel'?'▣':'□'}</div><p className="text-sm font-medium text-stone-700">{post.visual}</p><p className="text-[11px] text-stone-400 mt-1">Actual selected media will replace this preview</p></div>
-          <div className="p-4 flex-1 flex flex-col">
-            <div className="mb-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Post idea · internal only</p><p className="text-sm font-semibold text-stone-900">{post.idea}</p></div>
-            <div className="rounded-lg border border-stone-200 bg-white p-3.5"><div className="flex items-center justify-between gap-3 mb-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">Caption · exactly what will post</p><span className="text-[10px] text-emerald-600 font-medium">Post-ready</span></div><p className="text-sm leading-5 text-stone-700 whitespace-pre-line">{post.caption}</p><div className="mt-3 pt-3 border-t border-stone-100"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Hashtags</p><p className="text-xs leading-5 text-ember-700">{post.tags}</p></div></div>
-            <div className="mt-4 pt-3 border-t border-stone-100"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Why this post</p><p className="text-xs leading-5 text-stone-500">{post.reason}</p></div>
-            {rejecting===post.id&&status==='ready'&&<div className="mt-4 p-3 rounded-lg bg-stone-50 border border-stone-200"><label className="text-xs font-semibold text-stone-700 block mb-2">Why isn’t this right?</label><textarea value={feedback[post.id]??''} onChange={e=>setFeedback(f=>({...f,[post.id]:e.target.value}))} placeholder="Too wedding-heavy, wrong photo, caption sounds like AI..." className="input min-h-20 resize-none text-sm"/><p className="text-[11px] text-stone-400 mt-2">Your reason will teach future recommendations.</p></div>}
-            <div className="mt-auto pt-4 flex gap-2">{status==='ready'?<><button onClick={()=>approve(post.id)} className="btn-primary flex-1 justify-center">Approve Post</button><button onClick={()=>reject(post.id)} className="btn-secondary flex-1 justify-center">{rejecting===post.id?'Confirm Reject':'Reject'}</button></>:<button onClick={()=>setStatuses(s=>({...s,[post.id]:'ready'}))} className="btn-secondary w-full justify-center">Undo {status}</button>}</div>
-          </div>
-        </article>
-      })}
-    </div>
-    <div className="mt-4 card px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><p className="text-sm font-semibold text-stone-900">Approve means: schedule exactly what you see.</p><p className="text-xs text-stone-500 mt-1">Media + caption + hashtags + date/time. Nothing hidden gets added later.</p></div><div className="text-xs font-medium text-stone-600">{Object.values(statuses).filter(s=>s==='approved').length} of 3 approved</div></div>
-  </section>
+export default function WeeklyPlan(){
+ const [selected,setSelected]=useState<PreviewPost|null>(null)
+ const [statuses,setStatuses]=useState<Record<string,'ready'|'approved'|'rejected'>>({experience:'ready',food:'ready',inspiration:'ready'})
+ const [rejecting,setRejecting]=useState(false); const [feedback,setFeedback]=useState('')
+ const approve=(id:string)=>{setStatuses(s=>({...s,[id]:'approved'}));setSelected(null);setRejecting(false)}
+ const confirmReject=(id:string)=>{setStatuses(s=>({...s,[id]:'rejected'}));setSelected(null);setRejecting(false);setFeedback('')}
+ const approved=Object.values(statuses).filter(s=>s==='approved').length
+ return <section>
+  <div className="flex items-end justify-between gap-4 mb-3"><div><h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">This Week</h2><p className="text-sm text-stone-500 mt-1">Your three recommended posts. Tap one to review exactly what will publish.</p></div><span className="badge bg-ember-50 text-ember-700">{approved} of 3 approved</span></div>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+   {POSTS.map(p=>{const st=statuses[p.id];return <button key={p.id} onClick={()=>{setSelected(p);setRejecting(false);setFeedback('')}} className="card overflow-hidden text-left hover:border-stone-300 hover:shadow-sm transition-all group">
+    <div className="aspect-[16/9] bg-stone-100 flex flex-col items-center justify-center border-b border-stone-200"><div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-ember-600 mb-2">{p.format==='Reel'?'▶':p.format==='Carousel'?'▣':'□'}</div><span className="text-xs text-stone-500">{p.visual}</span></div>
+    <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-stone-900">{p.day} <span className="font-normal text-stone-400">· {p.time}</span></p><div className="flex gap-1.5 mt-2"><span className="badge bg-stone-100 text-stone-600">{p.format}</span><span className="badge bg-ember-50 text-ember-700">{p.category}</span></div></div>{st==='approved'?<span className="text-xs font-semibold text-emerald-600">✓ Approved</span>:st==='rejected'?<span className="text-xs font-semibold text-red-500">Rejected</span>:<span className="text-xs text-stone-400 group-hover:text-ember-600">Review →</span>}</div><p className="text-sm text-stone-700 mt-3 line-clamp-2">{p.caption.replace(/\n/g,' ')}</p></div>
+   </button>})}
+  </div>
+  <div className="mt-4 card px-5 py-3.5 flex items-center justify-between"><p className="text-xs text-stone-500">Approve means the media, caption, hashtags, date and time shown in review are approved to schedule.</p><span className="text-xs font-semibold text-stone-700 whitespace-nowrap ml-4">Review week →</span></div>
+  {selected&&<div className="fixed inset-0 z-50 bg-black/35 flex justify-end" onClick={()=>setSelected(null)}><div className="w-full max-w-xl h-full bg-white shadow-xl overflow-y-auto" onClick={e=>e.stopPropagation()}>
+   <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-stone-200 px-5 py-4 flex items-center justify-between z-10"><div><p className="text-xs font-semibold uppercase tracking-wider text-stone-400">Post Review</p><p className="text-lg font-semibold text-stone-900 mt-0.5">{selected.day} · {selected.time}</p></div><button onClick={()=>setSelected(null)} className="w-9 h-9 rounded-full hover:bg-stone-100 text-stone-500 text-xl">×</button></div>
+   <div className="p-5 space-y-5"><div className="aspect-[4/5] rounded-xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center text-center"><div className="text-2xl text-ember-600 mb-2">{selected.format==='Reel'?'▶':selected.format==='Carousel'?'▣':'□'}</div><p className="text-sm font-medium text-stone-700">{selected.visual}</p><p className="text-xs text-stone-400 mt-1">Selected media will display here</p></div>
+    <div className="flex gap-2"><span className="badge bg-stone-100 text-stone-600">{selected.format}</span><span className="badge bg-ember-50 text-ember-700">{selected.category}</span></div>
+    <div><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Post idea · internal only</p><p className="text-sm font-semibold text-stone-900">{selected.idea}</p></div>
+    <div className="rounded-xl border-2 border-stone-200 p-4"><div className="flex justify-between mb-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">Exactly what will post</p><span className="text-[10px] font-semibold text-emerald-600">POST-READY</span></div><p className="text-sm leading-6 text-stone-700 whitespace-pre-line">{selected.caption}</p><div className="mt-4 pt-4 border-t border-stone-100"><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Hashtags</p><p className="text-xs leading-5 text-ember-700">{selected.tags}</p></div></div>
+    <div><p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-1">Why the marketing manager chose this</p><p className="text-sm leading-6 text-stone-600">{selected.reason}</p></div>
+    {rejecting&&<div className="rounded-xl bg-stone-50 border border-stone-200 p-4"><label className="text-sm font-semibold text-stone-800 block mb-2">Why isn’t this right?</label><textarea value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Tell us what to learn from..." className="input min-h-24 resize-none"/><p className="text-xs text-stone-400 mt-2">This feedback will be saved so the same mistake is less likely next time.</p></div>}
+   </div>
+   <div className="sticky bottom-0 bg-white border-t border-stone-200 p-4 flex gap-2">{statuses[selected.id]==='ready'?<><button onClick={()=>approve(selected.id)} className="btn-primary flex-1 justify-center">Approve Post</button><button onClick={()=>rejecting?confirmReject(selected.id):setRejecting(true)} className="btn-secondary flex-1 justify-center">{rejecting?'Confirm Reject':'Reject'}</button></>:<button onClick={()=>setStatuses(s=>({...s,[selected.id]:'ready'}))} className="btn-secondary w-full justify-center">Undo {statuses[selected.id]}</button>}</div>
+  </div></div>}
+ </section>
 }
