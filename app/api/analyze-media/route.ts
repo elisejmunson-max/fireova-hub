@@ -19,36 +19,79 @@ Return ONLY valid JSON:
 Score is 0-100. Categories should be useful labels such as Food, Pizza, People, Experience, Team, Wedding, Corporate, Charcuterie, Details, Process, Venue. Uses should be concrete, such as Feed photo, Carousel opener, Carousel detail, Reel cover, Story, B-roll.`
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return Response.json({ error: 'AI is not configured' }, { status: 500 })
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) return Response.json({ error: 'ANTHROPIC_API_KEY is not configured in Production' }, { status: 500 })
 
-  const { assetId } = await request.json() as { assetId?: string }
-  if (!assetId) return Response.json({ error: 'assetId is required' }, { status: 400 })
+    const { assetId } = await request.json() as { assetId?: string }
+    if (!assetId) return Response.json({ error: 'assetId is required' }, { status: 400 })
 
-  const { data: asset, error } = await supabase.from('media_assets').select('*').eq('id', assetId).eq('user_id', user.id).single()
-  if (error || !asset) return Response.json({ error: 'Media not found' }, { status: 404 })
-  if (!asset.file_type?.startsWith('image/')) return Response.json({ error: 'Image analysis only for now' }, { status: 400 })
+    const { data: asset, error } = await supabase
+      .from('media_assets')
+      .select('*')
+      .eq('id', assetId)
+      .eq('user_id', user.id)
+      .single()
 
-  const imageUrl = supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
-  const client = new Anthropic({ apiKey })
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514', max_tokens: 600, system: SYSTEM,
-    messages: [{ role: 'user', content: [
-      { type: 'image', source: { type: 'url', url: imageUrl } },
-      { type: 'text', text: `Review this real Fireova media asset. Filename: ${asset.filename}. Existing tags: ${(asset.tags || []).join(', ') || 'none'}.` },
-    ] }],
-  })
-  const text = response.content.find((b) => b.type === 'text')
-  if (!text || text.type !== 'text') return Response.json({ error: 'No AI response' }, { status: 502 })
-  let parsed: { status:string;score:number;reason:string;categories:string[];uses:string[];edit_suggestion:string|null }
-  try { parsed = JSON.parse(text.text.replace(/^```json\s*|\s*```$/g, '')) } catch { return Response.json({ error: 'Invalid AI response' }, { status: 502 }) }
-  const status = ['strong','edit','skip'].includes(parsed.status) ? parsed.status : 'skip'
-  const patch = { ai_status: status, ai_quality_score: Math.max(0,Math.min(100,Number(parsed.score)||0)), ai_reason: String(parsed.reason||''), ai_categories: Array.isArray(parsed.categories)?parsed.categories.slice(0,8):[], ai_post_uses: Array.isArray(parsed.uses)?parsed.uses.slice(0,6):[], ai_edit_suggestion: parsed.edit_suggestion ? String(parsed.edit_suggestion) : null, ai_reviewed_at: new Date().toISOString() }
-  const { error: saveError } = await supabase.from('media_assets').update(patch).eq('id', asset.id).eq('user_id', user.id)
-  if (saveError) return Response.json({ error: saveError.message }, { status: 500 })
-  return Response.json({ id: asset.id, ...patch })
+    if (error || !asset) return Response.json({ error: `Media not found: ${error?.message ?? 'unknown error'}` }, { status: 404 })
+    if (!asset.file_type?.startsWith('image/')) return Response.json({ error: 'Image analysis only for now' }, { status: 400 })
+
+    const imageUrl = supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
+    const client = new Anthropic({ apiKey })
+
+    let response
+    try {
+      response = await client.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 700,
+        system: SYSTEM,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'url', url: imageUrl } },
+          { type: 'text', text: `Review this real Fireova media asset. Filename: ${asset.filename}. Existing tags: ${(asset.tags || []).join(', ') || 'none'}. Return only raw JSON.` },
+        ] }],
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Anthropic API error'
+      return Response.json({ error: `Anthropic: ${msg}` }, { status: 502 })
+    }
+
+    const textBlock = response.content.find((b) => b.type === 'text')
+    const raw = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : ''
+    if (!raw) return Response.json({ error: 'Anthropic returned no text' }, { status: 502 })
+
+    let parsed: { status:string;score:number;reason:string;categories:string[];uses:string[];edit_suggestion:string|null }
+    try {
+      const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/,'').trim()
+      parsed = JSON.parse(cleaned)
+    } catch {
+      return Response.json({ error: `Anthropic returned invalid JSON: ${raw.slice(0,180)}` }, { status: 502 })
+    }
+
+    const status = ['strong','edit','skip'].includes(parsed.status) ? parsed.status : 'skip'
+    const patch = {
+      ai_status: status,
+      ai_quality_score: Math.max(0, Math.min(100, Number(parsed.score) || 0)),
+      ai_reason: String(parsed.reason || ''),
+      ai_categories: Array.isArray(parsed.categories) ? parsed.categories.slice(0,8) : [],
+      ai_post_uses: Array.isArray(parsed.uses) ? parsed.uses.slice(0,6) : [],
+      ai_edit_suggestion: parsed.edit_suggestion ? String(parsed.edit_suggestion) : null,
+      ai_reviewed_at: new Date().toISOString(),
+    }
+
+    const { error: saveError } = await supabase
+      .from('media_assets')
+      .update(patch)
+      .eq('id', asset.id)
+      .eq('user_id', user.id)
+
+    if (saveError) return Response.json({ error: `Supabase save failed: ${saveError.message}` }, { status: 500 })
+    return Response.json({ id: asset.id, ...patch })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown server error'
+    return Response.json({ error: `Server: ${msg}` }, { status: 500 })
+  }
 }
