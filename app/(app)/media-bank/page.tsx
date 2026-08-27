@@ -7,7 +7,7 @@ import type { MediaAsset } from '@/lib/types'
 export const metadata: Metadata = { title: 'Media Bank' }
 
 export default async function MediaBankPage({ searchParams }: { searchParams?: { eventId?: string } }) {
-  const supabase = createClient()
+  const supabase = createClient() as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -17,10 +17,30 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
 
   if (user && user.id !== 'dev') {
     if (eventId) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      // Event media is mirrored into media_assets by the event workflow. Filter
-      // by the stable event tag so this screen is the exact same reviewer, just
-      // scoped to one event.
+      // Reuse the event's existing Storage objects. Nothing is uploaded twice.
+      // Mirroring the database row with the same UUID lets the exact Media Bank
+      // Strong / Worth Editing / Skip reviewer work unchanged for this event.
+      const { data: eventMedia } = await supabase
+        .from('event_media')
+        .select('id,storage_path,file_name,file_type,size_bytes,created_at')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+
+      if (eventMedia?.length) {
+        await supabase.from('media_assets').upsert(eventMedia.map((item: any) => ({
+          id: item.id,
+          user_id: user.id,
+          filename: item.file_name,
+          storage_path: item.storage_path,
+          file_type: item.file_type,
+          size_bytes: item.size_bytes ?? 0,
+          tags: [`event:${eventId}`],
+          notes: null,
+          created_at: item.created_at,
+        })), { onConflict: 'id', ignoreDuplicates: true })
+      }
+
       const { data, error } = await supabase
         .from('media_assets')
         .select('*')
@@ -28,7 +48,6 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
         .order('created_at', { ascending: true })
         .limit(500)
       if (!error && data) assets = data as MediaAsset[]
-      void baseUrl
     } else {
       const { data, error } = await supabase
         .from('media_assets')
@@ -43,8 +62,8 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
     <div>
       {eventId && assets.length === 0 && (
         <div className="card mb-6 p-6 text-center">
-          <p className="text-sm font-semibold text-stone-900">Preparing this event for AI review…</p>
-          <p className="mt-1 text-sm text-stone-500">Return to the event and choose Review Media once the event media is synced.</p>
+          <p className="text-sm font-semibold text-stone-900">No event media found for review.</p>
+          <p className="mt-1 text-sm text-stone-500">Go back to the event and confirm its media finished uploading.</p>
         </div>
       )}
       {assets.length > 0 && <MediaIntelligencePanel assets={assets as any[]} />}
