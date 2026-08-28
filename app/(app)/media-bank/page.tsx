@@ -7,11 +7,11 @@ import type { MediaAsset } from '@/lib/types'
 
 export const metadata: Metadata = { title: 'Media Bank' }
 
-export default async function MediaBankPage({ searchParams }: { searchParams?: { eventId?: string } }) {
+export default async function MediaBankPage({ searchParams }: { searchParams?: { eventId?: string; event?: string } }) {
   const supabase = createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   let assets: MediaAsset[] = []
-  const eventId = searchParams?.eventId?.trim()
+  const eventId = (searchParams?.eventId || searchParams?.event || '').trim()
 
   if (user && user.id !== 'dev') {
     if (eventId) {
