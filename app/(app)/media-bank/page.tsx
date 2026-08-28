@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import MediaBankClient from './client'
 import MediaIntelligencePanel from './intelligence-panel'
-import CreatePostsHandoff from './create-posts-handoff'
 import type { MediaAsset } from '@/lib/types'
 
 export const metadata: Metadata = { title: 'Media Bank' }
@@ -30,14 +29,8 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
     }
   }
 
-  const readyCount = assets.filter((asset:any) => {
-    const status = String(asset.user_override_status || asset.ai_status || '').trim().toLowerCase().replace(/[ _-]+/g, '')
-    return status && !['skip','pending','needsreview'].includes(status)
-  }).length
-
   return <div>
     {eventId && assets.length === 0 && <div className="card mb-6 p-6 text-center"><p className="text-sm font-semibold text-stone-900">No event media found for review.</p><p className="mt-1 text-sm text-stone-500">Go back to the event and confirm its media finished uploading.</p></div>}
-    {eventId && <CreatePostsHandoff eventId={eventId} readyCount={readyCount} />}
     {assets.length > 0 && <MediaIntelligencePanel assets={assets as any[]} />}
     {!eventId && <MediaBankClient initialAssets={assets} userId={user?.id ?? 'dev'} />}
   </div>
