@@ -37,8 +37,8 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
 
   return <div>
     {eventId && assets.length === 0 && <div className="card mb-6 p-6 text-center"><p className="text-sm font-semibold text-stone-900">No event media found for review.</p><p className="mt-1 text-sm text-stone-500">Go back to the event and confirm its media finished uploading.</p></div>}
-    {assets.length > 0 && <MediaIntelligencePanel assets={assets as any[]} />}
     {eventId && <CreatePostsHandoff eventId={eventId} readyCount={readyCount} />}
+    {assets.length > 0 && <MediaIntelligencePanel assets={assets as any[]} />}
     {!eventId && <MediaBankClient initialAssets={assets} userId={user?.id ?? 'dev'} />}
   </div>
 }
