@@ -3,35 +3,17 @@ import { v2 as cloudinary } from 'cloudinary'
 import { createClient } from '@/lib/supabase/server'
 
 function editedFilename(name:string){return `${name.replace(/\.[^.]+$/,'')}-enhanced.jpg`}
+function uploadBuffer(buffer:Buffer,publicId:string){return new Promise<any>((resolve,reject)=>{const stream=cloudinary.uploader.upload_stream({public_id:publicId,resource_type:'image',overwrite:false},(error,result)=>error?reject(error):resolve(result));stream.end(buffer)})}
 
 export async function POST(_request:Request,{params}:{params:{id:string}}){
- const supabase=createClient() as any
- const{data:{user}}=await supabase.auth.getUser()
- if(!user||user.id==='dev')return NextResponse.json({error:'Unauthorized'},{status:401})
- const cloudName=process.env.CLOUDINARY_CLOUD_NAME,apiKey=process.env.CLOUDINARY_API_KEY,apiSecret=process.env.CLOUDINARY_API_SECRET
- if(!cloudName||!apiKey||!apiSecret)return NextResponse.json({error:'Cloudinary is not configured in Production.'},{status:500})
- cloudinary.config({cloud_name:cloudName,api_key:apiKey,api_secret:apiSecret,secure:true})
- const{data:asset,error:assetError}=await supabase.from('media_assets').select('*').eq('id',params.id).eq('user_id',user.id).single()
- if(assetError||!asset)return NextResponse.json({error:assetError?.message||'Media asset not found'},{status:404})
- if(!String(asset.file_type||'').startsWith('image/'))return NextResponse.json({error:'Professional enhancement only supports photos.'},{status:400})
- const sourceUrl=supabase.storage.from('media').getPublicUrl(asset.storage_path).data.publicUrl
- const publicId=`fireova-polish/${user.id}/${crypto.randomUUID()}`
- let upload:any
- try{
-  upload=await cloudinary.uploader.upload(sourceUrl,{public_id:publicId,resource_type:'image',overwrite:false})
- }catch(error){return NextResponse.json({error:`Cloudinary upload failed: ${error instanceof Error?error.message:'unknown error'}`},{status:502})}
- const enhancedUrl=cloudinary.url(upload.public_id,{secure:true,resource_type:'image',transformation:[{effect:'enhance'},{quality:'auto:best',fetch_format:'jpg'}]})
- let enhanced:Response
- try{enhanced=await fetch(enhancedUrl,{cache:'no-store'})}catch(error){return NextResponse.json({error:`Cloudinary enhancement failed: ${error instanceof Error?error.message:'network error'}`},{status:502})}
- if(!enhanced.ok){const detail=(await enhanced.text()).slice(0,180);return NextResponse.json({error:`Cloudinary enhancement failed (${enhanced.status}): ${detail}`},{status:502})}
- const output=Buffer.from(await enhanced.arrayBuffer()),newId=crypto.randomUUID(),folder=asset.storage_path.includes('/')?asset.storage_path.slice(0,asset.storage_path.lastIndexOf('/')):`${user.id}/polished`,newName=editedFilename(asset.filename||'photo.jpg'),newPath=`${folder}/${newId}-${newName}`
- const{error:uploadError}=await supabase.storage.from('media').upload(newPath,output,{contentType:'image/jpeg',upsert:false,cacheControl:'3600'})
- if(uploadError)return NextResponse.json({error:uploadError.message},{status:500})
- const tags=Array.from(new Set([...(asset.tags||[]),`edited-from:${asset.id}`,'professional-polish','cloudinary-enhance']))
- const row={id:newId,user_id:user.id,filename:newName,storage_path:newPath,file_type:'image/jpeg',size_bytes:output.length,tags,notes:'Professional AI enhancement using Cloudinary Enhance. Original preserved.',created_at:new Date().toISOString(),folder_id:asset.folder_id??null,ai_status:null,ai_reason:null,ai_categories:asset.ai_categories??[],ai_post_uses:asset.ai_post_uses??[],ai_edit_suggestion:null}
- const{error:insertError}=await supabase.from('media_assets').insert(row)
- if(insertError){await supabase.storage.from('media').remove([newPath]);return NextResponse.json({error:insertError.message},{status:500})}
- const{data:eventSource}=await supabase.from('event_media').select('event_id,media_kind').eq('id',asset.id).eq('user_id',user.id).maybeSingle()
- if(eventSource?.event_id)await supabase.from('event_media').insert({id:newId,user_id:user.id,event_id:eventSource.event_id,storage_path:newPath,file_name:newName,file_type:'image/jpeg',media_kind:'photo',size_bytes:output.length,thumbnail_path:null,preview_url:supabase.storage.from('media').getPublicUrl(newPath).data.publicUrl,checksum:null,metadata:{editedFrom:asset.id,editType:'cloudinary-enhance',cloudinaryPublicId:upload.public_id}})
+ const supabase=createClient() as any;const{data:{user}}=await supabase.auth.getUser();if(!user||user.id==='dev')return NextResponse.json({error:'Unauthorized'},{status:401})
+ const cloudName=process.env.CLOUDINARY_CLOUD_NAME,apiKey=process.env.CLOUDINARY_API_KEY,apiSecret=process.env.CLOUDINARY_API_SECRET;if(!cloudName||!apiKey||!apiSecret)return NextResponse.json({error:'Cloudinary is not configured in Production.'},{status:500});cloudinary.config({cloud_name:cloudName,api_key:apiKey,api_secret:apiSecret,secure:true})
+ const{data:asset,error:assetError}=await supabase.from('media_assets').select('*').eq('id',params.id).eq('user_id',user.id).single();if(assetError||!asset)return NextResponse.json({error:assetError?.message||'Media asset not found'},{status:404});if(!String(asset.file_type||'').startsWith('image/'))return NextResponse.json({error:'Professional enhancement only supports photos.'},{status:400})
+ const{data:source,error:sourceError}=await supabase.storage.from('media').download(asset.storage_path);if(sourceError||!source)return NextResponse.json({error:`Could not load original photo: ${sourceError?.message||'unknown error'}`},{status:500});const input=Buffer.from(await source.arrayBuffer()),publicId=`fireova-polish/${user.id}/${crypto.randomUUID()}`
+ let upload:any;try{upload=await uploadBuffer(input,publicId)}catch(error:any){const detail=error?.message||error?.error?.message||JSON.stringify(error);return NextResponse.json({error:`Cloudinary upload failed: ${detail||'unknown error'}`},{status:502})}
+ const enhancedUrl=cloudinary.url(upload.public_id,{secure:true,resource_type:'image',transformation:[{effect:'enhance'},{quality:'auto:best',fetch_format:'jpg'}]});let enhanced:Response;try{enhanced=await fetch(enhancedUrl,{cache:'no-store'})}catch(error){return NextResponse.json({error:`Cloudinary enhancement failed: ${error instanceof Error?error.message:'network error'}`},{status:502})}if(!enhanced.ok){const detail=(await enhanced.text()).slice(0,180);return NextResponse.json({error:`Cloudinary enhancement failed (${enhanced.status}): ${detail}`},{status:502})}
+ const output=Buffer.from(await enhanced.arrayBuffer()),newId=crypto.randomUUID(),folder=asset.storage_path.includes('/')?asset.storage_path.slice(0,asset.storage_path.lastIndexOf('/')):`${user.id}/polished`,newName=editedFilename(asset.filename||'photo.jpg'),newPath=`${folder}/${newId}-${newName}`;const{error:uploadError}=await supabase.storage.from('media').upload(newPath,output,{contentType:'image/jpeg',upsert:false,cacheControl:'3600'});if(uploadError)return NextResponse.json({error:uploadError.message},{status:500})
+ const tags=Array.from(new Set([...(asset.tags||[]),`edited-from:${asset.id}`,'professional-polish','cloudinary-enhance']));const row={id:newId,user_id:user.id,filename:newName,storage_path:newPath,file_type:'image/jpeg',size_bytes:output.length,tags,notes:'Professional AI enhancement using Cloudinary Enhance. Original preserved.',created_at:new Date().toISOString(),folder_id:asset.folder_id??null,ai_status:null,ai_reason:null,ai_categories:asset.ai_categories??[],ai_post_uses:asset.ai_post_uses??[],ai_edit_suggestion:null};const{error:insertError}=await supabase.from('media_assets').insert(row);if(insertError){await supabase.storage.from('media').remove([newPath]);return NextResponse.json({error:insertError.message},{status:500})}
+ const{data:eventSource}=await supabase.from('event_media').select('event_id,media_kind').eq('id',asset.id).eq('user_id',user.id).maybeSingle();if(eventSource?.event_id)await supabase.from('event_media').insert({id:newId,user_id:user.id,event_id:eventSource.event_id,storage_path:newPath,file_name:newName,file_type:'image/jpeg',media_kind:'photo',size_bytes:output.length,thumbnail_path:null,preview_url:supabase.storage.from('media').getPublicUrl(newPath).data.publicUrl,checksum:null,metadata:{editedFrom:asset.id,editType:'cloudinary-enhance',cloudinaryPublicId:upload.public_id}})
  return NextResponse.json({original:{id:asset.id,filename:asset.filename,storage_path:asset.storage_path},edited:{...row,public_url:supabase.storage.from('media').getPublicUrl(newPath).data.publicUrl},engine:'cloudinary-enhance'})
 }
