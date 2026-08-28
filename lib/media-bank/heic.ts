@@ -1,0 +1,2 @@
+export function isHeic(file:File){return /\.(heic|heif)$/i.test(file.name)||/image\/(heic|heif)/i.test(file.type)}
+export async function browserReadyFile(file:File){if(!isHeic(file))return file;const mod=await import('heic2any');const result=await mod.default({blob:file,toType:'image/jpeg',quality:.94});const blob=Array.isArray(result)?result[0]:result;return new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg',lastModified:file.lastModified})}
