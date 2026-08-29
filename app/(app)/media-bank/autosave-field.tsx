@@ -1,0 +1,3 @@
+'use client'
+import{useEffect,useRef,useState}from'react';
+export default function AutosaveField({value,placeholder,onSave}:{value:string;placeholder:string;onSave:(value:string)=>Promise<void>}){const[v,setV]=useState(value),[status,setStatus]=useState(''),first=useRef(true);useEffect(()=>{setV(value)},[value]);useEffect(()=>{if(first.current){first.current=false;return}const t=setTimeout(async()=>{setStatus('Saving…');try{await onSave(v);setStatus('Saved ✓')}catch{setStatus('Could not save')}},700);return()=>clearTimeout(t)},[v]);return <div><input value={v} onChange={e=>setV(e.target.value)} placeholder={placeholder} className="input w-full"/><p className="mt-1 h-4 text-xs text-stone-400">{status}</p></div>}
