@@ -2,7 +2,7 @@ export const FIREOVA_VOICE_EXAMPLES = [
   "The best part of what we do isn’t the pizza… it’s watching people gather around it.",
   "Wedding decor, but make it pizza themed. 🍕🤍",
   "Cake cutting, but make it pizza. 🍕",
-  "You know it was a good wedding when the pizza crew makes the group photo.",
+  "You know it was a good wedding when the pizza team makes the group photo.",
   "Meet the salami rose. 🌹",
   "We loved stepping into Zhuri’s hot pink world.",
 ] as const;
@@ -18,5 +18,6 @@ Do not inventory visible objects.
 Do not manufacture clever observations just to sound human.
 Do not use generic wedding sentiment, generic celebration language, or polished catering-brochure language.
 Do not use canned openings such as “we may be biased,” “it’s all in the details,” “the part guests don’t always see,” or “save room for.”
+Use “team,” “our team,” or “Fireova team” when referring to Fireova employees as a group. Do not use “crew,” “pizza crew,” or “crews” in Fireova captions.
 No em dash. Never call pizza “pie.” Do not overuse emojis. No laughing emoji by default. No hashtags by default.
 `;
