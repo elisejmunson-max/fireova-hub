@@ -37,6 +37,14 @@ a[href^="/media-bank?eventId="]::after { content: " →"; font-size: 0.875rem; m
 
 /* Ready to Review: compact desktop decision cards keep the full 4:5 preview, caption and controls in view. */
 @media (min-width: 1024px) {
+  body:has(a[href="/approved-posts"]):has(h1) .page-header {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  body:has(a[href="/approved-posts"]):has(h1) .page-content {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
   .page-content > div > section > div.grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 300px)) !important;
@@ -47,5 +55,13 @@ a[href^="/media-bank?eventId="]::after { content: " →"; font-size: 0.875rem; m
   .page-content > div > section > div.grid > article {
     width: 300px;
     max-width: 300px;
+  }
+  .page-content > div > section > div.grid > article > div:first-child {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .page-content > div > section > div.grid > article > div:last-child {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 }
