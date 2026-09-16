@@ -34,3 +34,18 @@
 a[href^="/media-bank?eventId="] { font-size: 0 !important; }
 a[href^="/media-bank?eventId="]::before { content: "Review Media"; font-size: 0.875rem; }
 a[href^="/media-bank?eventId="]::after { content: " →"; font-size: 0.875rem; margin-left: 0.375rem; }
+
+/* Ready to Review: desktop cards stay Instagram-sized instead of stretching when only 1–2 suggestions are ready. */
+@media (min-width: 1024px) {
+  .page-content > div > section > div.grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 350px)) !important;
+    justify-content: start;
+    width: fit-content;
+    max-width: 100%;
+  }
+  .page-content > div > section > div.grid > article {
+    width: 350px;
+    max-width: 350px;
+  }
+}
