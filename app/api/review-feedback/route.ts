@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const ACTIONS=new Set(['approve','approve_edited','decline_caption','decline_post']);
+const ACTIONS=new Set(['approve','approve_edited','decline_caption','decline_post','try_different_post','dont_use_media']);
 
 export async function POST(req:NextRequest){
   try{
