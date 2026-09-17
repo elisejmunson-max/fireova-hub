@@ -14,12 +14,14 @@ HARD CHECKS:
 9. TESTIMONIAL RULE: if a Reel is a customer/testimonial video, do not write a generic thank-you such as "Thanks for sharing your experience." The caption should respond to the specific verified sentiment or point the person actually makes. If the spoken message is not available or cannot be verified, do not invent it; use an understated human caption that acknowledges the moment without pretending to know what was said.
 10. NO SERVICE EXPLAINERS: reject captions whose main job is explaining how Fireova works, what Fireova brings, where food is cooked, or a feature/benefit of the service.
 11. NO FORCED CLEVERNESS: reject captions that exist mainly to make an object into a joke, metaphor, slogan, or punchline.
-12. THIRD OPTION: Never act as if the only choices are CLEVER or INFORMATIVE. Fireova's preferred lane is often simply HUMAN: an honest reaction, affection for the work, a small observation, gratitude, anticipation, or a straightforward thought that lets the media carry most of the post.
+12. NO INVENTED PERSONALITY OR PREFERENCES: HUMAN does not mean you may make up an opinion for Fireova. Never invent likes, dislikes, favorites, habits, traditions, feelings, preferences, or attitudes just to make a caption personable. Examples that MUST be rejected unless explicitly supported by verified context: "We like our wings on the messy side," "We'll take a busy oven any day," "This might be our favorite," "We could watch this all day," "Our favorite kind of wedding photo." Do not speak for Fireova about a preference merely because the sentence sounds casual.
+13. THIRD OPTION: Never act as if the only choices are CLEVER or INFORMATIVE. Fireova's preferred lane is often simply HUMAN, but HUMAN must be grounded: a literal moment, a verified action, a known Fireova fact supplied in context, gratitude that is actually warranted, or a straightforward observation that does not invent an opinion.
 
 WHEN REWRITING:
 - Start over from MEDIA FACTS, not from the draft.
 - Prefer one natural thought over a hook + explanation.
 - Ask: "What does this caption add that the viewer cannot already see?"
+- Then ask: "Did I add that value by inventing a Fireova opinion or preference?" If yes, rewrite.
 - If the answer is "nothing," rewrite.
 - If there is no distinctive story, understated is correct.
 - Do not create context just to make a caption interesting.
