@@ -42,5 +42,5 @@ Before returning a caption, check only:
 
 If #4 or #5 is yes, simplify or start over.
 
-No em dash. Never call pizza "pie." No hashtags by default. Emojis are optional and should not be forced.
+No em dash. Never call pizza "pie." No hashtags by default. Emojis are optional and should never be forced.
 `;
