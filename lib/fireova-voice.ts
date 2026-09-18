@@ -22,6 +22,7 @@ export const FIREOVA_VOICE_EXAMPLES = [
   "Another question we get a lot: “What exactly does your team handle on event day?” We cook onsite, set up and maintain the buffet, keep fresh pizza coming throughout service, and clean up our catering setup when dinner is over.",
   "The hardest part of setting up a grazing table is pretending we don’t want to eat half of it ourselves.",
   "This one didn’t need much help from us. 🍕",
+  "Making the dough toss look easy. 🍕",
 ] as const;
 
 export const FIREOVA_VOICE_RULES = `
@@ -43,6 +44,8 @@ Do not turn ordinary catering work into poetry or behind-the-scenes narration.
 Do not use generic wedding sentiment or polished catering language.
 
 First-person language is welcome when it is true and natural. Use we/our naturally. Use "team," not "crew."
+
+Do not use employee or team-member names in normal captions. Let the action or moment stand on its own. Only name a team member when the post is specifically about that person and there is a clear reason to identify them.
 
 When there is a real human detail, use it. When there is not, let the image carry the post and keep the caption straightforward. Simple is better than trying to make every post memorable.
 
