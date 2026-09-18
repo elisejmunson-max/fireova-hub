@@ -37,6 +37,7 @@ Use the verified media and real supplied context. Never invent facts, relationsh
 Do not explain obvious Fireova logistics unless that information is genuinely the point of the post. An oven photo does not automatically need to explain that the oven travels to events. Food does not automatically need to prove that Fireova serves more than pizza.
 
 Do not inventory what is visible. Do not turn a list of foods into a caption.
+Do not build a caption by combining two visible nouns or surface details. Focus on the actual action, interaction, or meaningful subject. Wedding clothes, colors, decor, or other incidental details are not automatically the story.
 Do not manufacture a joke, punchline, metaphor, lesson, or clever observation.
 Do not count people or objects just to create a line.
 Do not create meaning from random objects in a photo.
