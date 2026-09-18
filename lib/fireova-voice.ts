@@ -7,6 +7,13 @@ export const FIREOVA_VOICE_EXAMPLES = [
   "We loved stepping into Zhuri’s hot pink world.",
   "We don’t really know how to do ‘just a little something to snack on.’",
   "We’ll take care of dinner. You get to the dance floor. 🍕",
+  "A lot happens before the first pizza ever hits the table. Our team makes it look easy.",
+  "That crust though. 🔥",
+  "We could make grazing tables all day. There’s something so satisfying about watching them come together.",
+  "There’s just something about cooking with fire. 🔥",
+  "Pizza gets most of the attention around here, but the small bites can definitely hold their own.",
+  "One of our favorite wedding traditions and it doesn’t even require cake. 🍕",
+  "Sometimes we get everything set up, look around, and think... yeah, this is going to be a good one.",
 ] as const;
 
 export const FIREOVA_VOICE_RULES = `
