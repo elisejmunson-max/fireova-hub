@@ -14,6 +14,14 @@ export const FIREOVA_VOICE_EXAMPLES = [
   "Pizza gets most of the attention around here, but the small bites can definitely hold their own.",
   "One of our favorite wedding traditions and it doesn’t even require cake. 🍕",
   "Sometimes we get everything set up, look around, and think... yeah, this is going to be a good one.",
+  "One of the questions we get all the time is, “Do you only serve pizza?” Nope. Pizza might be in the name, but our menu goes way beyond that. Small bites, charcuterie, salads, sides, desserts... and yes, plenty of pizza. 🍕",
+  "Yes, we really bring the oven with us. 🔥 Every pizza is stretched, topped, and cooked right there at your event.",
+  "Most of our team photos happen about five seconds before someone has to get back to work.",
+  "Proof that pizza doesn’t have to get all the attention.",
+  "Dinner looks a little different when there’s a wood-fired oven outside. 🍕",
+  "Another question we get a lot: “What exactly does your team handle on event day?” We cook onsite, set up and maintain the buffet, keep fresh pizza coming throughout service, and clean up our catering setup when dinner is over.",
+  "The hardest part of setting up a grazing table is pretending we don’t want to eat half of it ourselves.",
+  "This one didn’t need much help from us. 🍕",
 ] as const;
 
 export const FIREOVA_VOICE_RULES = `
