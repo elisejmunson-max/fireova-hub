@@ -6,6 +6,7 @@ type BrainTopic = { id: string; topic: string; facts: string[] }
 
 export default function BrainPage() {
   const [topics, setTopics] = useState<BrainTopic[]>([])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showAdd, setShowAdd] = useState(false)
   const [topic, setTopic] = useState('')
   const [fact, setFact] = useState('')
@@ -62,6 +63,14 @@ export default function BrainPage() {
     await load()
   }
 
+  function toggle(id: string) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
   return <div>
     <div className="page-header py-4">
       <div className="flex items-center justify-between gap-4">
@@ -75,11 +84,16 @@ export default function BrainPage() {
         {loading && <p className="py-12 text-center text-sm text-stone-400">Loading…</p>}
         {!loading && loadError && <div className="rounded-xl border border-red-200 bg-red-50 p-4"><p className="text-sm text-red-800">{loadError}</p><button onClick={() => void load()} className="mt-2 text-sm font-semibold text-red-700 underline">Try again</button></div>}
         {!loading && !loadError && topics.length === 0 && <div className="rounded-xl border bg-white px-6 py-10 text-center"><h2 className="font-semibold text-stone-800">Nothing saved yet</h2><p className="mt-1 text-sm text-stone-500">Add something you want the caption writer to remember.</p></div>}
-        {!loading && !loadError && topics.length > 0 && <div className="space-y-3">{topics.map((item) => <article key={item.id} className="rounded-xl border bg-white px-5 py-4">
-          <h2 className="text-base font-semibold text-stone-900">{item.topic}</h2>
-          <ul className="mt-3 divide-y divide-stone-100">{item.facts.map((itemFact) => <li key={itemFact} className="group flex items-start gap-3 py-2.5 first:pt-0 last:pb-0"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" /><span className="flex-1 text-sm leading-5 text-stone-700">{itemFact}</span><button onClick={() => void remove(item.id, itemFact)} className="shrink-0 text-xs text-stone-400 hover:text-red-600">Remove</button></li>)}</ul>
-          <AddDetail topic={item.topic} onAdd={add} saving={saving} />
-        </article>)}</div>}
+        {!loading && !loadError && topics.length > 0 && <div className="space-y-3">{topics.map((item) => {
+          const isOpen = expanded.has(item.id)
+          return <article key={item.id} className="overflow-hidden rounded-xl border bg-white">
+            <button onClick={() => toggle(item.id)} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-stone-50">
+              <div><h2 className="text-base font-semibold text-stone-900">{item.topic}</h2><p className="mt-0.5 text-xs text-stone-400">{item.facts.length} {item.facts.length === 1 ? 'detail' : 'details'}</p></div>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-lg text-stone-500" aria-hidden="true">{isOpen ? '−' : '+'}</span>
+            </button>
+            {isOpen && <div className="border-t px-5 pb-4 pt-1"><ul className="divide-y divide-stone-100">{item.facts.map((itemFact) => <li key={itemFact} className="flex items-start gap-3 py-2.5"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" /><span className="flex-1 text-sm leading-5 text-stone-700">{itemFact}</span><button onClick={() => void remove(item.id, itemFact)} className="shrink-0 text-xs text-stone-400 hover:text-red-600">Remove</button></li>)}</ul><AddDetail topic={item.topic} onAdd={add} saving={saving} /></div>}
+          </article>
+        })}</div>}
       </div>
     </div>
 
