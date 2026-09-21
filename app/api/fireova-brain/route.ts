@@ -15,16 +15,18 @@ async function currentUser() {
   return { supabase, user }
 }
 
-function normalizeFacts(topic: string, facts: string[]) {
-  const legacy = STUFFED_MUSHROOM_FACTS.join(' ').toLowerCase()
-  if (topic.trim().toLowerCase() === 'stuffed mushrooms' && facts.some((fact) => fact.trim().toLowerCase() === legacy)) {
-    return [...new Set(facts.flatMap((fact) => fact.trim().toLowerCase() === legacy ? STUFFED_MUSHROOM_FACTS : [fact]))]
-  }
-  return facts
+function factsFromInput(value: string) {
+  return value.split(/\n|;|•|,/).map((fact) => fact.trim()).filter(Boolean)
 }
 
-function factsFromInput(value: string) {
-  return value.split(/\n|;|•/).map((fact) => fact.trim()).filter(Boolean)
+function normalizeFacts(topic: string, facts: string[]) {
+  const legacy = STUFFED_MUSHROOM_FACTS.join(' ').toLowerCase()
+  return [...new Set(facts.flatMap((fact) => {
+    if (topic.trim().toLowerCase() === 'stuffed mushrooms' && fact.trim().toLowerCase() === legacy) {
+      return STUFFED_MUSHROOM_FACTS
+    }
+    return factsFromInput(fact)
+  }))]
 }
 
 export async function GET() {
