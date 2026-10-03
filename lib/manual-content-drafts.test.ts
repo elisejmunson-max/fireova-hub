@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 // Node 24 executes this TypeScript test directly; TypeScript's project config
 // intentionally does not enable extension imports for application source.
 // @ts-expect-error Node's direct TypeScript runner requires the explicit suffix.
-import { appendManualDraft, approveOnce, restoreManualDrafts, runExclusive, type ManualAsset, type ManualPost } from './manual-content-drafts.ts';
+import { appendManualDraft, approveOnce, restoreManualDrafts, runExclusive, serializeManualDrafts, tileMedia, type ManualAsset, type ManualPost } from './manual-content-drafts.ts';
 
 const assets:ManualAsset[]=[{id:'a',storage_path:'a.jpg',file_type:'image/jpeg'},{id:'b',storage_path:'b.jpg',file_type:'image/jpeg'}];
 
@@ -13,3 +13,5 @@ test('appends without replacing existing drafts',()=>{const old:ManualPost={id:'
 test('duplicate save attempts are locked and failures release the lock',async()=>{const lock={current:false};let calls=0,release!:()=>void;const pending=new Promise<void>(resolve=>{release=resolve});const first=runExclusive(lock,async()=>{calls++;await pending});const duplicate=await runExclusive(lock,async()=>{calls++});assert.equal(duplicate,false);release();assert.equal(await first,true);await assert.rejects(()=>runExclusive(lock,async()=>{throw new Error('save failed')}));assert.equal(lock.current,false);await runExclusive(lock,async()=>{calls++});assert.equal(calls,2)});
 test('failed approval can retry approval',async()=>{const succeeded=new Set<string>();let approvals=0;await assert.rejects(()=>approveOnce('p',succeeded,async()=>{approvals++;throw new Error('failed')},async()=>{}));await approveOnce('p',succeeded,async()=>{approvals++},async()=>{});assert.equal(approvals,2)});
 test('successful approval is not repeated when cleanup retries',async()=>{const succeeded=new Set<string>();let approvals=0,cleanups=0;await assert.rejects(()=>approveOnce('p',succeeded,async()=>{approvals++},async()=>{cleanups++;throw new Error('queue failed')}));await approveOnce('p',succeeded,async()=>{approvals++},async()=>{cleanups++});assert.equal(approvals,1);assert.equal(cleanups,2)});
+test('serializes the compatible slot shape with ordered media and caption edits',()=>{const post:ManualPost={id:'p',media:[assets[1],assets[0]],kind:'Carousel',purpose:'Wedding'};assert.deepEqual(serializeManualDrafts([post],{p:'edited'},{p:'original'}),[{assetIds:['b','a'],kind:'Carousel',caption:'edited',originalCaption:'original',purpose:'Wedding'}])});
+test('tile uses first ordered asset and missing media remains visible',()=>{const restored=restoreManualDrafts([{assetIds:['gone','a'],kind:'Carousel',caption:'copy',originalCaption:'copy'}],assets);assert.equal(tileMedia(restored.posts[0])?.id,'gone');assert.equal(tileMedia(restored.posts[0])?.missing,true)});

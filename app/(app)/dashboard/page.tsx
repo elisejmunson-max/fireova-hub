@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import WeeklyContent from './weekly-content-persistent';
 
@@ -10,21 +9,24 @@ export const revalidate = 0;
 export default async function DashboardPage() {
   const sb = createClient() as any;
   const { data: { user } } = await sb.auth.getUser();
-  let media: any[] = [], approvedCount = 0, savedSlots: any[] = [];
+  let media: any[] = [], approvedCount = 0, savedSlots: any[] = [], loadError = '';
   if (user && user.id !== 'dev') {
-    const [{ data: newest }, { data: approved }, { data: queue }] = await Promise.all([
-      sb.from('media_assets').select('id,filename,storage_path,file_type,ai_categories,ai_reason,tags,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(250),
+    const [{ data: newest, error: mediaError }, { data: approved, error: approvedError }, { data: queue, error: queueError }] = await Promise.all([
+      sb.from('media_assets').select('id,filename,storage_path,file_type,tags,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(250),
       sb.from('posts').select('id,created_at').eq('user_id', user.id).eq('pillar', 'Approved Posts').order('created_at', { ascending: false }).limit(250),
       sb.from('review_queue').select('slots').eq('user_id', user.id).maybeSingle(),
     ]);
     media = newest || [];
+    loadError = [mediaError&&'Media Bank',approvedError&&'approved posts',queueError&&'review queue'].filter(Boolean).length
+      ? `Could not load ${[mediaError&&'Media Bank',approvedError&&'approved posts',queueError&&'review queue'].filter(Boolean).join(', ')}. Retry before making a decision.`
+      : '';
     approvedCount = approved?.length || 0;
     savedSlots = Array.isArray(queue?.slots) ? queue.slots : [];
     const loadedIds = new Set(media.map((asset: any) => asset.id));
     const referencedIds = savedSlots.flatMap((slot: any) => Array.isArray(slot?.assetIds) ? slot.assetIds : []);
     const missingIds = [...new Set<string>(referencedIds)].filter(id => typeof id === 'string' && !loadedIds.has(id));
     if (missingIds.length) {
-      const { data: savedMedia } = await sb.from('media_assets').select('id,filename,storage_path,file_type,ai_categories,ai_reason,tags,created_at').eq('user_id', user.id).in('id', missingIds);
+      const { data: savedMedia } = await sb.from('media_assets').select('id,filename,storage_path,file_type,tags,created_at').eq('user_id', user.id).in('id', missingIds);
       media = [...media, ...(savedMedia || [])];
     }
     if (approved?.length) {
@@ -36,5 +38,5 @@ export default async function DashboardPage() {
       media = [...media].sort((a: any, b: any) => { const au = lastUsed.get(a.id), bu = lastUsed.get(b.id); if (au == null && bu != null) return -1; if (au != null && bu == null) return 1; if (au != null && bu != null && au !== bu) return au - bu; return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); });
     }
   }
-  return <div><div className="page-header py-3"><div className="flex items-center justify-end gap-2"><Link href="/approved-posts" className="btn-secondary">Approved Posts · {approvedCount}</Link><Link href="/media-bank" className="btn-secondary">Media Bank · {media.length}</Link></div></div><div className="page-content py-3"><div className="mx-auto max-w-[1120px]"><WeeklyContent initialAssets={media} savedSlots={savedSlots}/></div></div></div>;
+  return <div><div className="page-content py-4 sm:py-6"><div className="mx-auto max-w-[1080px]"><WeeklyContent initialAssets={media} savedSlots={savedSlots} approvedCount={approvedCount} loadError={loadError}/></div></div></div>;
 }
