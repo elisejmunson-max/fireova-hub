@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import EditorialNav from "@/components/layout/editorial-nav";
 import {
   appendManualDraft,
   activeManualMedia,
@@ -117,10 +118,6 @@ export default function WeeklyContentPersistent({
     else window.history.pushState({ fireovaPostDetail: id }, "");
     setSelectedId(id);
     setCaptionEdit(cancelCaptionEdit());
-  }
-  async function signOut() {
-    await supabase.auth.signOut();
-    window.location.assign("/login");
   }
   function closePost() {
     if (!canNavigateDuringCaptionSave(busy)) return;
@@ -404,12 +401,8 @@ export default function WeeklyContentPersistent({
   }
 
   return (
-    <section aria-labelledby="review-title" className="editorial-overview">
-      <nav aria-label="Fireova" className="editorial-compact-nav">
-        <Link href="/dashboard" aria-current="page" className="editorial-compact-brand">fireova<span>•</span></Link>
-        <Link href="/dashboard" className="is-active">Create Content</Link><Link href="/approved-posts">Approved Posts</Link><Link href="/marketing-events">Events</Link><Link href="/media-bank">Media Bank</Link><Link href="/brain">Fireova Brain</Link>
-        <button type="button" onClick={() => void signOut()} className="ml-auto">Sign out</button>
-      </nav>
+    <section aria-labelledby="review-title" className="editorial-overview editorial-shell">
+      <EditorialNav />
       <header className="editorial-overview-heading">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
@@ -603,7 +596,7 @@ export default function WeeklyContentPersistent({
       </section>
       {selected && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-[#f7f5f0] p-3 sm:p-6"
+          className="fixed inset-0 z-50 overflow-y-auto bg-[#f7f5f0] p-3 sm:p-6 lg:flex lg:items-center"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closePost();
           }}
@@ -614,14 +607,14 @@ export default function WeeklyContentPersistent({
             aria-modal="true"
             aria-labelledby="post-detail-title"
             tabIndex={-1}
-            className="mx-auto w-full max-w-[1320px] overflow-hidden rounded-md border border-[#dfded5] bg-[#fffefb] outline-none"
+            className="mx-auto w-full max-w-[1320px] overflow-hidden rounded-md border border-[#dfded5] bg-[#fffefb] outline-none lg:flex lg:max-h-[calc(100dvh-3rem)] lg:flex-col"
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur">
-              <div>
+              <div className="min-w-0 pr-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   {statusLabel(selected)}
                 </p>
-                <h2 id="post-detail-title" className="editorial-serif text-3xl font-normal">
+                <h2 id="post-detail-title" className="editorial-serif truncate text-2xl font-normal sm:text-3xl">
                   {postTitle(selected, captions[selected.id] || "")}
                 </h2>
               </div>
@@ -634,8 +627,8 @@ export default function WeeklyContentPersistent({
                 ×
               </button>
             </div>
-            <div className="grid lg:min-h-[680px] lg:grid-cols-[220px_minmax(0,1.12fr)_minmax(360px,.88fr)]">
-              <aside className="hidden border-r border-[#dfded5] bg-[#faf9f5] p-4 lg:block">
+            <div className="grid lg:min-h-0 lg:flex-1 lg:grid-cols-[190px_minmax(0,1.08fr)_minmax(340px,.82fr)]">
+              <aside className="hidden border-r border-[#dfded5] bg-[#faf9f5] p-4 lg:min-h-0 lg:overflow-y-auto lg:block">
                 <p className="editorial-eyebrow">Your two-week grid</p>
                 <div className="mt-4 grid grid-cols-3 gap-1.5">{posts.slice(0,6).map(post => { const asset=tileMedia(post); return <button type="button" key={post.id} onClick={()=>openPost(post.id)} className={`aspect-square overflow-hidden bg-[#e9e7df] p-0.5 ${post.id===selected.id?"ring-2 ring-[#cb542d]":""}`}>{!asset||asset.missing?<span className="flex h-full items-center justify-center text-xs text-stone-500">!</span>:isVideo(asset)?<video src={url(asset)} muted className="h-full w-full object-cover"/>:<img src={url(asset)} alt="" className="h-full w-full object-cover"/>}</button>})}</div>
                 <p className="mt-4 text-xs text-[#8b8c83]">{posts.length} draft{posts.length===1?"":"s"} ready</p>
