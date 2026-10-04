@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import EditorialNav from "@/components/layout/editorial-nav";
 import {
   appendManualDraft,
   activeManualMedia,
@@ -402,7 +401,6 @@ export default function WeeklyContentPersistent({
 
   return (
     <section aria-labelledby="review-title" className="editorial-overview editorial-shell">
-      <EditorialNav />
       <header className="editorial-overview-heading">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
