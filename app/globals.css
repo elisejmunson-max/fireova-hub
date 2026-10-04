@@ -31,7 +31,7 @@
 .sidebar-nav::-webkit-scrollbar { display: none; }
 
 /* Create Content — warm editorial planning and review experience. */
-.editorial-overview, .editorial-detail, .editorial-media-bank { color:#262722; }
+.editorial-overview, .editorial-detail, .editorial-media-bank, .editorial-approved { color:#262722; }
 .editorial-serif { font-family: Georgia, "Times New Roman", serif; font-weight:400; letter-spacing:-.025em; }
 .editorial-eyebrow { color:#8b8c83; font-size:10px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; }
 .editorial-overview-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:2rem; border-bottom:1px solid #dfded5; padding:2.4rem 0 1.7rem; }
@@ -59,6 +59,8 @@
 .editorial-icon-button { display:inline-flex; height:40px; width:40px; align-items:center; justify-content:center; border:1px solid #dfded5; border-radius:999px; color:#74756d; }
 body:has(.editorial-shell) { background:#f7f5f0; }
 .editorial-media-bank { min-height:100dvh; padding:0 2rem 3rem; }
+.editorial-approved { min-height:100dvh; padding:0 2rem 3rem; }
+.editorial-approved-content { padding-top:1.4rem; }
 .editorial-media-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:2rem; border-bottom:1px solid #dfded5; padding:2.4rem 0 1.7rem; }
 .editorial-media-library { padding-top:1.4rem; }
 .editorial-media-library .btn-primary { border-radius:4px; background:#262722; padding:.65rem 1rem; }
@@ -76,7 +78,7 @@ body:has(.editorial-shell) { background:#f7f5f0; }
   .editorial-compact-nav { display:flex; }
 }
 @media (max-width:767px) {
-  .editorial-media-bank { padding:0 1rem 2rem; }
+  .editorial-media-bank, .editorial-approved { padding:0 1rem 2rem; }
   .editorial-media-heading { align-items:flex-start; flex-direction:column; padding-top:1rem; }
   .editorial-overview-heading { align-items:flex-start; flex-direction:column; padding-top:1rem; }
   .editorial-toolbar { align-items:flex-start; flex-wrap:wrap; gap:.8rem 1.25rem; padding:.8rem 0; }
