@@ -562,7 +562,7 @@ export default function WeeklyContentPersistent({
               </button>
             </div>
             <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
-              <div className="bg-stone-100">
+              <div className="bg-stone-950">
                 <div className="relative mx-auto aspect-square max-h-[70vh]">
                   {selected.media[slide]?.missing ? (
                     <div className="flex h-full items-center justify-center p-8 text-center text-sm text-stone-500">
