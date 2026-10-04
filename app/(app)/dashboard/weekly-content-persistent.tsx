@@ -530,7 +530,7 @@ export default function WeeklyContentPersistent({
       )}
       {selected && (
         <div
-          className="fixed inset-y-0 left-0 right-0 z-50 flex items-end justify-center bg-stone-900/45 sm:items-center sm:p-5 md:left-64"
+          className="fixed inset-y-0 left-0 right-0 z-50 flex items-end justify-center bg-stone-900/45 sm:items-center sm:p-6 md:left-64"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closePost();
           }}
@@ -541,7 +541,7 @@ export default function WeeklyContentPersistent({
             aria-modal="true"
             aria-labelledby="post-detail-title"
             tabIndex={-1}
-            className="max-h-[94vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl outline-none sm:max-w-4xl sm:rounded-2xl"
+            className="max-h-[calc(100dvh-0.75rem)] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl outline-none sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-2xl lg:overflow-hidden"
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur">
               <div>
@@ -561,9 +561,9 @@ export default function WeeklyContentPersistent({
                 ×
               </button>
             </div>
-            <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
-              <div className="bg-stone-950">
-                <div className="relative mx-auto aspect-square max-h-[70vh]">
+            <div className="grid lg:h-[min(680px,calc(100dvh-8.5rem))] lg:min-h-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
+              <div className="flex min-h-[22rem] flex-col bg-stone-950 lg:min-h-0">
+                <div className="relative flex h-[min(62dvh,32rem)] min-h-0 flex-none items-center justify-center p-4 sm:p-6 lg:h-auto lg:flex-1">
                   {selected.media[slide]?.missing ? (
                     <div className="flex h-full items-center justify-center p-8 text-center text-sm text-stone-500">
                       This draft is preserved, but media{" "}
@@ -649,7 +649,7 @@ export default function WeeklyContentPersistent({
                   </div>
                 )}
               </div>
-              <div className="flex flex-col p-5 sm:p-6">
+              <div className="flex flex-col p-5 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
                 <label
                   htmlFor="post-caption"
                   className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500"
@@ -666,8 +666,8 @@ export default function WeeklyContentPersistent({
                     }));
                     setSaved((value) => ({ ...value, [selected.id]: "" }));
                   }}
-                  rows={10}
-                  className="mt-2 w-full resize-y rounded-xl border border-stone-200 p-3 text-sm leading-6 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                  rows={6}
+                  className="mt-2 min-h-32 max-h-64 w-full resize-y overflow-y-auto rounded-xl border border-stone-200 p-3 text-sm leading-6 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                 />
                 {[...new Set(selected.media.map(credit).filter(Boolean))].map(
                   (name) => (
