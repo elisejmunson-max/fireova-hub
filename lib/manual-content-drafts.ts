@@ -3,6 +3,15 @@ export type ManualKind='Photo'|'Carousel'|'Reel';
 export type RevisionRequest={note:string;requestedAt:string;baseCaption:string;status:'waiting'|'revised';revisedAt?:string};
 export type ManualPost={id:string;media:ManualAsset[];kind:ManualKind;purpose?:string;revision?:RevisionRequest};
 export type ManualSlot={assetIds:string[];kind:ManualKind;caption:string;originalCaption:string;purpose?:string;revision?:RevisionRequest};
+export type CaptionEditState={editing:boolean;draft:string};
+export const idleCaptionEdit=():CaptionEditState=>({editing:false,draft:''});
+export const beginCaptionEdit=(caption:string):CaptionEditState=>({editing:true,draft:caption});
+export const updateCaptionEdit=(state:CaptionEditState,draft:string):CaptionEditState=>({...state,draft});
+export const cancelCaptionEdit=():CaptionEditState=>idleCaptionEdit();
+export const completeCaptionEdit=(persisted:boolean,state:CaptionEditState):CaptionEditState=>persisted?idleCaptionEdit():state;
+export const canApproveCaptionEdit=(state:CaptionEditState)=>!state.editing;
+export const canNavigateDuringCaptionSave=(saving:boolean)=>!saving;
+export const canInteractWithCaptionEdit=(saving:boolean)=>!saving;
 
 export function restoreManualDrafts(slots:ManualSlot[],assets:ManualAsset[]){
   const byId=new Map(assets.map(a=>[a.id,a])),posts:ManualPost[]=[],captions:Record<string,string>={},originals:Record<string,string>={};
@@ -19,6 +28,7 @@ export function requestRevision(post:ManualPost,note:string,caption:string,reque
 export function reconcileRevision(post:ManualPost,caption:string,revisedAt:string):ManualPost{if(post.revision?.status!=='waiting'||caption.trim()===post.revision.baseCaption.trim())return post;return{...post,revision:{...post.revision,status:'revised',revisedAt}}}
 
 export function tileMedia(post:ManualPost){return post.media[0]||null}
+export function activeManualMedia(post:ManualPost,slide:number){return post.media[slide]||post.media[0]||null}
 
 export function appendManualDraft(current:{posts:ManualPost[];captions:Record<string,string>;originals:Record<string,string>},post:ManualPost,caption:string){
   return{posts:[...current.posts,post],captions:{...current.captions,[post.id]:caption},originals:{...current.originals,[post.id]:caption}};
