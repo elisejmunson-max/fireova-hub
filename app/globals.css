@@ -37,6 +37,11 @@
 .editorial-overview-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:2rem; border-bottom:1px solid #dfded5; padding:2.4rem 0 1.7rem; }
 .editorial-compact-nav { display:none; align-items:center; gap:1.35rem; min-height:64px; border-bottom:1px solid #dfded5; color:#74756d; font-size:12px; }
 .editorial-compact-nav a:hover,.editorial-compact-nav button:hover,.editorial-compact-nav .is-active{color:#262722}.editorial-compact-nav .is-active{border-bottom:2px solid #cb542d;align-self:stretch;display:flex;align-items:center}
+.editorial-persistent-nav { padding:0 2rem; }
+.editorial-loading { min-height:calc(100dvh - 64px); max-width:1180px; margin:0 auto; padding:0 2rem 3rem; color:#262722; }
+.editorial-loading-heading { padding:3rem 0 2rem; border-bottom:1px solid #dfded5; }
+.editorial-loading-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2rem 1.25rem; padding-top:2rem; }
+.editorial-loading-card { min-width:0; }
 .editorial-compact-brand{margin-right:.5rem;color:#262722!important;font-size:22px;font-weight:700;letter-spacing:-.05em}.editorial-compact-brand span{color:#cb542d}
 .editorial-toolbar { display:flex; align-items:center; gap:2rem; min-height:64px; border-bottom:1px solid #dfded5; color:#74756d; font-size:13px; }
 .editorial-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; padding:1.4rem 0 2rem; }
@@ -78,6 +83,10 @@ body:has(.editorial-shell) { background:#f7f5f0; }
   .editorial-compact-nav { display:flex; }
 }
 @media (max-width:767px) {
+  .editorial-persistent-nav { padding:0; }
+  .editorial-loading { min-height:calc(100dvh - 56px); padding:0 1rem 2rem; }
+  .editorial-loading-heading { padding:2rem 0 1.5rem; }
+  .editorial-loading-grid { grid-template-columns:1fr; gap:1.5rem; padding-top:1.5rem; }
   .editorial-media-bank, .editorial-approved { padding:0 1rem 2rem; }
   .editorial-media-heading { align-items:flex-start; flex-direction:column; padding-top:1rem; }
   .editorial-overview-heading { align-items:flex-start; flex-direction:column; padding-top:1rem; }

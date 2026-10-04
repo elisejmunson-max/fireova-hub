@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/layout/sidebar'
+import AppChrome from '@/components/layout/app-chrome'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -12,12 +12,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login')
   }
 
-  return (
-    <div className="min-h-screen bg-stone-50">
-      <Sidebar user={user} />
-      <div className="min-h-screen md:ml-64 lg:pt-0 pt-14">
-        <main className="min-h-screen overflow-x-hidden">{children}</main>
-      </div>
-    </div>
-  )
+  return <AppChrome user={user}>{children}</AppChrome>
 }

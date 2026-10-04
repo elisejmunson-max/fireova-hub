@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import EditorialNav from "@/components/layout/editorial-nav";
 import { createClient } from "@/lib/supabase/server";
 import type { MediaAsset } from "@/lib/types";
 import AutosaveBridge from "./autosave-bridge";
@@ -33,7 +32,6 @@ export default async function MediaBankPage({ searchParams }: { searchParams?: {
   return (
     <section className="editorial-media-bank editorial-shell">
       <AutosaveBridge />
-      <EditorialNav />
       <header className="editorial-media-heading">
         <div>
           <p className="editorial-eyebrow">Your visual archive</p>

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import EditorialNav from "@/components/layout/editorial-nav";
 import { createClient } from "@/lib/supabase/server";
 import ApprovedPostsGrid from "./approved-posts-grid";
 
@@ -75,7 +74,6 @@ export default async function ApprovedPostsPage() {
 
   return (
     <section className="editorial-approved editorial-shell">
-      <EditorialNav />
       <header className="editorial-overview-heading">
         <div>
           <p className="editorial-eyebrow">Ready when you are</p>
