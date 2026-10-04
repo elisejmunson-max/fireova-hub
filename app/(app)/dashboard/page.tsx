@@ -39,5 +39,5 @@ export default async function DashboardPage() {
       media = [...media].sort((a: any, b: any) => { const au = lastUsed.get(a.id), bu = lastUsed.get(b.id); if (au == null && bu != null) return -1; if (au != null && bu == null) return 1; if (au != null && bu != null && au !== bu) return au - bu; return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); });
     }
   }
-  return <div><div className="page-content py-4 sm:py-6"><div className="mx-auto max-w-[1080px]"><WeeklyContent initialAssets={media} savedSlots={savedSlots} initialQueueUpdatedAt={queueUpdatedAt} approvedCount={approvedCount} loadError={loadError}/></div></div></div>;
+  return <div><div className="page-content py-4 sm:py-8"><div className="mx-auto max-w-[1116px]"><WeeklyContent initialAssets={media} savedSlots={savedSlots} initialQueueUpdatedAt={queueUpdatedAt} approvedCount={approvedCount} loadError={loadError}/></div></div></div>;
 }
