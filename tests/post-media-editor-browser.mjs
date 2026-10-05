@@ -139,7 +139,7 @@ try{
     await button(page,'Move media 1 later').click();await assertSelected(page,[3,1,2].map(assetId));
     await button(page,'Remove media 2').click();await assertSelected(page,[3,2].map(assetId));
     assert.equal(state.saves.length,0,'staging never writes review queue');
-    await screenshot(page,'desktop-reorder-before-save.png');await save(page,state);
+    await screenshot(page,'desktop-reorder-before-save.png');await button(page,'Save media').scrollIntoViewIfNeeded();await screenshot(page,'desktop-editor-save-controls.png');await save(page,state);
     assert.deepEqual(state.slots[0].assetIds,[3,2].map(assetId));assert.equal(state.slots[0].kind,'Carousel');assert.equal(state.saves[0].expectedUpdatedAt,INITIAL_REVISION);await assertUnchanged(state,initialSlots);
     await closePost(page);await openPost(page);await openEditor(page);await assertSelected(page,[3,2].map(assetId));await button(page,'Cancel media edits').click();
     await page.reload();await openPost(page);await openEditor(page);await assertSelected(page,[3,2].map(assetId));
@@ -178,7 +178,12 @@ try{
   await scenario('whole-bank-pagination-search-deduplication',async({page,state})=>{
     await openPost(page);await openEditor(page);assert.equal(state.queries[0].offset,0);assert.equal(state.queries[0].limit,24);
     assert.equal(await bankButton(page,31).count(),0);await button(page,'Load more media').click();await bankButton(page,31).waitFor();assert.equal(await bankButton(page,24).count(),1,'duplicate page rows do not produce duplicate cards');await bankButton(page,31).click();
-    await page.getByRole('textbox',{name:/Search.*[Mm]edia/}).fill('fixture-032');await bankButton(page,32).waitFor();assert.equal(await bankButton(page,1).count(),0);await assertSelected(page,[1,31].map(assetId));await bankButton(page,32).click();await save(page,state);assert.deepEqual(state.slots[0].assetIds,[1,31,32].map(assetId));
+    // Asset 32 already exists in the paginated grid. Its presence alone cannot
+    // establish that the debounced search response has replaced those old rows.
+    const searched=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/api/media-bank/library'&&url.searchParams.get('q')==='fixture-032'&&url.searchParams.get('offset')==='0'&&response.status()===200;});
+    await page.getByRole('textbox',{name:/Search.*[Mm]edia/}).fill('fixture-032');await searched;
+    await eventually(async()=>await bankButton(page,32).count()===1&&await page.getByLabel('Choose from Media Bank',{exact:true}).getByRole('button').count()===1,'latest whole-bank search replaces the paginated grid with its one match');
+    assert.equal(await bankButton(page,1).count(),0);await assertSelected(page,[1,31].map(assetId));await bankButton(page,32).click();await save(page,state);assert.deepEqual(state.slots[0].assetIds,[1,31,32].map(assetId));
     assert(state.queries.some(query=>query.offset===24));assert(state.queries.some(query=>query.q==='fixture-032'&&query.offset===0));
     state.assertions=['library query fetches 24 at a time','later-page assets can be selected despite missing from initial dashboard props','duplicate pagination rows are deduplicated','whole-bank search resets cursor without losing selection'];
   },{duplicatePage:true});
@@ -255,9 +260,11 @@ try{
     await openPost(page);assert.equal(await currentDialog(page).getAttribute('aria-modal'),'true');assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');await openEditor(page);
     await bankButton(page,2).press('Enter');await assertSelected(page,[1,2].map(assetId));await button(page,'Move media 2 earlier').press('Enter');await assertSelected(page,[2,1].map(assetId));
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no mobile document overflow');
+    await selection(page).scrollIntoViewIfNeeded();await screenshot(page,'mobile-390-selected-media.png');
     for(const name of ['Move media 1 later','Remove media 1','Cancel media edits','Save media']){const target=button(page,name);await target.scrollIntoViewIfNeeded();const rect=await target.boundingBox();assert(rect&&rect.x>=0&&rect.x+rect.width<=390.5,`${name} reachable within mobile viewport`);}
+    await screenshot(page,'mobile-390-editor.png');
     const focusable=currentDialog(page).locator('button:not(:disabled):visible, textarea:not(:disabled):visible, input:not(:disabled):visible, a[href]:visible');await focusable.last().focus();await page.keyboard.press('Tab');assert.equal(await currentDialog(page).evaluate(element=>element.contains(document.activeElement)),true,'Tab remains in dialog');
-    await screenshot(page,'mobile-390-editor.png');await save(page,state);await closePost(page);assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');await openPost(page);await openEditor(page);await assertSelected(page,[2,1].map(assetId));
+    await save(page,state);await closePost(page);assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');await openPost(page);await openEditor(page);await assertSelected(page,[2,1].map(assetId));
     state.assertions=['mobile dialog labels and body scroll lock','keyboard selection/reorder/Save','all edit actions horizontally reachable','focus remains contained','save and reopen preserve ordered carousel'];
   },{viewport:{width:390,height:844}});
 }catch(error){launchError=error.stack||String(error);console.error(launchError);process.exitCode=1;}

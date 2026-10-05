@@ -142,8 +142,8 @@ export default function PostMediaEditor({ media, onChange, onAssets, busy, onBus
     <h3 id="edit-post-media-title" ref={headingRef} tabIndex={-1} className="text-sm font-semibold outline-none">Edit media</h3>
     <p className="mt-1 text-xs leading-5 text-stone-500">Use up to 10 photos or one video. Switching formats replaces this selection when you save.</p>
     <div className="mt-3 flex flex-wrap gap-2">
-      <button type="button" disabled={busy} aria-pressed={mode === 'photo'} onClick={() => switchMode('photo')} className="btn-secondary">Photos / carousel</button>
-      <button type="button" disabled={busy} aria-pressed={mode === 'video'} onClick={() => switchMode('video')} className="btn-secondary">Video Reel</button>
+      <button type="button" disabled={busy} aria-pressed={mode === 'photo'} onClick={() => switchMode('photo')} className={`btn-secondary ${mode === 'photo' ? 'ring-2 ring-orange-600' : ''}`}>Photos / carousel</button>
+      <button type="button" disabled={busy} aria-pressed={mode === 'video'} onClick={() => switchMode('video')} className={`btn-secondary ${mode === 'video' ? 'ring-2 ring-orange-600' : ''}`}>Video Reel</button>
     </div>
     <ol aria-label="Post media" className="mt-3 space-y-2">
       {media.map((asset, index) => <li key={asset.id} data-media-id={asset.id} className="flex flex-wrap items-center gap-2 rounded border bg-white p-2">
@@ -163,6 +163,7 @@ export default function PostMediaEditor({ media, onChange, onAssets, busy, onBus
     <div aria-label="Choose from Media Bank" className="mt-2 grid max-h-52 grid-cols-3 gap-2 overflow-y-auto">
       {items.map(asset => <button type="button" key={asset.id} disabled={busy} aria-label={`Select ${asset.filename || asset.id}`} aria-pressed={media.some(item => item.id === asset.id)} onClick={() => select(asset)} className={`relative aspect-square overflow-hidden rounded bg-stone-200 ${media.some(item => item.id === asset.id) ? 'ring-2 ring-orange-600 ring-inset' : ''}`}>
         <img src={`/api/media-bank/thumbnail/${encodeURIComponent(asset.id)}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+        {media.some(item => item.id === asset.id) && <span aria-hidden="true" className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-orange-600 text-sm font-bold text-white">✓</span>}
         <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 p-1 text-[10px] text-white">{asset.file_type.startsWith('video/') ? '▶ ' : ''}{asset.filename || 'Media'}</span>
       </button>)}
     </div>
