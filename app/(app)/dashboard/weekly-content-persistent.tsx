@@ -5,25 +5,33 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   appendManualDraft,
+  activePlanCoverage,
   activeManualMedia,
   approveOnce,
   beginCaptionEdit,
+  buildApprovalPayload,
   cancelCaptionEdit,
   canApproveCaptionEdit,
   canInteractWithCaptionEdit,
   canNavigateDuringCaptionSave,
   completeCaptionEdit,
+  nextPlanPosition,
+  nextPlanningDate,
+  planCells,
   reconcileRevision,
+  reconcileApprovalResponse,
   requestRevision,
   restoreManualDrafts,
   runExclusive,
   serializeManualDrafts,
+  suggestedPlanningDates,
   tileMedia,
   updateCaptionEdit,
   type ManualAsset as Asset,
   type ManualKind as Kind,
   type ManualPost as Post,
   type ManualSlot as Slot,
+  type PlanCoverage,
 } from "@/lib/manual-content-drafts";
 
 const tagValues = (asset: Asset, prefix: string) =>
@@ -49,20 +57,26 @@ const slotDirections = ["A menu favorite", "A reason to gather", "Behind the sce
 export default function WeeklyContentPersistent({
   initialAssets,
   savedSlots = [],
+  initialPlanCoverage = [],
+  planningAnchor,
+  planningAvailable = true,
   initialQueueUpdatedAt = null,
   approvedCount = 0,
   loadError = "",
 }: {
   initialAssets: Asset[];
   savedSlots?: Slot[];
+  initialPlanCoverage?: PlanCoverage[];
+  planningAnchor: string;
+  planningAvailable?: boolean;
   initialQueueUpdatedAt?: string | null;
   approvedCount?: number;
   loadError?: string;
 }) {
   const supabase = useMemo(() => createClient() as any, []),
     restored = useMemo(
-      () => restoreManualDrafts(savedSlots, initialAssets),
-      [savedSlots, initialAssets],
+      () => restoreManualDrafts(savedSlots, initialAssets, planningAnchor),
+      [savedSlots, initialAssets, planningAnchor],
     );
   const [pool] = useState(initialAssets),
     [posts, setPosts] = useState(restored.posts),
@@ -71,7 +85,8 @@ export default function WeeklyContentPersistent({
     ),
     [originals, setOriginals] = useState<Record<string, string>>(
       restored.originals,
-    );
+    ),
+    [coverage, setCoverage] = useState(initialPlanCoverage);
   const [selectedId, setSelectedId] = useState<string | null>(null),
     [slide, setSlide] = useState(0),
     [composerOpen, setComposerOpen] = useState(false),
@@ -94,6 +109,9 @@ export default function WeeklyContentPersistent({
     queueUpdatedAtRef = useRef<string | null>(initialQueueUpdatedAt);
   busyRef.current = busy;
   const selected = posts.find((post) => post.id === selectedId) || null;
+  const currentCoverage = useMemo(() => activePlanCoverage(coverage, planningAnchor), [coverage, planningAnchor]);
+  const planningCells = useMemo(() => planCells(posts, currentCoverage, 6, planningAnchor), [posts, currentCoverage, planningAnchor]);
+  const planningDates = useMemo(() => suggestedPlanningDates(planningAnchor, planningCells.length), [planningAnchor, planningCells.length]);
   const selectedMedia = selected ? activeManualMedia(selected, slide) : null;
   const url = (asset?: Asset) =>
     !asset || asset.missing
@@ -185,6 +203,7 @@ export default function WeeklyContentPersistent({
     nextCaptions = captions,
     nextOriginals = originals,
   ) {
+    if (!planningAvailable) throw new Error("Content planning is unavailable. Refresh after the migration is restored.");
     const response = await fetch("/api/review-queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,22 +252,6 @@ export default function WeeklyContentPersistent({
       setBusy(false);
     }
   }
-  async function feedback(post: Post, action: string) {
-    const response = await fetch("/api/review-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          assetIds: post.media.map((asset) => asset.id),
-          format: post.kind,
-          aiCaption: originals[post.id] || captions[post.id],
-          finalCaption: captions[post.id],
-        }),
-      }),
-      data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok)
-      throw new Error(data.error || "Could not save feedback");
-  }
   async function saveRevisionRequest(post: Post) {
     if (!noteDraft.trim()) return;
     setBusy(true);
@@ -279,55 +282,56 @@ export default function WeeklyContentPersistent({
       setBusy(false);
     }
   }
-  async function removeDraft(post: Post) {
-    const nextPosts = posts.filter((item) => item.id !== post.id),
-      nextCaptions = { ...captions },
-      nextOriginals = { ...originals };
-    delete nextCaptions[post.id];
-    delete nextOriginals[post.id];
-    await persist(nextPosts, nextCaptions, nextOriginals);
-    setPosts(nextPosts);
-    setCaptions(nextCaptions);
-    setOriginals(nextOriginals);
+  function removeDraftLocally(post: Post) {
+    setPosts((current) => current.filter((item) => item.id !== post.id));
+    setCaptions((current) => { const next = { ...current }; delete next[post.id]; return next; });
+    setOriginals((current) => { const next = { ...current }; delete next[post.id]; return next; });
     setSelectedId(null);
   }
   async function approve(post: Post) {
     const caption = captions[post.id]?.trim();
     if (
-      !caption ||
+      !planningAvailable || !caption ||
       post.media.some((asset) => asset.missing) ||
       approvalLocks.current.has(post.id)
     )
       return;
     approvalLocks.current.add(post.id);
     setApproving((value) => ({ ...value, [post.id]: true }));
+    let reconciledQueue = false;
     try {
       await approveOnce(
         post.id,
         approvalSucceeded.current,
         async () => {
-          await feedback(
-            post,
-            (originals[post.id] || "").trim() !== caption
-              ? "approve_edited"
-              : "approve",
-          );
           const credits = [...new Set(post.media.map(credit).filter(Boolean))],
             response = await fetch("/api/weekly-post/approve", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                assetIds: post.media.map((asset) => asset.id),
-                caption: [caption, ...credits].join("\n\nPhoto: ").trim(),
-                originalCaption: originals[post.id] || caption,
-                format: post.kind,
-              }),
+              body: JSON.stringify(buildApprovalPayload(post, caption, originals[post.id] || caption, credits, queueUpdatedAtRef.current)),
             }),
             data = await response.json().catch(() => ({}));
           if (!response.ok || !data.ok)
             throw new Error(data.error || "Could not approve");
+          const canonical = reconcileApprovalResponse(data, pool, planningAnchor);
+          if (canonical) {
+            setPosts(canonical.posts);
+            setCaptions(canonical.captions);
+            setOriginals(canonical.originals);
+            setCoverage(canonical.coverage);
+            setSelectedId(null);
+            reconciledQueue = true;
+            queueUpdatedAtRef.current = canonical.updatedAt;
+          }
+          else queueUpdatedAtRef.current = data.updatedAt || queueUpdatedAtRef.current;
+          if (!canonical && post.planSlotId && typeof post.planPosition === "number") {
+            setCoverage((current) => [
+              ...current.filter((item) => item.slotId !== post.planSlotId),
+              { slotId: post.planSlotId!, position: post.planPosition!, planningDate: post.planningDate || "", state: "approved", approvedPostId: data.postId || null },
+            ]);
+          }
         },
-        async () => removeDraft(post),
+        async () => { if (!reconciledQueue) removeDraftLocally(post); },
       );
     } catch (error) {
       setErrors((value) => ({
@@ -372,8 +376,10 @@ export default function WeeklyContentPersistent({
             : draftMedia.length > 1
               ? "Carousel"
               : draftKind,
-          id = `manual-${Date.now()}-${draftMedia.map((asset) => asset.id).join("-")}`,
-          post: Post = { id, media: draftMedia, kind, purpose: "Manual draft" },
+          planPosition = nextPlanPosition(posts, coverage),
+          planningDate = nextPlanningDate(posts, coverage, planningAnchor),
+          draftId = `draft-${crypto.randomUUID()}`,
+          post: Post = { id: draftId, draftId, planSlotId: `slot-${crypto.randomUUID()}`, planningDate, planPosition, media: draftMedia, kind, purpose: "Manual draft" },
           next = appendManualDraft(
             { posts, captions, originals },
             post,
@@ -386,7 +392,7 @@ export default function WeeklyContentPersistent({
         setDraftCaption("");
         setDraftMedia([]);
         setComposerOpen(false);
-        setSelectedId(id);
+        setSelectedId(draftId);
       } catch (error) {
         setErrors((value) => ({
           ...value,
@@ -423,6 +429,7 @@ export default function WeeklyContentPersistent({
           </Link>
           <button
             type="button"
+            disabled={!planningAvailable}
             onClick={() => setComposerOpen((value) => !value)}
             className="btn-secondary"
           >
@@ -432,7 +439,7 @@ export default function WeeklyContentPersistent({
       </header>
       <div className="editorial-toolbar">
         <span>Two-week view</span><span className="text-[#92938a]">Suggested plan</span>
-        <div className="ml-auto flex flex-wrap items-center gap-5"><span className="font-medium text-[#34352f]">⌗ Grid</span><Link href="/media-bank">Media library</Link><button type="button" onClick={() => setComposerOpen(true)} className="font-medium text-[#cb542d]">+ New post</button></div>
+        <div className="ml-auto flex flex-wrap items-center gap-5"><span className="font-medium text-[#34352f]">⌗ Grid</span><Link href="/media-bank">Media library</Link><button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className="font-medium text-[#cb542d]">+ New post</button></div>
       </div>
       {loadError && (
         <p
@@ -495,7 +502,7 @@ export default function WeeklyContentPersistent({
           <div className="mt-4 flex justify-end">
             <button
               type="button"
-              disabled={busy || !draftCaption.trim() || !draftMedia.length}
+              disabled={!planningAvailable || busy || !draftCaption.trim() || !draftMedia.length}
               onClick={() => void saveNewDraft()}
               className="btn-primary"
             >
@@ -504,7 +511,7 @@ export default function WeeklyContentPersistent({
           </div>
         </div>
       )}
-      {posts.length === 0 ? (
+      {planningCells.every((cell) => cell.type === "open") ? (
         <div className="rounded-xl border border-dashed bg-white px-6 py-16 text-center">
           <h2 className="text-lg">No posts ready for review</h2>
           <p className="mt-2 text-sm text-stone-500">
@@ -517,14 +524,39 @@ export default function WeeklyContentPersistent({
           className="editorial-grid"
           aria-label="Posts ready for review"
         >
-          {posts.map((post) => {
+          {planningCells.map((cell, index) => {
+            if (cell.type === "covered") {
+              const label = cell.coverage.state === "approved" ? "Approved" : cell.coverage.state === "skipped" ? "Skipped" : "Removed";
+              return <article key={cell.coverage.slotId} className="editorial-plan-card">
+                <div className="editorial-card-meta"><span>{cell.coverage.planningDate || suggestedDays[index]}</span><span>{label}</span></div>
+                <div className={`editorial-planned-slot planned-${index % 3}`}>
+                  <span className="editorial-eyebrow">Planning coverage</span>
+                  <span className="editorial-serif mt-8 text-left text-3xl leading-tight">{label} post</span>
+                  <span className="mt-auto text-left text-xs leading-5">This place is accounted for<br/>Nothing scheduled automatically</span>
+                </div>
+                <h2 className="editorial-serif mt-3 text-2xl font-normal">{label} in this plan</h2>
+                <p className="mt-1 text-xs text-[#888980]">Planning date · Not a publish schedule</p>
+              </article>;
+            }
+            if (cell.type === "open") {
+              return <article key={`open-${index}`} className="editorial-plan-card">
+                <div className="editorial-card-meta"><span>{planningDates[index] || suggestedDays[index % suggestedDays.length]}</span><span>Open idea</span></div>
+                <button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className={`editorial-planned-slot planned-${index % 3}`}>
+                  <span className="editorial-eyebrow">Unprepared slot</span><span className="mt-9 flex h-10 w-10 items-center justify-center rounded-full border border-[#ced0c2] text-2xl font-light">+</span>
+                  <span className="editorial-serif mt-5 text-left text-3xl leading-tight">{slotDirections[index % slotDirections.length]}</span>
+                  <span className="mt-auto text-left text-xs leading-5">Media + caption not prepared<br/>Nothing scheduled</span>
+                </button><h2 className="editorial-serif mt-3 text-2xl font-normal">Room for something new</h2><p className="mt-1 text-xs text-[#888980]">Idea only · Nothing scheduled</p>
+              </article>;
+            }
+            const post = cell.post,
+              backlog = Boolean(cell.backlog);
             const asset = tileMedia(post),
               missing = post.media.some((item) => item.missing),
               waiting = post.revision?.status === "waiting",
               revised = post.revision?.status === "revised";
             return (
               <article key={post.id} className="editorial-plan-card">
-              <div className="editorial-card-meta"><span>SUGGESTED PLACEMENT</span><span>{post.kind}</span></div>
+              <div className="editorial-card-meta"><span>{post.planningDate || "SUGGESTED PLACEMENT"}</span><span>{backlog ? "Needs review" : post.kind}</span></div>
               <button
                 type="button"
                 onClick={() => openPost(post.id)}
@@ -569,27 +601,16 @@ export default function WeeklyContentPersistent({
               </button>
               <button type="button" onClick={() => openPost(post.id)} className="mt-3 block text-left">
                 <h2 className="editorial-serif text-2xl font-normal">{postTitle(post, captions[post.id] || "")}</h2>
-                <p className="mt-1 text-xs text-[#888980]">{post.kind} · Draft</p>
+                <p className="mt-1 text-xs text-[#888980]">{post.kind} · {backlog ? "Past suggested date · Still awaiting review" : "Draft"}</p>
               </button>
               </article>
             );
-          })}
-          {Array.from({ length: Math.max(0, 6 - posts.length) }).map((_, offset) => {
-            const index = posts.length + offset;
-            return <article key={`open-${index}`} className="editorial-plan-card">
-              <div className="editorial-card-meta"><span>{suggestedDays[index % suggestedDays.length]}</span><span>Open idea</span></div>
-              <button type="button" onClick={() => setComposerOpen(true)} className={`editorial-planned-slot planned-${index % 3}`}>
-                <span className="editorial-eyebrow">Unprepared slot</span><span className="mt-9 flex h-10 w-10 items-center justify-center rounded-full border border-[#ced0c2] text-2xl font-light">+</span>
-                <span className="editorial-serif mt-5 text-left text-3xl leading-tight">{slotDirections[index % slotDirections.length]}</span>
-                <span className="mt-auto text-left text-xs leading-5">Media + caption not prepared<br/>Nothing scheduled</span>
-              </button><h2 className="editorial-serif mt-3 text-2xl font-normal">Room for something new</h2><p className="mt-1 text-xs text-[#888980]">Idea only · Nothing scheduled</p>
-            </article>;
           })}
         </div>
       )}
       <section className="editorial-stories">
         <div><p className="editorial-eyebrow">Keep it in the moment</p><h2 className="editorial-serif mt-2 text-2xl font-normal">Weekend Stories</h2></div>
-        {["This weekend","Next weekend"].map(label => <button type="button" key={label} onClick={() => setComposerOpen(true)} className="editorial-story-idea"><span>+</span><span><strong>{label}</strong><small>Behind the scenes · Idea to prepare</small></span></button>)}
+        {["This weekend","Next weekend"].map(label => <button type="button" disabled={!planningAvailable} key={label} onClick={() => setComposerOpen(true)} className="editorial-story-idea"><span>+</span><span><strong>{label}</strong><small>Behind the scenes · Idea to prepare</small></span></button>)}
         <p className="text-right text-xs leading-5 text-[#92938a]">Room for<br/>real moments</p>
       </section>
       {selected && (
@@ -734,7 +755,7 @@ export default function WeeklyContentPersistent({
                   }}
                   rows={6}
                   className="mt-2 min-h-32 max-h-64 w-full resize-y overflow-y-auto rounded-xl border border-stone-200 p-3 text-sm leading-6 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                /><div className="mt-3 flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>setCaptionEdit(cancelCaptionEdit())} className="btn-secondary">Cancel</button><button type="button" onClick={()=>void saveCaption(selected, captionEdit.draft)} disabled={busy || !captionEdit.draft.trim()} className="btn-primary">Save caption</button></div></> : <p className="whitespace-pre-wrap text-[1.05rem] leading-7 text-[#383a34]">{captions[selected.id] || ""}</p>}
+                /><div className="mt-3 flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>setCaptionEdit(cancelCaptionEdit())} className="btn-secondary">Cancel</button><button type="button" onClick={()=>void saveCaption(selected, captionEdit.draft)} disabled={!planningAvailable || busy || !captionEdit.draft.trim()} className="btn-primary">Save caption</button></div></> : <p className="whitespace-pre-wrap text-[1.05rem] leading-7 text-[#383a34]">{captions[selected.id] || ""}</p>}
                 {[...new Set(selected.media.map(credit).filter(Boolean))].map(
                   (name) => (
                     <p key={name} className="mt-2 text-xs text-stone-500">
@@ -822,7 +843,7 @@ export default function WeeklyContentPersistent({
                       <button
                         type="button"
                         onClick={() => void saveRevisionRequest(selected)}
-                        disabled={busy || !noteDraft.trim()}
+                        disabled={!planningAvailable || busy || !noteDraft.trim()}
                         className="btn-primary"
                       >
                         Save revision note
@@ -838,7 +859,7 @@ export default function WeeklyContentPersistent({
                       setNoteDraft(selected.revision?.note || "");
                       setEditingNote(true);
                     }}
-                    disabled={busy}
+                    disabled={!planningAvailable || busy}
                     className="btn-secondary justify-center"
                   >
                     {selected.revision ? "Update revision note" : "Leave revision note"}
@@ -847,7 +868,7 @@ export default function WeeklyContentPersistent({
                     type="button"
                     onClick={() => void approve(selected)}
                     disabled={
-                      busy ||
+                      !planningAvailable || busy ||
                       !canApproveCaptionEdit(captionEdit) ||
                       Boolean(approving[selected.id]) ||
                       selected.media.some((asset) => asset.missing) ||

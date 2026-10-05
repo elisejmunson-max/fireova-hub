@@ -47,6 +47,10 @@ export type Database = {
           shot_ideas: string[]
           status: 'draft' | 'scheduled' | 'published'
           scheduled_date: string | null
+          planning_date: string | null
+          source_draft_id: string | null
+          plan_slot_id: string | null
+          plan_position: number | null
           notes: string | null
           thumbnail_url: string | null
           approved: boolean
@@ -67,6 +71,10 @@ export type Database = {
           shot_ideas?: string[]
           status?: 'draft' | 'scheduled' | 'published'
           scheduled_date?: string | null
+          planning_date?: string | null
+          source_draft_id?: string | null
+          plan_slot_id?: string | null
+          plan_position?: number | null
           notes?: string | null
           thumbnail_url?: string | null
           approved?: boolean
@@ -85,6 +93,10 @@ export type Database = {
           shot_ideas?: string[]
           status?: 'draft' | 'scheduled' | 'published'
           scheduled_date?: string | null
+          planning_date?: string | null
+          source_draft_id?: string | null
+          plan_slot_id?: string | null
+          plan_position?: number | null
           notes?: string | null
           thumbnail_url?: string | null
           approved?: boolean

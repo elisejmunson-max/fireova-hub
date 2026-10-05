@@ -1,1 +1,33 @@
-import{NextRequest}from'next/server';import{createClient}from'@/lib/supabase/server';function hashtags(caption:string){return caption.match(/#[A-Za-z0-9_]+/g)||[]}export async function POST(req:NextRequest){const sb=createClient()as any,{data:{user}}=await sb.auth.getUser();if(!user)return Response.json({error:'Unauthorized'},{status:401});const{assetIds,caption,originalCaption,format}=await req.json();if(!Array.isArray(assetIds)||!assetIds.length||!caption)return Response.json({error:'Missing approval details'},{status:400});const ids=[...new Set(assetIds.map(String))],{data:owned}=await sb.from('media_assets').select('id').in('id',ids).eq('user_id',user.id);if((owned||[]).length!==ids.length)return Response.json({error:'Media not found'},{status:404});const cleanCaption=String(caption).trim(),original=String(originalCaption||cleanCaption).trim(),wasEdited=original!==cleanCaption,tags=hashtags(cleanCaption),learning=wasEdited?`Approved Post Bank\nAI draft: ${original}\nFinal edited caption: ${cleanCaption}`:'Approved Post Bank · approved without caption edit',{data:post,error}=await sb.from('posts').insert({user_id:user.id,title:'Approved Post',pillar:'Approved Posts',topic:'Ready to post',format,status:'draft',scheduled_date:null,caption_option1:cleanCaption,caption_option2:wasEdited?original:null,caption_option3:null,hashtags:tags,shot_ideas:[],notes:learning}).select('id').single();if(error||!post)return Response.json({error:error?.message||'Could not save approved post'},{status:500});const{error:mediaError}=await sb.from('post_media').insert(ids.map((assetId:string,i:number)=>({post_id:post.id,asset_id:assetId,display_order:i})));if(mediaError){await sb.from('posts').delete().eq('id',post.id).eq('user_id',user.id);return Response.json({error:mediaError.message||'Could not attach media'},{status:500})}return Response.json({ok:true,postId:post.id,learnedFromEdit:wasEdited})}
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { normalizePhotoCredits } from "@/lib/manual-content-drafts";
+
+export async function POST(req: NextRequest) {
+  const sb = createClient() as any;
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const photoCredits = normalizePhotoCredits(body.photoCredits ?? []);
+  if (!photoCredits)
+    return Response.json({ error: "Invalid photo credits" }, { status: 400 });
+  const { data, error } = await sb.rpc("approve_review_draft", {
+    p_asset_ids: Array.isArray(body.assetIds) ? body.assetIds.map(String) : [],
+    p_caption: typeof body.caption === "string" ? body.caption : "",
+    p_original_caption: typeof body.originalCaption === "string" ? body.originalCaption : "",
+    p_photo_credits: photoCredits,
+    p_format: typeof body.format === "string" ? body.format : "",
+    p_source_draft_id: typeof body.sourceDraftId === "string" ? body.sourceDraftId : "",
+    p_plan_slot_id: typeof body.planSlotId === "string" ? body.planSlotId : "",
+    p_planning_date: typeof body.planningDate === "string" && body.planningDate ? body.planningDate : null,
+    p_plan_position: Number.isInteger(body.planPosition) ? body.planPosition : -1,
+    p_expected_updated_at: typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt : null,
+  });
+
+  if (error) {
+    const stale = error.code === "40001" || /changed in another window|stale/i.test(String(error.message || ""));
+    return Response.json({ error: stale ? "This draft changed in another window. Refresh before approving." : error.message || "Could not approve" }, { status: stale ? 409 : 500 });
+  }
+  if (!data?.ok) return Response.json({ error: data?.error || "Could not approve" }, { status: 500 });
+  return Response.json(data);
+}
