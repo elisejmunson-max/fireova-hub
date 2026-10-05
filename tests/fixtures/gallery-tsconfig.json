@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["gallery-browser-entry.tsx", "gallery-navigation.ts", "gallery-link.tsx", "gallery-supabase.ts", "../gallery-css.d.ts"]
+}

@@ -105,7 +105,7 @@ export default async function MediaBankPage({
     );
 
   return (
-    <section className="editorial-media-bank editorial-shell">
+    <section className="editorial-media-bank editorial-shell content-gallery-shell">
       <AutosaveBridge />
       <header className="editorial-media-heading">
         <div>
