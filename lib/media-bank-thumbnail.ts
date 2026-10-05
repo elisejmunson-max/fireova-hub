@@ -183,7 +183,8 @@ export async function renderThumbnail(input: Buffer, signal: AbortSignal, limits
     const bytesPerChannel = metadata.depth === 'uchar' ? 1 : metadata.depth === 'ushort' ? 2 : 0;
     if (!bytesPerChannel || !metadata.channels || metadata.channels > 4) throw new ThumbnailError(415);
     if (pixels * metadata.channels * bytesPerChannel > limits.decodedBytes) throw new ThumbnailError(413);
-    const output = await image.rotate().resize(480, 480, { fit: 'cover', withoutEnlargement: true }).webp({ quality: 72 }).toBuffer();
+    // Preserve source framing; the shared gallery tile performs the single 3:4 preview crop.
+    const output = await image.rotate().resize(480, 480, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 72 }).toBuffer();
     checkSignal(signal);
     if (!output.length || output.length > limits.outputBytes) throw new ThumbnailError(413);
     return output;
@@ -350,7 +351,7 @@ export async function serveThumbnail(request: Request, id: string, deps: Thumbna
     // No original fetch, URL resolution, or cache lookup may move above the ownership gate.
     // Include the original identity/source AND the selected poster. Poster changes
     // therefore cannot hit an older event/deterministic derivative cache entry.
-    const key = JSON.stringify([asset.id, asset.storage_path, asset.file_type, asset.size_bytes, asset.created_at, sourcePath, '480-webp72-v1']);
+    const key = JSON.stringify([asset.id, asset.storage_path, asset.file_type, asset.size_bytes, asset.created_at, sourcePath, '480-inside-webp72-v2']);
     const response = (bytes: Buffer) => new Response(new Uint8Array(bytes), {
       headers: { ...privateHeaders, 'Content-Type': 'image/webp', 'Content-Length': String(bytes.length) },
     });

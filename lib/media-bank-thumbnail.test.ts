@@ -229,17 +229,55 @@ test('a stalled connection times out without waiting for its fetch implementatio
 });
 
 // Decoder, cancellation, concurrency, and private cache bounds.
-test('real Sharp output is a bounded 480px WebP with metadata removed', async () => {
+test('real Sharp output preserves source aspect inside 480px with metadata removed', async () => {
   const original = await sharp({ create: { width: 900, height: 600, channels: 3, background: '#ff8040' } }).jpeg().withMetadata().toBuffer();
   const output = await renderThumbnail(original, new AbortController().signal);
   const metadata = await sharp(output).metadata();
   assert.equal(metadata.format, 'webp');
   assert.equal(metadata.width, 480);
-  assert.equal(metadata.height, 480);
+  assert.equal(metadata.height, 320);
   assert.equal(metadata.exif, undefined);
   assert.ok(output.length <= THUMBNAIL_LIMITS.outputBytes);
   const tiny = await sharp({ create: { width: 12, height: 12, channels: 3, background: 'red' } }).png().toBuffer();
   assert.equal((await sharp(await renderThumbnail(tiny, new AbortController().signal)).metadata()).width, 12);
+});
+
+test('portrait square small and rotated derivatives preserve the full source aspect', async () => {
+  for (const [width, height, orientation, expectedWidth, expectedHeight] of [
+    [600, 900, 1, 320, 480],
+    [800, 800, 1, 480, 480],
+    [12, 8, 1, 12, 8],
+    [900, 600, 6, 320, 480],
+  ]) {
+    const original = await sharp({ create: { width, height, channels: 3, background: '#4080ff' } }).jpeg().withMetadata({ orientation }).toBuffer();
+    const before = Buffer.from(original);
+    const output = await renderThumbnail(original, new AbortController().signal);
+    const metadata = await sharp(output).metadata();
+    assert.equal(metadata.width, expectedWidth);
+    assert.equal(metadata.height, expectedHeight);
+    assert.equal(metadata.exif, undefined);
+    assert.ok(output.length <= THUMBNAIL_LIMITS.outputBytes);
+    assert.deepEqual(original, before, 'source bytes remain unchanged');
+  }
+});
+
+test('derivative keeps both source edges for the gallery to crop only once', async () => {
+  const width = 900, height = 600;
+  const rgb = Buffer.alloc(width * height * 3);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const offset = (y * width + x) * 3;
+    rgb[offset] = x < 20 ? 255 : 0;
+    rgb[offset + 1] = x >= 20 && x < width - 20 ? 255 : 0;
+    rgb[offset + 2] = x >= width - 20 ? 255 : 0;
+  }
+  const original = await sharp(rgb, { raw: { width, height, channels: 3 } }).png().toBuffer();
+  const output = await renderThumbnail(original, new AbortController().signal);
+  const { data, info } = await sharp(output).raw().toBuffer({ resolveWithObject: true });
+  const left = (Math.floor(info.height / 2) * info.width) * info.channels;
+  const right = (Math.floor(info.height / 2) * info.width + info.width - 1) * info.channels;
+  assert.deepEqual([info.width, info.height], [480, 320]);
+  assert.ok(data[left] > 220 && data[left + 2] < 30, 'left source edge retained');
+  assert.ok(data[right] < 30 && data[right + 2] > 220, 'right source edge retained');
 });
 
 test('real decoder rejects oversized pixels, SVG and invalid image bytes', async () => {
@@ -542,6 +580,7 @@ test('saved video posters run the bounded real image decoder; invalid or oversiz
   const metadata = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
   assert.equal(metadata.format, 'webp');
   assert.equal(metadata.width, 480);
+  assert.equal(metadata.height, 320);
   for (const f of [
     fixture({ getOwnedAsset: async () => videoAsset(), render: renderThumbnail }),
     fixture({ getOwnedAsset: async () => videoAsset(), fetcher: async () => imageResponse(new Uint8Array(jpeg)), render: renderThumbnail, limits: { inputPixels: 100 } }),
