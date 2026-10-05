@@ -48,4 +48,33 @@ button.postTitle:hover,a.postTitle:hover { text-decoration:underline; text-under
 .panel.sheet { position:fixed; z-index:61; inset:auto 0 0; width:100%; max-width:none; max-height:92dvh; margin:0; padding:20px max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); border-radius:18px 18px 0 0; box-shadow:0 -6px 40px #0002; }
 .sheet .features textarea { font-size:16px; }
 @media(max-width:1199px) { .workspace[data-open="true"] { grid-template-columns:minmax(0,1fr); } }
-@media(min-width:1200px) and (max-width:1399px) { .workspace[data-open="true"] { gap:24px; grid-template-columns:minmax(0,1fr) 310px; } .panel{padding:18px;} }
+@media(min-width:1200px) {
+  .workspace { width:100%; max-width:var(--overview-main-width,820px); margin-inline:auto; gap:24px; }
+  .workspace[data-open="true"] { max-width:calc(var(--overview-main-width,820px) + 344px); grid-template-columns:minmax(0,1fr) 320px; }
+  .toggle { padding:7px 10px; }
+  .panel { display:flex; flex-direction:column; top:14px; margin-top:0; height:calc(100dvh - 78px); max-height:calc(100dvh - 78px); padding:12px; border-radius:10px; scrollbar-gutter:auto; }
+  .heading { flex-shrink:0; margin-bottom:8px; }
+  .heading h2 { font-size:24px; }
+  .icon { width:30px; height:28px; font-size:22px; }
+  .monthNav { flex-shrink:0; margin-bottom:8px; padding:2px; }
+  .monthNav .icon { height:26px; }
+  .monthLabel { padding:5px 0; font-size:12px; }
+  .calendar { flex-shrink:0; }
+  .weekday { padding:2px 0; }
+  .day { min-height:24px; height:24px; aspect-ratio:auto; font-size:11px; }
+  .features { flex-shrink:0; margin-top:10px; padding-top:10px; }
+  .sectionHeading { margin-bottom:6px; }
+  .sectionHeading h3 { font-size:20px; }
+  .sectionHeading .muted { margin:0; }
+  .features textarea { height:44px; min-height:44px; max-height:84px; padding:5px 9px; font-size:12px; line-height:17px; }
+  .formActions { margin-top:6px; }
+  .primary { padding:8px 9px; font-size:12px; line-height:16px; }
+  /* Keep the entry form reachable when saved notes grow. Each collection
+     scrolls independently instead of pushing the calendar or form away. */
+  .priorities { max-height:clamp(64px,calc(100dvh - 788px),112px); overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+  .priorities:not(:empty) { margin-bottom:8px; }
+  .priorities li { padding:7px 9px; margin-bottom:6px; font-size:12px; }
+  .planSection { flex:1; min-height:46px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; margin-top:10px; padding-top:10px; }
+  .posts { margin-top:6px; }
+  .posts li { gap:6px; padding:7px 0; font-size:11px; }
+}
