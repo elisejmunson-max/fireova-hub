@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import PostMediaEditor from "./post-media-editor";
+import { updatedPostMedia } from "@/lib/post-media-editor";
 import MonthlyPlanningPanel from "./monthly-planning-panel";
 import monthlyStyles from "./monthly-planning.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 import {
   appendManualDraft,
   activePlanCoverage,
-  activeManualMedia,
   approveOnce,
   beginCaptionEdit,
   buildApprovalPayload,
@@ -80,7 +81,7 @@ export default function WeeklyContentPersistent({
       () => restoreManualDrafts(savedSlots, initialAssets, planningAnchor),
       [savedSlots, initialAssets, planningAnchor],
     );
-  const [pool] = useState(initialAssets),
+  const [pool, setPool] = useState(initialAssets),
     [posts, setPosts] = useState(restored.posts),
     [captions, setCaptions] = useState<Record<string, string>>(
       restored.captions,
@@ -93,6 +94,7 @@ export default function WeeklyContentPersistent({
     [slide, setSlide] = useState(0),
     [composerOpen, setComposerOpen] = useState(false),
     [captionEdit, setCaptionEdit] = useState(cancelCaptionEdit),
+    [mediaEdit, setMediaEdit] = useState<Asset[] | null>(null),
     [draftCaption, setDraftCaption] = useState(""),
     [draftKind, setDraftKind] = useState<Kind>("Photo"),
     [draftMedia, setDraftMedia] = useState<Asset[]>([]),
@@ -108,8 +110,9 @@ export default function WeeklyContentPersistent({
     approvalLocks = useRef(new Set<string>()),
     approvalSucceeded = useRef(new Set<string>()),
     dialogRef = useRef<HTMLDivElement>(null),
+    mediaButtonRef = useRef<HTMLButtonElement>(null),
     queueUpdatedAtRef = useRef<string | null>(initialQueueUpdatedAt);
-  busyRef.current = busy;
+  busyRef.current = busy || Object.values(approving).some(Boolean);
   const [monthlyOpen, setMonthlyOpen] = useState(false);
   const [monthlyMobile, setMonthlyMobile] = useState(true);
   const monthlyMainRef = useRef<HTMLDivElement>(null);
@@ -128,7 +131,8 @@ export default function WeeklyContentPersistent({
   const currentCoverage = useMemo(() => activePlanCoverage(coverage, planningAnchor), [coverage, planningAnchor]);
   const planningCells = useMemo(() => planCells(posts, currentCoverage, 6, planningAnchor), [posts, currentCoverage, planningAnchor]);
   const planningDates = useMemo(() => suggestedPlanningDates(planningAnchor, planningCells.length), [planningAnchor, planningCells.length]);
-  const selectedMedia = selected ? activeManualMedia(selected, slide) : null;
+  const previewMedia = mediaEdit ?? selected?.media ?? [];
+  const selectedMedia = previewMedia[slide] || previewMedia[0] || null;
   const url = (asset?: Asset) =>
     !asset || asset.missing
       ? ""
@@ -146,22 +150,24 @@ export default function WeeklyContentPersistent({
   }, [pool, query]);
 
   function openPost(id: string) {
-    if (!canNavigateDuringCaptionSave(busy) || selectedId === id || !posts.some(post => post.id === id)) return;
+    if (!canNavigateDuringCaptionSave(busyRef.current) || selectedId === id || !posts.some(post => post.id === id)) return;
     if (selectedId) window.history.replaceState({ fireovaPostDetail: id }, "");
     else window.history.pushState({ fireovaPostDetail: id }, "");
     setSelectedId(id);
     setCaptionEdit(cancelCaptionEdit());
+    setMediaEdit(null);
   }
   function closePost() {
-    if (!canNavigateDuringCaptionSave(busy)) return;
+    if (!canNavigateDuringCaptionSave(busyRef.current)) return;
     if (window.history.state?.fireovaPostDetail === selectedId)
       window.history.back();
     else setSelectedId(null);
     setCaptionEdit(cancelCaptionEdit());
+    setMediaEdit(null);
   }
   useEffect(() => {
     const onPop = (event: PopStateEvent) => {
-      if (!canNavigateDuringCaptionSave(busy) && selectedId) {
+      if (!canNavigateDuringCaptionSave(busyRef.current) && selectedId) {
         window.history.pushState({ fireovaPostDetail: selectedId }, "");
         return;
       }
@@ -169,6 +175,7 @@ export default function WeeklyContentPersistent({
       const id = event.state?.fireovaPostDetail;
       setSelectedId(typeof id === "string" && posts.some((post) => post.id === id) ? id : null);
       setCaptionEdit(cancelCaptionEdit());
+      setMediaEdit(null);
       setEditingNote(false);
     };
     window.addEventListener("popstate", onPop);
@@ -219,13 +226,14 @@ export default function WeeklyContentPersistent({
     nextPosts = posts,
     nextCaptions = captions,
     nextOriginals = originals,
+    preserveCaptionText = false,
   ) {
     if (!planningAvailable) throw new Error("Content planning is unavailable. Refresh after the migration is restored.");
     const response = await fetch("/api/review-queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slots: serializeManualDrafts(nextPosts, nextCaptions, nextOriginals),
+          slots: serializeManualDrafts(nextPosts, nextCaptions, nextOriginals).map(slot => preserveCaptionText ? { ...slot, caption: nextCaptions[slot.draftId!], originalCaption: nextOriginals[slot.draftId!] || nextCaptions[slot.draftId!] } : slot),
           expectedUpdatedAt: queueUpdatedAtRef.current,
         }),
         cache: "no-store",
@@ -234,6 +242,27 @@ export default function WeeklyContentPersistent({
     if (!response.ok || !data.ok)
       throw new Error(data.error || "Could not save review queue");
     queueUpdatedAtRef.current = data.updatedAt || queueUpdatedAtRef.current;
+  }
+  function mergeAssets(assets: Asset[]) {
+    setPool(current => [...new Map([...current, ...assets].map(asset => [asset.id, asset])).values()]);
+  }
+  function setMediaBusy(value: boolean) { busyRef.current = value; setBusy(value); }
+  async function saveMedia(post: Post) {
+    if (busyRef.current || mediaEdit === null || !planningAvailable) return;
+    await runExclusive(savingRef, async () => {
+      setMediaBusy(true);
+      try {
+        const updated = updatedPostMedia(post, mediaEdit);
+        const nextPosts = posts.map(item => item.id === post.id ? updated : item);
+        await persist(nextPosts, captions, originals, true);
+        setPosts(nextPosts); setMediaEdit(null); setSlide(0);
+        requestAnimationFrame(() => mediaButtonRef.current?.focus());
+        setSaved(value => ({ ...value, [post.id]: 'Media saved' }));
+        setErrors(value => ({ ...value, [post.id]: '' }));
+      } catch (error) {
+        setErrors(value => ({ ...value, [post.id]: error instanceof Error ? error.message : 'Could not save media' }));
+      } finally { setMediaBusy(false); }
+    });
   }
   async function saveCaption(post: Post, editedCaption = captions[post.id] || "") {
     setBusy(true);
@@ -308,7 +337,7 @@ export default function WeeklyContentPersistent({
   async function approve(post: Post) {
     const caption = captions[post.id]?.trim();
     if (
-      !planningAvailable || !caption ||
+      !planningAvailable || busyRef.current || mediaEdit !== null || !canApproveCaptionEdit(captionEdit) || editingNote || !caption ||
       post.media.some((asset) => asset.missing) ||
       approvalLocks.current.has(post.id)
     )
@@ -669,8 +698,7 @@ export default function WeeklyContentPersistent({
                 <div className="relative flex h-[min(62dvh,32rem)] min-h-0 flex-none items-center justify-center p-4 sm:p-6 lg:h-auto lg:flex-1">
                   {!selectedMedia || selectedMedia.missing ? (
                     <div className="flex h-full items-center justify-center p-8 text-center text-sm text-stone-500">
-                      This draft is preserved, but media{" "}
-                      {selectedMedia?.id || selected.media[0]?.id || "for this post"} is unavailable.
+                      {mediaEdit !== null && !previewMedia.length ? "Choose photos or a video to preview your edits." : <>This draft is preserved, but media {selectedMedia?.id || previewMedia[0]?.id || "for this post"} is unavailable.</>}
                     </div>
                   ) : isVideo(selectedMedia) ? (
                     <video
@@ -686,7 +714,7 @@ export default function WeeklyContentPersistent({
                       className="h-full w-full object-contain"
                     />
                   )}
-                  {selected.media.length > 1 && (
+                  {previewMedia.length > 1 && (
                     <>
                       <button
                         type="button"
@@ -694,8 +722,8 @@ export default function WeeklyContentPersistent({
                         onClick={() =>
                           setSlide(
                             (value) =>
-                              (value - 1 + selected.media.length) %
-                              selected.media.length,
+                              (value - 1 + previewMedia.length) %
+                              previewMedia.length,
                           )
                         }
                         className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white"
@@ -707,7 +735,7 @@ export default function WeeklyContentPersistent({
                         aria-label="Next media"
                         onClick={() =>
                           setSlide(
-                            (value) => (value + 1) % selected.media.length,
+                            (value) => (value + 1) % previewMedia.length,
                           )
                         }
                         className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white"
@@ -715,14 +743,14 @@ export default function WeeklyContentPersistent({
                         ›
                       </button>
                       <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2 py-1 text-xs text-white">
-                        {slide + 1} / {selected.media.length}
+                        {slide + 1} / {previewMedia.length}
                       </span>
                     </>
                   )}
                 </div>
-                {selected.media.length > 1 && (
+                {previewMedia.length > 1 && (
                   <div className="flex gap-1 overflow-x-auto border-t border-stone-200 bg-white p-2">
-                    {selected.media.map((asset, index) => (
+                    {previewMedia.map((asset, index) => (
                       <button
                         type="button"
                         key={`${asset.id}-${index}`}
@@ -768,7 +796,17 @@ export default function WeeklyContentPersistent({
                   rows={6}
                   className="mt-2 min-h-32 max-h-64 w-full resize-y overflow-y-auto rounded-xl border border-stone-200 p-3 text-sm leading-6 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                 /><div className="mt-3 flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>setCaptionEdit(cancelCaptionEdit())} className="btn-secondary">Cancel</button><button type="button" onClick={()=>void saveCaption(selected, captionEdit.draft)} disabled={!planningAvailable || busy || !captionEdit.draft.trim()} className="btn-primary">Save caption</button></div></> : <p className="whitespace-pre-wrap text-[1.05rem] leading-7 text-[#383a34]">{captions[selected.id] || ""}</p>}
-                {[...new Set(selected.media.map(credit).filter(Boolean))].map(
+                {mediaEdit !== null && <PostMediaEditor
+                  key={selected.id}
+                  media={mediaEdit}
+                  onChange={media => { setMediaEdit(media); setSlide(0); }}
+                  onAssets={mergeAssets}
+                  busy={busy}
+                  onBusy={setMediaBusy}
+                  onSave={() => void saveMedia(selected)}
+                  onCancel={() => { if (busyRef.current) return; setMediaEdit(null); setSlide(0); setErrors(value => ({ ...value, [selected.id]: '' })); requestAnimationFrame(() => mediaButtonRef.current?.focus()); }}
+                />}
+                {[...new Set(previewMedia.map(credit).filter(Boolean))].map(
                   (name) => (
                     <p key={name} className="mt-2 text-xs text-stone-500">
                       Photo credit: {name}
@@ -814,6 +852,7 @@ export default function WeeklyContentPersistent({
                           setNoteDraft(selected.revision?.note || "");
                           setEditingNote(true);
                         }}
+                        disabled={busy || Boolean(approving[selected.id]) || mediaEdit !== null || captionEdit.editing}
                         className="text-xs font-medium text-stone-600 underline-offset-2 hover:underline"
                       >
                         Edit note
@@ -864,15 +903,16 @@ export default function WeeklyContentPersistent({
                   </div>
                 ) : null}
                 <div className="mt-5 grid grid-cols-2 gap-2">
-                  <button type="button" disabled={busy} onClick={() => setCaptionEdit(beginCaptionEdit(captions[selected.id] || ""))} className="btn-secondary justify-center">Edit caption</button>
+                  <button type="button" disabled={busy || Boolean(approving[selected.id]) || mediaEdit !== null || captionEdit.editing || editingNote} onClick={() => setCaptionEdit(beginCaptionEdit(captions[selected.id] || ""))} className="btn-secondary justify-center">Edit caption</button>
+                  <button ref={mediaButtonRef} type="button" disabled={!planningAvailable || busy || Boolean(approving[selected.id]) || captionEdit.editing || editingNote || mediaEdit !== null} onClick={() => { setMediaEdit([...selected.media]); setSlide(0); setSaved(value => ({ ...value, [selected.id]: '' })); setErrors(value => ({ ...value, [selected.id]: '' })); }} className="btn-secondary justify-center">Edit media</button>
                   <button
                     type="button"
                     onClick={() => {
                       setNoteDraft(selected.revision?.note || "");
                       setEditingNote(true);
                     }}
-                    disabled={!planningAvailable || busy}
-                    className="btn-secondary justify-center"
+                    disabled={!planningAvailable || busy || Boolean(approving[selected.id]) || mediaEdit !== null || captionEdit.editing || editingNote}
+                    className="btn-secondary col-span-2 justify-center"
                   >
                     {selected.revision ? "Update revision note" : "Leave revision note"}
                   </button>
@@ -881,14 +921,14 @@ export default function WeeklyContentPersistent({
                     onClick={() => void approve(selected)}
                     disabled={
                       !planningAvailable || busy ||
-                      !canApproveCaptionEdit(captionEdit) ||
+                      !canApproveCaptionEdit(captionEdit) || mediaEdit !== null || editingNote ||
                       Boolean(approving[selected.id]) ||
                       selected.media.some((asset) => asset.missing) ||
                       !captions[selected.id]?.trim()
                     }
                     className="btn-primary col-span-2 justify-center"
                   >
-                    {approving[selected.id] ? "Approving…" : captionEdit.editing ? "Save or cancel caption edits first" : "Approve post"}
+                    {approving[selected.id] ? "Approving…" : mediaEdit !== null ? "Save or cancel media edits first" : captionEdit.editing ? "Save or cancel caption edits first" : editingNote ? "Save or cancel revision note first" : "Approve post"}
                   </button>
                 </div>
                 <p className="mt-3 text-center text-[11px] text-stone-400">

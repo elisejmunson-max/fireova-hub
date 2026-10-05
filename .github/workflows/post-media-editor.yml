@@ -1,0 +1,50 @@
+name: Edit post media regression
+on:
+  pull_request:
+    paths:
+      - 'app/(app)/dashboard/**'
+      - 'app/api/media-bank/**'
+      - 'app/api/review-queue/**'
+      - 'app/globals.css'
+      - 'lib/post-media-*'
+      - 'lib/manual-content-drafts*'
+      - 'lib/media-bank*'
+      - 'tests/post-media-editor-browser.mjs'
+      - 'tests/fixtures/post-media-*'
+      - 'tests/fixtures/gallery-*'
+      - 'tests/fixtures/media-bank-video.mp4'
+      - 'package*.json'
+      - '.github/workflows/post-media-editor.yml'
+permissions:
+  contents: read
+jobs:
+  post-media:
+    name: Fixture-only media editor and queue regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck:post-media-editor
+      - run: node --test lib/manual-content-drafts.test.ts lib/post-media-*.test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:post-media-editor:browser
+        env:
+          POST_MEDIA_EVIDENCE_DIR: ${{ runner.temp }}/post-media-evidence
+      - name: Upload synthetic media-editor evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: post-media-editor-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/post-media-evidence
+          if-no-files-found: error
+          retention-days: 7
