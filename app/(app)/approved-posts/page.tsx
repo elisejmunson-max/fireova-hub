@@ -73,7 +73,7 @@ export default async function ApprovedPostsPage() {
   }));
 
   return (
-    <section className="editorial-approved editorial-shell">
+    <section className="editorial-approved editorial-shell content-gallery-shell">
       <header className="editorial-overview-heading">
         <div>
           <p className="editorial-eyebrow">Ready when you are</p>

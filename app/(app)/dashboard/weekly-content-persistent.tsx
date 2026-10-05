@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import MonthlyPlanningPanel from "./monthly-planning-panel";
+import monthlyStyles from "./monthly-planning.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -108,6 +110,20 @@ export default function WeeklyContentPersistent({
     dialogRef = useRef<HTMLDivElement>(null),
     queueUpdatedAtRef = useRef<string | null>(initialQueueUpdatedAt);
   busyRef.current = busy;
+  const [monthlyOpen, setMonthlyOpen] = useState(false);
+  const [monthlyMobile, setMonthlyMobile] = useState(true);
+  const monthlyMainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1199px)');
+    setMonthlyMobile(query.matches); setMonthlyOpen(!query.matches);
+    const change = () => { setMonthlyMobile(query.matches); setMonthlyOpen(!query.matches); };
+    query.addEventListener('change', change); return () => query.removeEventListener('change', change);
+  }, []);
+  useEffect(() => {
+    const main = monthlyMainRef.current;
+    if (monthlyOpen && monthlyMobile) main?.setAttribute('inert', ''); else main?.removeAttribute('inert');
+    return () => main?.removeAttribute('inert');
+  }, [monthlyOpen, monthlyMobile]);
   const selected = posts.find((post) => post.id === selectedId) || null;
   const currentCoverage = useMemo(() => activePlanCoverage(coverage, planningAnchor), [coverage, planningAnchor]);
   const planningCells = useMemo(() => planCells(posts, currentCoverage, 6, planningAnchor), [posts, currentCoverage, planningAnchor]);
@@ -130,7 +146,7 @@ export default function WeeklyContentPersistent({
   }, [pool, query]);
 
   function openPost(id: string) {
-    if (!canNavigateDuringCaptionSave(busy) || selectedId === id) return;
+    if (!canNavigateDuringCaptionSave(busy) || selectedId === id || !posts.some(post => post.id === id)) return;
     if (selectedId) window.history.replaceState({ fireovaPostDetail: id }, "");
     else window.history.pushState({ fireovaPostDetail: id }, "");
     setSelectedId(id);
@@ -149,6 +165,7 @@ export default function WeeklyContentPersistent({
         window.history.pushState({ fireovaPostDetail: selectedId }, "");
         return;
       }
+      if (window.matchMedia('(max-width: 1199px)').matches) setMonthlyOpen(Boolean(event.state?.fireovaMonthlyPanel));
       const id = event.state?.fireovaPostDetail;
       setSelectedId(typeof id === "string" && posts.some((post) => post.id === id) ? id : null);
       setCaptionEdit(cancelCaptionEdit());
@@ -407,21 +424,16 @@ export default function WeeklyContentPersistent({
 
   return (
     <section aria-labelledby="review-title" className="editorial-overview editorial-shell">
+      <div className={monthlyStyles.workspace} data-open={monthlyOpen && !monthlyMobile}>
+      <div ref={monthlyMainRef} className={`${monthlyStyles.main} content-gallery-main`}>
       <header className="editorial-overview-heading">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-            Made for your table. Ready for your feed.
-          </p>
           <h1
             id="review-title"
-            className="editorial-serif mt-3 text-4xl font-normal sm:text-[2.8rem]"
+            className="editorial-serif text-4xl font-normal sm:text-[2.8rem]"
           >
             Your next two weeks
           </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            A thoughtful mix of real drafts and open ideas. Nothing publishes or
-            schedules automatically.
-          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/approved-posts" className="btn-secondary">
@@ -438,8 +450,8 @@ export default function WeeklyContentPersistent({
         </div>
       </header>
       <div className="editorial-toolbar">
-        <span>Two-week view</span><span className="text-[#92938a]">Suggested plan</span>
-        <div className="ml-auto flex flex-wrap items-center gap-5"><span className="font-medium text-[#34352f]">⌗ Grid</span><Link href="/media-bank">Media library</Link><button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className="font-medium text-[#cb542d]">+ New post</button></div>
+        <span>Two-week view</span>
+        <div className="ml-auto flex flex-wrap items-center gap-5"><span className="font-medium text-[#34352f]">⌗ Grid</span><Link href="/media-bank">Media library</Link><button type="button" aria-controls="monthly-plan-panel" aria-expanded={monthlyOpen} onClick={() => setMonthlyOpen(value => !value)} className={monthlyStyles.toggle}>Monthly plan <span aria-hidden="true">▦</span></button></div>
       </div>
       {loadError && (
         <p
@@ -451,10 +463,7 @@ export default function WeeklyContentPersistent({
       )}
       {composerOpen && (
         <div className="mb-6 rounded-xl border bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold">Manual new post</h2>
-          <p className="mt-1 text-xs text-stone-500">
-            A secondary option for when you want to assemble something yourself.
-          </p>
+          <h2 className="text-base font-semibold">New post</h2>
           <textarea
             aria-label="New post caption"
             value={draftCaption}
@@ -521,7 +530,8 @@ export default function WeeklyContentPersistent({
         </div>
       ) : (
         <div
-          className="editorial-grid"
+          className="editorial-grid content-gallery-grid"
+          data-panel-open={monthlyOpen && !monthlyMobile}
           aria-label="Posts ready for review"
         >
           {planningCells.map((cell, index) => {
@@ -529,7 +539,7 @@ export default function WeeklyContentPersistent({
               const label = cell.coverage.state === "approved" ? "Approved" : cell.coverage.state === "skipped" ? "Skipped" : "Removed";
               return <article key={cell.coverage.slotId} className="editorial-plan-card">
                 <div className="editorial-card-meta"><span>{cell.coverage.planningDate || suggestedDays[index]}</span><span>{label}</span></div>
-                <div className={`editorial-planned-slot planned-${index % 3}`}>
+                <div className={`editorial-planned-slot content-gallery-tile planned-${index % 3}`}>
                   <span className="editorial-eyebrow">Planning coverage</span>
                   <span className="editorial-serif mt-8 text-left text-3xl leading-tight">{label} post</span>
                   <span className="mt-auto text-left text-xs leading-5">This place is accounted for<br/>Nothing scheduled automatically</span>
@@ -541,7 +551,7 @@ export default function WeeklyContentPersistent({
             if (cell.type === "open") {
               return <article key={`open-${index}`} className="editorial-plan-card">
                 <div className="editorial-card-meta"><span>{planningDates[index] || suggestedDays[index % suggestedDays.length]}</span><span>Open idea</span></div>
-                <button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className={`editorial-planned-slot planned-${index % 3}`}>
+                <button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className={`editorial-planned-slot content-gallery-tile planned-${index % 3}`}>
                   <span className="editorial-eyebrow">Unprepared slot</span><span className="mt-9 flex h-10 w-10 items-center justify-center rounded-full border border-[#ced0c2] text-2xl font-light">+</span>
                   <span className="editorial-serif mt-5 text-left text-3xl leading-tight">{slotDirections[index % slotDirections.length]}</span>
                   <span className="mt-auto text-left text-xs leading-5">Media + caption not prepared<br/>Nothing scheduled</span>
@@ -560,7 +570,7 @@ export default function WeeklyContentPersistent({
               <button
                 type="button"
                 onClick={() => openPost(post.id)}
-                className="editorial-card-media group"
+                className="editorial-card-media content-gallery-tile group"
                 aria-label={`Open ${post.kind} post, ${statusLabel(post)}`}
               >
                 {!asset || asset.missing ? (
@@ -572,13 +582,13 @@ export default function WeeklyContentPersistent({
                     src={url(asset)}
                     muted
                     playsInline
-                    className="h-full w-full border-8 border-[#100e0c] object-cover transition duration-200 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
                   />
                 ) : (
                   <img
                     src={url(asset)}
                     alt={asset.filename || ""}
-                    className="h-full w-full border-8 border-[#100e0c] object-cover transition duration-200 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
                   />
                 )}
                 <span
@@ -609,10 +619,12 @@ export default function WeeklyContentPersistent({
         </div>
       )}
       <section className="editorial-stories">
-        <div><p className="editorial-eyebrow">Keep it in the moment</p><h2 className="editorial-serif mt-2 text-2xl font-normal">Weekend Stories</h2></div>
+        <div><h2 className="editorial-serif text-2xl font-normal">Weekend Stories</h2></div>
         {["This weekend","Next weekend"].map(label => <button type="button" disabled={!planningAvailable} key={label} onClick={() => setComposerOpen(true)} className="editorial-story-idea"><span>+</span><span><strong>{label}</strong><small>Behind the scenes · Idea to prepare</small></span></button>)}
-        <p className="text-right text-xs leading-5 text-[#92938a]">Room for<br/>real moments</p>
       </section>
+      </div>
+      <MonthlyPlanningPanel draftIds={posts.map(post => post.id)} open={monthlyOpen} mobile={monthlyMobile} onClose={() => setMonthlyOpen(false)} anchor={planningAnchor} refreshKey={JSON.stringify([posts.map(post => [post.id, post.planningDate, post.revision?.status]), captions, coverage])} onOpenDraft={openPost} />
+      </div>
       {selected && (
         <div
           className="fixed inset-0 z-50 overflow-y-auto bg-[#f7f5f0] p-3 sm:p-6 lg:flex lg:items-center"
