@@ -33,7 +33,7 @@ def run_file(path, owner='postgres'):
 
 
 def fixture(owner):
-    result = subprocess.run(BASE + ['-v', 'migration_owner=' + owner, '-f', str(ROOT / 'supabase/tests/content-planning-fixture.sql')], env=ENV, text=True, capture_output=True, timeout=90)
+    result = subprocess.run(BASE + ['-v', 'migration_owner=' + owner, '-f', str(ROOT / 'supabase/tests/content-planning-fixture.sql')], env=dict(ENV, PGOPTIONS='-c timezone=UTC -c search_path=public'), text=True, capture_output=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
