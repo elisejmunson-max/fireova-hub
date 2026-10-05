@@ -14,7 +14,9 @@
     "test:monthly-planning:browser": "node tests/monthly-planning-browser.mjs",
     "typecheck:monthly-planning": "tsc --noEmit --project tsconfig.monthly-planning.json",
     "test:gallery:browser": "node tests/gallery-browser.mjs",
-    "typecheck:gallery": "tsc --noEmit --project tests/fixtures/gallery-tsconfig.json"
+    "typecheck:gallery": "tsc --noEmit --project tests/fixtures/gallery-tsconfig.json",
+    "test:post-media-editor:browser": "node tests/post-media-editor-browser.mjs",
+    "typecheck:post-media-editor": "tsc --noEmit --project tests/fixtures/post-media-tsconfig.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

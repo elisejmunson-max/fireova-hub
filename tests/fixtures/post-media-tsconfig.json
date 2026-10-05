@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["post-media-browser-entry.tsx", "post-media-supabase.ts", "gallery-link.tsx", "gallery-navigation.ts", "../gallery-css.d.ts", "../../lib/post-media-editor.ts"]
+}
