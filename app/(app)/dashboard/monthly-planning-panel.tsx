@@ -81,6 +81,9 @@ export default function MonthlyPlanningPanel({ open, onClose, anchor, refreshKey
     const token = typeof previousHistory?.fireovaMonthlyPanel === 'string' ? previousHistory.fireovaMonthlyPanel : crypto.randomUUID();
     historyToken.current = token;
     if (previousHistory?.fireovaMonthlyPanel !== token) window.history.pushState({ ...previousHistory, fireovaMonthlyPanel: token }, '');
+    // Forward can reopen the sheet without activating its trigger. The browser
+    // may restore focus to the body or the closing sheet during that traversal.
+    const trigger = document.querySelector<HTMLElement>('button[aria-controls="monthly-plan-panel"]');
     const previous = document.activeElement as HTMLElement | null, overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden'; panelRef.current?.focus();
     const keydown = (event: KeyboardEvent) => {
@@ -92,7 +95,12 @@ export default function MonthlyPlanningPanel({ open, onClose, anchor, refreshKey
       else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panelRef.current)) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', keydown);
-    return () => { document.removeEventListener('keydown', keydown); document.body.style.overflow = overflow; if (window.history.state?.fireovaMonthlyPanel === token) window.history.replaceState({ ...previousHistory, fireovaMonthlyPanel: undefined }, ''); historyToken.current = null; requestAnimationFrame(() => { if (previous?.isConnected) previous.focus(); }); };
+    return () => { document.removeEventListener('keydown', keydown); document.body.style.overflow = overflow; if (window.history.state?.fireovaMonthlyPanel === token) window.history.replaceState({ ...previousHistory, fireovaMonthlyPanel: undefined }, ''); historyToken.current = null; requestAnimationFrame(() => {
+      // A rapid Forward/reopen must keep focus inside the new modal session.
+      if (historyToken.current) return;
+      const target = trigger?.isConnected ? trigger : previous;
+      if (target?.isConnected && !panelRef.current?.contains(target)) target.focus();
+    }); };
   }, [open, mobile, closePanel]);
 
   async function save(priorities: MonthlyPriority[], revision = state.plan?.features.revision, key = month) {

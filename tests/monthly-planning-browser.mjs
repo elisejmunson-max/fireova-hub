@@ -344,12 +344,19 @@ scenario('mobile-history-forward-reopens-without-extra-push',async({page,state})
   const original=await page.evaluate(()=>history.length);
   await toggle(page).click();await ready(page);const opened=await page.evaluate(()=>history.length);assert.equal(opened,original+1);
   await page.goBack();await panel(page).waitFor({state:'hidden'});
-  await page.goForward();await ready(page);assert.equal(await page.evaluate(()=>history.length),opened);
-  await button(page,'Close monthly plan').evaluate(el=>{el.click();el.click();});await panel(page).waitFor({state:'hidden'});
-  assert.equal(new URL(page.url()).pathname,'/dashboard');
   await eventually(()=>toggle(page).evaluate(el=>el===document.activeElement),'focus returns to Monthly plan trigger');
+  const unrelated=page.locator('.editorial-overview-heading a[href="/approved-posts"]');
+  for(let cycle=0;cycle<3;cycle++) {
+    // Forward has no trigger activation. Make unrelated pre-open focus explicit
+    // so restoration cannot pass merely because the trigger happened to retain it.
+    await unrelated.focus();assert.equal(await unrelated.evaluate(el=>el===document.activeElement),true);
+    await page.goForward();await ready(page);assert.equal(await page.evaluate(()=>history.length),opened);
+    await button(page,'Close monthly plan').evaluate(el=>{el.click();el.click();});await panel(page).waitFor({state:'hidden'});
+    assert.equal(new URL(page.url()).pathname,'/dashboard');
+    await eventually(()=>toggle(page).evaluate(el=>el===document.activeElement),`Forward/Close cycle ${cycle+1} returns focus to Monthly plan trigger`);
+  }
   await page.goBack();await eventually(()=>new URL(page.url()).pathname==='/before','Back after closing sheet returns to genuine preceding route');
-  check(state,'Forward restores monthly sheet without an extra history entry, Close restores trigger focus, duplicate Close is locked to one history movement, and next Back leaves for the real prior route');
+  check(state,'Three Forward/Close cycles from explicitly unrelated focus restore the Monthly plan trigger without extra history entries; duplicate Close is locked to one history movement, and next Back leaves for the real prior route');
 },{viewport:{width:390,height:844},autoReady:false,before:true});
 
 scenario('mobile-keyboard-height-scroll-and-draft-open',async({page,state})=>{
