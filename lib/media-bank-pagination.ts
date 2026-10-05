@@ -49,13 +49,34 @@ export function matchesMediaType(asset: MediaBankAsset, filter: MediaFilter) {
     (filter === "video" && asset.file_type.startsWith("video/"))
   );
 }
+/** Preserve PostgreSQL subsecond precision; ISO text and millisecond-only parsing disagree at page boundaries. */
+function timestampParts(value: string): [number, string] | null {
+  const match = /^(.*?)(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return null;
+  const second = Date.parse(match[1] + match[3]);
+  return Number.isFinite(second)
+    ? [second, (match[2] || "").padEnd(9, "0")]
+    : null;
+}
+export function compareMediaCreatedAt(a: string, b: string) {
+  const left = timestampParts(a),
+    right = timestampParts(b);
+  if (left && right) {
+    if (left[0] !== right[0]) return left[0] < right[0] ? -1 : 1;
+    if (left[1] !== right[1]) return left[1] < right[1] ? -1 : 1;
+    return 0;
+  }
+  // Database timestamps are valid ISO strings; deterministic fallback for malformed fixtures.
+  return a === b ? 0 : a < b ? -1 : 1;
+}
 export function stableMediaAssets(assets: MediaBankAsset[]) {
   const unique = new Map<string, MediaBankAsset>();
   for (const asset of assets)
     if (!unique.has(asset.id)) unique.set(asset.id, asset);
   return [...unique.values()].sort(
     (a, b) =>
-      b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+      compareMediaCreatedAt(b.created_at, a.created_at) ||
+      (b.id === a.id ? 0 : b.id < a.id ? -1 : 1),
   );
 }
 export function mediaPage(

@@ -14,7 +14,7 @@ Optional `CHROMIUM_PATH` selects a system Chromium executable. By default Playwr
 
 No server socket, CI secret, Supabase account, production media, or network access to a production service is needed. Playwright fulfills every expected request at `https://media-bank.fixture.test` and aborts unexpected requests. APIs check an HTTP-only, secure, test-only session cookie. The dataset has 241 owner-A media records, including an initially unloaded unique search target, plus one foreign-owner record that must not be returned. SVG responses represent thumbnails and full images. The small MP4 exercises actual browser video decoding. The mocked upload flow does not validate its deliberately minimal image bytes.
 
-## Prepared scenarios (14)
+## Prepared scenarios (17)
 
 1. Desktop initial 24-item page, bounded thumbnail requests, no originals/videos, scroll pagination, detail navigation, explicit video decoding
 2. Whole-library unloaded-item search, counts, persistent selection, empty results, type filter
@@ -30,8 +30,11 @@ No server socket, CI secret, Supabase account, production media, or network acce
 12. Short laptop 1280×650 layout and reachable detail controls
 13. Mobile 390×844 layout and reachable detail controls
 14. Fixture session enforcement and foreign-owner isolation
+15. Metadata edit removes an Alice search match, resets its cursor, retains detail, and loads all 48 remaining rows without skipping
+16. Delayed upload analysis stores new tags, then refreshes active subject search/counts to reveal the new match
+17. A later-page detail stays open after metadata resets the grid, then next/previous navigate its actual neighbors
 
-The desktop scenario uses 1280×800. Successful execution saves viewport screenshots, per-scenario request events, response-body bytes, assertions, and a report. Response bytes are exact fulfilled fixture body sizes, not production wire-transfer estimates. A launch failure saves a separate blocked diagnostic; it is never presented as a passed browser run.
+The desktop scenario uses 1280×800. Successful execution saves viewport screenshots, per-scenario request events, response-body bytes, assertions, and a report. Console lines prefixed `MEDIA_BANK_SCENARIO` summarize request counts by phase, offsets, and fulfilled bytes; `MEDIA_BANK_SUITE` gives final status and source/bundle SHA-256 fingerprints. Response bytes are exact fulfilled fixture body sizes, not production wire-transfer estimates. A launch failure saves a separate blocked diagnostic; it is never presented as a passed browser run.
 
 ## Coverage limits
 

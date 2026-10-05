@@ -99,6 +99,7 @@ export default function MediaLibrary({
     [slides, setSlides] = useState<A[]>([]),
     [showIndex, setShowIndex] = useState(0),
     [playing, setPlaying] = useState(true);
+  const mounted = useRef(true);
   const input = useRef<HTMLInputElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
     requests = useRef(new MediaPageRequests("all:", initialAssets.length)),
@@ -114,12 +115,20 @@ export default function MediaLibrary({
       sb.storage.from("media").getPublicUrl(a.storage_path).data.publicUrl;
   queryRef.current = { filter, search: settledSearch };
   selectedRef.current = selected;
-  useEffect(() => () => requests.current.cancel(), []);
+  useEffect(() => {
+    mounted.current = true;
+    const state = requests.current;
+    return () => {
+      mounted.current = false;
+      state.cancel();
+    };
+  }, []);
   useEffect(() => {
     const t = setTimeout(() => setSettledSearch(search), 250);
     return () => clearTimeout(t);
   }, [search]);
   const load = useCallback(async (reset: boolean) => {
+    if (!mounted.current) return;
     const query = queryRef.current,
       attempt = requests.current.begin(
         `${query.filter}:${query.search}`,
@@ -234,11 +243,12 @@ export default function MediaLibrary({
     if (!selected || detailLoading) return;
     let list = detailAssets || assets;
     let index = list.findIndex((a) => a.id === selected.id);
+    const missingFromLoaded = index < 0;
     const token = ++navigation.current;
     if (
       !detailAssets &&
       hasMore &&
-      (index + dir < 0 || index + dir >= list.length)
+      (missingFromLoaded || index + dir < 0 || index + dir >= list.length)
     ) {
       setDetailLoading(true);
       try {
@@ -250,6 +260,7 @@ export default function MediaLibrary({
           return;
         setDetailAssets(list);
         index = list.findIndex((a) => a.id === selected.id);
+        if (index < 0) index = dir > 0 ? -1 : 0;
       } catch (e) {
         if (token === navigation.current)
           setMsg(e instanceof Error ? e.message : "Could not load next media.");
@@ -258,6 +269,8 @@ export default function MediaLibrary({
         if (token === navigation.current) setDetailLoading(false);
       }
     }
+    // An edited item may no longer belong to the active query: next starts at first, previous at last.
+    if (index < 0) index = dir > 0 ? -1 : 0;
     const next = list[(index + dir + list.length) % list.length];
     if (next) {
       setSelected(next);
@@ -433,7 +446,10 @@ export default function MediaLibrary({
       const added = (data.assets || []) as A[];
       setMsg(`${added.length} added.`);
       await load(true);
-      for (const a of added) void analyze(a);
+      // Analysis changes search membership after the untagged upload refresh.
+      // Refresh as each analysis settles so a stalled video cannot hide finished photo matches.
+      // load() reads the latest query and cancels any older refresh.
+      for (const a of added) void analyze(a).then(() => load(true));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -468,6 +484,11 @@ export default function MediaLibrary({
         setPeople((d.people || []).join(", "));
       }
       setMsg("Saved.");
+      navigation.current++;
+      setDetailLoading(false);
+      setDetailAssets(null);
+      // Editing search membership shifts offsets; replace the active query before paging again.
+      await load(true);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Could not save.");
     } finally {

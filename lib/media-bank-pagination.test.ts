@@ -94,3 +94,31 @@ test("reset replaces interrupted search results", () => {
     ["new"],
   );
 });
+
+test('fractional precision preserves database chronology at the server seed boundary', () => {
+  const data = Array.from({length: 49}, (_, i) => asset(String(i).padStart(3,'0'), `2026-10-05T00:00:00.${String(i).padStart(6,'0')}+00:00`));
+  data[0].created_at = '2026-10-05T00:00:00+00:00';
+  data[10].created_at = '2026-10-05T00:00:00.00001+00:00';
+  const databaseSeed = [...data].reverse().slice(0,24);
+  const page = mediaPage(data,'','all',24,24);
+  const merged = mergeMediaPages(databaseSeed,page.items);
+  assert.equal(merged.length,48);
+  assert.deepEqual(merged.map(x=>x.id),[...data].reverse().slice(0,48).map(x=>x.id));
+});
+test('timezone offsets and equivalent fractional formatting fall back to ID ties', () => {
+  const items = [asset('b','2026-10-05T02:00:00.1+02:00'), asset('c','2026-10-05T00:00:00.100000Z'), asset('a','2026-10-05T00:00:00.100001+00:00'), asset('z','2026-10-05T00:00:00+00:00')];
+  assert.deepEqual(stableMediaAssets(items).map(x=>x.id),['a','c','b','z']);
+});
+test('reset after edited search membership prevents a shifted offset from skipping rows', () => {
+  const data=Array.from({length:49},(_,i)=>asset(String(49-i).padStart(3,'0'),`2026-10-05T00:00:${String(49-i).padStart(2,'0')}Z`,'image/jpeg',['person:Alice']));
+  const before=mediaPage(data,'Alice','all',0,24);
+  data[0]={...data[0],tags:['person:Bob']};
+  const reset=mediaPage(data,'Alice','all',0,24);
+  const refreshed=mergeMediaPages(before.items,reset.items,true);
+  const next=mediaPage(data,'Alice','all',reset.nextOffset,24);
+  const all=mergeMediaPages(refreshed,next.items);
+  assert.equal(all.length,48);
+  assert.equal(all.some(x=>x.id===data[0].id),false);
+  assert.equal(all.some(x=>x.id===data[24].id),true);
+  assert.equal(next.hasMore,false);
+});
