@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.monthly-planning.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["monthly-browser-entry.tsx", "monthly-link.tsx", "monthly-supabase.ts", "../monthly-css.d.ts"]
+}

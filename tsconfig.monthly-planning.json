@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["next-env.d.ts", "lib/monthly-planning.ts", "app/api/monthly-plan/route.ts", "app/(app)/dashboard/monthly-planning-panel.tsx", "app/(app)/dashboard/weekly-content-persistent.tsx", "app/(app)/dashboard/page.tsx", "tests/monthly-css.d.ts"],
+  "exclude": ["node_modules"]
+}
