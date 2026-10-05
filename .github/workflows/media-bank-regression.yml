@@ -23,7 +23,6 @@ jobs:
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: '1'
-      MEDIA_BANK_EVIDENCE_DIR: ${{ runner.temp }}/media-bank-evidence
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +40,8 @@ jobs:
       - name: Install browser
         run: npx playwright install --with-deps chromium
       - name: Browser fixtures and request proof
+        env:
+          MEDIA_BANK_EVIDENCE_DIR: ${{ runner.temp }}/media-bank-evidence
         run: npm run test:media-bank:browser
       - name: Save fixture reports and screenshots
         if: always()
