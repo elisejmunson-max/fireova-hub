@@ -30,6 +30,6 @@ if (new URLSearchParams(window.location.search).has('loading')) {
     <div className="editorial-media-library"><MediaLibrary {...seed.media} /></div>
   </section>;
 } else {
-  content = <div><div className="page-content editorial-create-page py-4 sm:py-8"><div className="mx-auto max-w-[1640px]"><WeeklyContentPersistent {...seed.dashboard} /></div></div></div>;
+  content = <div><div className="page-content editorial-create-page py-4 sm:py-8"><div><WeeklyContentPersistent {...seed.dashboard} /></div></div></div>;
 }
 createRoot(document.getElementById('root')!).render(<AppChrome user={user}>{content}</AppChrome>);

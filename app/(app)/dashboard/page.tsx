@@ -55,5 +55,5 @@ export default async function DashboardPage() {
     }
   }
   const planningAnchor = chicagoPlanningAnchor(new Date());
-  return <div><div className="page-content editorial-create-page py-4 sm:py-8"><div className="mx-auto max-w-[1640px]"><WeeklyContent initialAssets={media} savedSlots={savedSlots} initialPlanCoverage={planCoverage} planningAnchor={planningAnchor} planningAvailable={planningAvailable} initialQueueUpdatedAt={queueUpdatedAt} approvedCount={approvedCount} loadError={loadError}/></div></div></div>;
+  return <div><div className="page-content editorial-create-page py-4 sm:py-8"><div><WeeklyContent initialAssets={media} savedSlots={savedSlots} initialPlanCoverage={planCoverage} planningAnchor={planningAnchor} planningAvailable={planningAvailable} initialQueueUpdatedAt={queueUpdatedAt} approvedCount={approvedCount} loadError={loadError}/></div></div></div>;
 }

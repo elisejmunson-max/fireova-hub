@@ -114,7 +114,7 @@ export default function WeeklyContentPersistent({
   const [monthlyMobile, setMonthlyMobile] = useState(true);
   const monthlyMainRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1199px)');
+    const query = window.matchMedia('(max-width: 1023px)');
     setMonthlyMobile(query.matches); setMonthlyOpen(!query.matches);
     const change = () => { setMonthlyMobile(query.matches); setMonthlyOpen(!query.matches); };
     query.addEventListener('change', change); return () => query.removeEventListener('change', change);
@@ -165,7 +165,7 @@ export default function WeeklyContentPersistent({
         window.history.pushState({ fireovaPostDetail: selectedId }, "");
         return;
       }
-      if (window.matchMedia('(max-width: 1199px)').matches) setMonthlyOpen(Boolean(event.state?.fireovaMonthlyPanel));
+      if (window.matchMedia('(max-width: 1023px)').matches) setMonthlyOpen(Boolean(event.state?.fireovaMonthlyPanel));
       const id = event.state?.fireovaPostDetail;
       setSelectedId(typeof id === "string" && posts.some((post) => post.id === id) ? id : null);
       setCaptionEdit(cancelCaptionEdit());

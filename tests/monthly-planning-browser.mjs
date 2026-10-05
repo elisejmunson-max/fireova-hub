@@ -40,7 +40,7 @@ const postcss=require('postcss'), tailwind=require('tailwindcss'), loadConfig=re
 const globals = (await postcss([tailwind({...loadConfig(path.join(repo,'tailwind.config.ts')),content:[path.join(repo,'app/**/*.{js,ts,jsx,tsx,mdx}'),path.join(fixture,'monthly-browser-entry.tsx')]})]).process(await fs.readFile(path.join(repo,'app/globals.css'),'utf8'),{from:path.join(repo,'app/globals.css')})).css;
 const css = Buffer.concat([Buffer.from(globals),Buffer.from('\n'),moduleCss]);
 const hashes = {};
-for (const file of ['app/(app)/dashboard/monthly-planning-panel.tsx','app/(app)/dashboard/monthly-planning.module.css','app/(app)/dashboard/weekly-content-persistent.tsx','lib/monthly-planning.ts','lib/manual-content-drafts.ts','app/globals.css']) hashes[file]=createHash('sha256').update(await fs.readFile(path.join(repo,file))).digest('hex');
+for (const file of ['app/(app)/dashboard/monthly-planning-panel.tsx','app/(app)/dashboard/monthly-planning.module.css','app/(app)/dashboard/weekly-content-persistent.tsx','lib/monthly-planning.ts','lib/manual-content-drafts.ts','app/globals.css','tests/monthly-planning-browser.mjs','tests/fixtures/monthly-browser-entry.tsx']) hashes[file]=createHash('sha256').update(await fs.readFile(path.join(repo,file))).digest('hex');
 const buildEvidence = {sourceSha256:hashes,bundleSha256:createHash('sha256').update(js).digest('hex'),bundleBytes:js.length,cssBytes:css.length,actualDashboardBundled:true,actualPanelBundled:true,actualCssModuleBundled:true,actualTailwindCompiled:true};
 await fs.writeFile(path.join(evidence,'monthly-browser-static-build-report.json'),JSON.stringify({status:'passed',generatedAt:new Date().toISOString(),...buildEvidence,browserScenariosExecuted:0},null,2));
 if (process.argv.includes('--build-only')) { console.log('PASS actual dashboard, panel, CSS module and Tailwind fixture bundle; browser scenarios not executed.'); process.exit(0); }
@@ -140,13 +140,30 @@ scenario('desktop-dashboard-appearance-collapse-preserves-six-drafts',async({pag
   await screenshot(page,'monthly-desktop-1440x1000-open.png');
   await button(page,'Close monthly plan').click();await panel(page).waitFor({state:'hidden'});
   assert.equal(await toggle(page).getAttribute('aria-expanded'),'false');
-  const expanded=await cards(page).first().boundingBox();assert(Math.abs(expanded.width-sizes[0].width)<1,'height-budgeted previews stay compact when the panel closes');
-  const cardBounds=await cards(page).evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom};}));
-  assert(cardBounds.every(box=>box.top>=0&&box.bottom<=1000),'all six complete cards remain visible after collapse');
+  const expanded=await cards(page).first().boundingBox();
+  assert(expanded.width>sizes[0].width+80,'closing the 240px planner and 24px gap expands each of the three photo columns');
+  const cardBounds=await cards(page).evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect(),tile=el.querySelector('.content-gallery-tile').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,right:r.right,bottom:r.bottom,tileWidth:tile.width,tileHeight:tile.height};}));
+  assert.equal(cardBounds.length,6,'panel collapse preserves all six drafts');
+  for(const [index,box] of cardBounds.entries()) {
+    assert(Math.abs(box.width-cardBounds[0].width)<1,'collapsed cards use equal columns');
+    assert(Math.abs(box.y-cardBounds[index<3?0:3].y)<1,'three cards per row');
+    assert(Math.abs(box.x-cardBounds[index%3].x)<1,'both rows keep matching columns');
+    assert(box.x>=32-1&&box.right<=1440-32+1,'cards stay within desktop page gutters');
+    assert(Math.abs(box.tileWidth/box.tileHeight-.75)<.002,'expanded previews retain their 3:4 ratio');
+  }
+  assert(cardBounds[3].y>=cardBounds[0].bottom,'six drafts form exactly two separate rows');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'expanding the photo grid never introduces horizontal overflow');
   assert.deepEqual(await cards(page).locator('img').evaluateAll(elements=>elements.map(img=>new URL(img.src).pathname)),order);
-  await screenshot(page,'monthly-desktop-1440x1000-collapsed.png');
+  await screenshot(page,'monthly-desktop-1440x1000-collapsed-top.png');
+  await cards(page).last().evaluate(el=>window.scrollTo(0,el.getBoundingClientRect().bottom+window.scrollY-window.innerHeight+16));
+  assert(await page.evaluate(()=>window.scrollY)>0,'ordinary document scrolling reaches the expanded second row');
+  const lastRow=await cards(page).evaluateAll(elements=>elements.slice(3).map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom};}));
+  assert(lastRow.every(box=>box.top>=-1&&box.bottom<=1001),'all three complete second-row cards are reachable by document scrolling');
+  await screenshot(page,'monthly-desktop-1440x1000-collapsed-bottom-row-after-scroll.png');
+  await page.evaluate(()=>window.scrollTo(0,0));
   await toggle(page).click();await ready(page);assert.equal(await cards(page).count(),6);
-  check(state,'Actual dashboard is a three-column, six-draft grid; initial asset ordering is preserved before/after panel collapse; accessible expanded state and no horizontal overflow');
+  const restored=await cards(page).first().boundingBox();assert(Math.abs(restored.width-sizes[0].width)<1,'reopening restores the photo-led main column');
+  check(state,'Actual dashboard is a width-led three-column, six-draft grid; closing the planner expands equal 3:4 previews while keeping two rows, asset order, accessible expanded state and no horizontal overflow; normal document scrolling reaches the second row');
 });
 
 scenario('laptop-panel-scroll-and-calendar-has-only-real-entries',async({page,state})=>{
