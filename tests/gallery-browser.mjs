@@ -22,10 +22,11 @@ await fs.mkdir(evidence, { recursive:true });
 const hasMonthlyPanel = (await fs.readFile(path.join(repo,'app/(app)/dashboard/weekly-content-persistent.tsx'),'utf8')).includes('import MonthlyPlanningPanel');
 const globalSource = await fs.readFile(path.join(repo,'app/globals.css'),'utf8');
 assert(!globalSource.includes('repeat(2,minmax(0,1fr))'), 'Create overview must retain three columns with its panel open');
-assert(globalSource.includes('--overview-grid-width:calc(112.5dvh - 368.5px)'), 'desktop preview sizes must use the viewport height budget');
+assert(!globalSource.includes('--overview-grid-width'), 'Create preview widths must not depend on a viewport-height budget');
 assert(!globalSource.includes('container:content-gallery'), 'overview must not establish a containing block for fixed overlays');
 const sources = [
   'app/globals.css','app/(app)/dashboard/page.tsx','app/(app)/dashboard/weekly-content-persistent.tsx',
+  'tests/gallery-browser.mjs','tests/fixtures/gallery-browser-entry.tsx',
   ...(hasMonthlyPanel?['app/(app)/dashboard/monthly-planning.module.css','app/(app)/dashboard/monthly-planning-panel.tsx']:[]),
   'app/(app)/approved-posts/page.tsx','app/(app)/approved-posts/approved-posts-grid.tsx',
   'app/(app)/media-bank/page.tsx','app/(app)/media-bank/library.tsx',
@@ -39,6 +40,9 @@ for (const [file, marker] of [
   ['app/(app)/approved-posts/page.tsx','editorial-approved editorial-shell content-gallery-shell'],
   ['app/(app)/media-bank/page.tsx','editorial-media-bank editorial-shell content-gallery-shell'],
 ]) assert((await fs.readFile(path.join(repo,file),'utf8')).includes(marker), `${file} must match fixture page wrapper`);
+for (const file of ['app/(app)/dashboard/page.tsx','tests/fixtures/gallery-browser-entry.tsx']) {
+  assert(!(await fs.readFile(path.join(repo,file),'utf8')).includes('max-w-[1640px]'), `${file} must not cap the Create workspace`);
+}
 const bundled = await build({
   entryPoints:[path.join(fixture,'gallery-browser-entry.tsx')],outdir:path.join(evidence,'bundle'),
   bundle:true,write:false,format:'iife',platform:'browser',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},
@@ -69,7 +73,7 @@ async function eventually(check,message) {
 async function screenshot(page,name) {
   await page.screenshot({path:path.join(evidence,name),fullPage:false});screenshots.push(name);
 }
-async function gallery(page, { columns=3,count=6,expectedWidth,selector='.content-gallery-grid' }={}) {
+async function gallery(page, { columns=3,count=6,expectedWidth,maxWidth=1120,selector='.content-gallery-grid' }={}) {
   const grid = page.locator(selector).first();await grid.waitFor();
   const tiles = grid.locator('.content-gallery-tile');
   assert.equal(await tiles.count(),count);
@@ -80,7 +84,7 @@ async function gallery(page, { columns=3,count=6,expectedWidth,selector='.conten
   });
   assert.equal(data.columns,columns,'expected shared column count');
   assert.equal(data.gap,page.viewportSize().width<768?8:16,'shared responsive gutter');
-  assert(data.width<=1120.1,'gallery never exceeds 1120px');
+  if(maxWidth!==null) assert(data.width<=maxWidth+.1,'shared Approved/Media/mobile gallery retains its width cap');
   if(expectedWidth!==undefined) assert(Math.abs(data.width-expectedWidth)<1,'shared content gallery width');
   assert(data.scrollWidth<=data.clientWidth+1,'no clipped grid overflow');
   for(const tile of data.tiles) {
@@ -111,34 +115,136 @@ async function verifyDetailFit(page,selector,expectedSource) {
   assert.equal(await media.evaluate(el=>getComputedStyle(el).objectFit),'contain');
   assert.equal(await media.getAttribute('src'),expectedSource,'original media selection unchanged');
 }
-async function overviewFits(page,withPanel=true) {
+// Photo-led Create fills the available width; document scrolling reveals later rows.
+// A card may be taller than a short viewport, so verify its top and bottom independently.
+async function overviewLayout(page,withPanel=true) {
   const viewport=page.viewportSize();
-  assert.equal(await page.evaluate(()=>window.scrollY),0,'overview and collection interactions do not require page scrolling');
-  const inside=(box,label)=>assert(box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=viewport.width+1&&box.y+box.height<=viewport.height+1,`${label} fully inside ${viewport.width}×${viewport.height}: ${JSON.stringify(box)}`);
-  const cards=await page.locator('.editorial-grid > .editorial-plan-card').evaluateAll(els=>els.slice(0,6).map(el=>{
-    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
-    return {...rect(el),contents:[...el.querySelectorAll(':scope > button,:scope > h2,:scope > p,button h2,button p')].map(rect)};
-  }));
-  assert.equal(cards.length,6,'six complete overview cards');
+  const data=await page.locator('.content-gallery-main').evaluate(main=>{
+    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+    const workspace=main.parentElement,grid=main.querySelector('.editorial-grid');
+    return {main:rect(main),workspace:rect(workspace),grid:rect(grid),workspaceGap:parseFloat(getComputedStyle(workspace).columnGap),
+      mainMaxWidth:getComputedStyle(main).maxWidth,gridMaxWidth:getComputedStyle(grid).maxWidth,
+      cards:[...grid.querySelectorAll(':scope > .editorial-plan-card')].map(card=>({...rect(card),contents:[...card.querySelectorAll(':scope > button,:scope > h2,:scope > p,button h2,button p')].map(rect)}))};
+  });
+  const {cards,main,workspace,grid}=data;
+  assert.equal(cards.length,6,'six complete overview cards remain in the document');
+  assert(Math.abs(grid.width-main.width)<1,'Create grid stretches to the full main column');
   for(const [index,card] of cards.entries()) {
-    inside(card,`card ${index+1}`);
-    for(const content of card.contents)inside(content,`card ${index+1} title, status or action`);
+    assert(card.x>=main.x-1&&card.right<=main.right+1,'cards fit the main column horizontally');
+    assert(Math.abs(card.width-cards[0].width)<1,'all six card columns have equal widths');
     assert(Math.abs(card.y-cards[index<3?0:3].y)<1,'exactly three cards per row');
+    assert(card.height>0,'every complete card participates in document layout');
+    for(const content of card.contents) assert(content.x>=card.x-1&&content.right<=card.right+1,'card title, status and actions fit its width');
   }
-  assert(cards[3].y>cards[0].y,'second row follows first');
+  assert(cards[3].y>=cards[0].bottom,'second row follows the complete first row');
   assert(Math.abs(cards[0].x-cards[3].x)<1,'rows share a left edge');
-  for(const selector of ['#review-title','.editorial-overview-heading .btn-secondary','.editorial-toolbar']) {
-    for(const element of await page.locator(selector).all())inside(await element.boundingBox(),selector);
-  }
-  if(withPanel) {
-    const panelBox=await panel(page).boundingBox();inside(panelBox,'monthly panel');
-    assert(panelBox.x>cards[2].x+cards[2].width,'monthly plan beside the cards');
-    for(const element of [panel(page).locator('[aria-label$="planning dates"]'),panel(page).getByRole('heading',{name:'Must feature',exact:true}),panel(page).locator('textarea'),panel(page).getByRole('button',{name:'+ Add priority',exact:true})]) {
-      const box=await element.boundingBox();inside(box,'monthly calendar or priority control');
-      assert(box.x>=panelBox.x+1&&box.y>=panelBox.y+1&&box.x+box.width<=panelBox.x+panelBox.width-1&&box.y+box.height<=panelBox.y+panelBox.height-1,'calendar and priority controls stay inside the panel');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no document horizontal overflow');
+  if(viewport.width>=1024) {
+    const contentWidth=viewport.width-64;
+    assert(Math.abs(workspace.x-32)<1&&Math.abs(workspace.right-(viewport.width-32))<1,'desktop workspace uses 32px page gutters without a maximum-width cap');
+    assert(Math.abs(workspace.width-contentWidth)<1,'desktop workspace uses all available content width');
+    assert.equal(data.mainMaxWidth,'none','Create main has no shared gallery maximum-width cap');
+    assert(Math.abs(main.x-workspace.x)<1,'Create begins at the workspace left edge');
+    assert(Math.abs(main.width-(contentWidth-(withPanel?264:0)))<1,'Create fills all remaining width beside the optional 240px panel and 24px gap');
+    const minimumShare=viewport.width>=1280?.72:.68;
+    assert(main.width/contentWidth>=minimumShare,`Create occupies at least ${minimumShare*100}% of desktop content width`);
+    if(withPanel) {
+      const panelData=await panel(page).evaluate(el=>{const r=el.getBoundingClientRect(),style=getComputedStyle(el);return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,position:style.position,top:parseFloat(style.top),overflowY:style.overflowY,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth};});
+      assert(Math.abs(data.workspaceGap-24)<1,'desktop columns retain a 24px gutter');
+      assert(panelData.width<=240.1&&Math.abs(panelData.width-240)<1,'desktop monthly planner is a compact 240px column');
+      assert(Math.abs(panelData.x-main.right-24)<1,'monthly plan sits immediately beside the main column');
+      assert(Math.abs(panelData.right-workspace.right)<1,'monthly planner aligns to the content right edge');
+      assert.equal(panelData.position,'sticky','desktop planner stays sticky during ordinary document scrolling');
+      assert.equal(panelData.overflowY,'auto','planner has its own vertical scrolling');
+      assert(panelData.scrollWidth<=panelData.clientWidth+1,'narrow planner has no horizontal overflow');
+      assert(panelData.height<=viewport.height-panelData.top+1,'planner never exceeds its viewport height budget');
+      data.panel=panelData;
     }
   }
-  return {viewport,cards,panel:withPanel?await panel(page).boundingBox():null};
+  return {viewport,...data};
+}
+async function verifyDocumentReachability(page,name,{withPanel=false,capture=true}={}) {
+  const viewport=page.viewportSize(),cards=page.locator('.editorial-grid > .editorial-plan-card');
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const initialPanel=withPanel?await panel(page).boundingBox():null;
+  const positions=[];
+  for(let index=0;index<await cards.count();index++) {
+    const bounds=await cards.nth(index).evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top+scrollY,bottom:r.bottom+scrollY};});
+    for(const [edge,offset] of [['top',bounds.top-16],['bottom',bounds.bottom-viewport.height+16]]) {
+      await page.evaluate(y=>window.scrollTo(0,Math.max(0,y)),offset);
+      const visible=await cards.nth(index).boundingBox();
+      const point=edge==='top'?visible.y:visible.y+visible.height;
+      assert(point>=-1&&point<=viewport.height+1,`card ${index+1} ${edge} reachable through ordinary document scrolling`);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'scrolling never introduces horizontal overflow');
+      positions.push({card:index+1,edge,scrollY:await page.evaluate(()=>scrollY)});
+    }
+  }
+  const secondRowY=await cards.nth(3).evaluate(el=>el.getBoundingClientRect().top+scrollY);
+  await page.evaluate(y=>window.scrollTo(0,Math.max(0,y-16)),secondRowY);
+  const bottomRowScrollY=await page.evaluate(()=>scrollY);
+  if(viewport.width>=1024) assert(bottomRowScrollY>0,'the second row is reached through document scrolling');
+  if(withPanel) {
+    const sticky=await panel(page).boundingBox(),top=await panel(page).evaluate(el=>parseFloat(getComputedStyle(el).top));
+    assert(sticky&&Math.abs(sticky.y-top)<1,'monthly planner remains pinned while the document scrolls to the second row');
+    assert(Math.abs(sticky.x-initialPanel.x)<1&&Math.abs(sticky.width-initialPanel.width)<1,'document scrolling preserves planner alignment and width');
+  }
+  if(capture) await screenshot(page,`${name}-bottom-row-after-scroll.png`);
+  await page.evaluate(()=>window.scrollTo(0,0));
+  return {positions,bottomRowScrollY};
+}
+async function verifyPlannerControls(page) {
+  // Put the sticky rail fully inside the viewport before exercising only its own scroll.
+  await page.evaluate(()=>window.scrollTo(0,80));
+  for(const control of [panel(page).getByLabel('Month',{exact:true}),panel(page).locator('[aria-label$="planning dates"]'),panel(page).getByRole('heading',{name:'Must feature',exact:true}),panel(page).locator('textarea'),panel(page).getByRole('button',{name:'+ Add priority',exact:true})]) {
+    await control.evaluate(el=>{
+      const rail=el.closest('#monthly-plan-panel'),box=el.getBoundingClientRect(),bounds=rail.getBoundingClientRect();
+      const top=Math.max(bounds.top,0),bottom=Math.min(bounds.bottom,innerHeight);
+      if(box.bottom>bottom) rail.scrollTop+=box.bottom-bottom+1;
+      else if(box.top<top) rail.scrollTop+=box.top-top-1;
+    });
+    const box=await control.boundingBox(),rail=await panel(page).boundingBox();
+    assert(box&&rail&&box.x>=rail.x-1&&box.x+box.width<=rail.x+rail.width+1,'calendar and priority controls fit the narrow planner without horizontal clipping');
+    assert(box.y>=Math.max(rail.y,0)-1&&box.y+box.height<=Math.min(rail.y+rail.height,page.viewportSize().height)+1,'planner controls remain reachable in its own scroll area');
+  }
+  await panel(page).evaluate(el=>{el.scrollTop=0;});
+  await page.evaluate(()=>window.scrollTo(0,0));
+}
+async function verifyMobileFocus(page) {
+  assert.equal(await panel(page).getAttribute('aria-modal'),'true','mobile sheet identifies itself as modal');
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden','sheet locks background document scrolling');
+  assert.equal(await panel(page).evaluate(el=>el.contains(document.activeElement)),true,'opening the mobile sheet moves focus inside');
+  const focusTargets=panel(page).locator('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]');
+  await focusTargets.first().focus();await page.keyboard.press('Shift+Tab');
+  assert.equal(await focusTargets.last().evaluate(el=>document.activeElement===el),true,'Shift+Tab wraps inside the sheet');
+  await page.keyboard.press('Tab');
+  assert.equal(await focusTargets.first().evaluate(el=>document.activeElement===el),true,'Tab wraps inside the sheet');
+  await page.keyboard.press('Escape');await panel(page).waitFor({state:'hidden'});
+  await eventually(()=>toggle(page).evaluate(el=>document.activeElement===el),'closing the sheet restores trigger focus');
+  assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),false,'closing the sheet restores background interaction');
+  assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden','closing the sheet restores document scrolling');
+  await openPanel(page);
+}
+async function verifyBreakpointResize(page) {
+  const height=page.viewportSize().height,input=panel(page).locator('textarea'),draft='Unsaved priority survives the desktop breakpoint';
+  await input.fill(draft);
+  await page.setViewportSize({width:1023,height});
+  await panel(page).waitFor({state:'hidden'});
+  assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),false,'1023px starts with a closed sheet and interactive content');
+  await openPanel(page);
+  assert.equal(await panel(page).getAttribute('role'),'dialog','1023px uses the mobile sheet');
+  assert.equal(await input.inputValue(),draft,'desktop-to-sheet resize preserves priority input');
+  assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),true,'1023px sheet makes background inert');
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden','1023px sheet locks document scrolling');
+  assert.equal(await panel(page).evaluate(el=>el.contains(document.activeElement)),true,'1023px sheet receives focus');
+  await page.setViewportSize({width:1024,height});
+  await eventually(()=>panel(page).getAttribute('role').then(value=>value==='complementary'),'1024px restores desktop planner');
+  assert.equal(await input.inputValue(),draft,'sheet-to-desktop resize preserves priority input');
+  assert.equal(await panel(page).isVisible(),true,'1024px desktop planner stays open');
+  assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),false,'1024px restores main interaction');
+  assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden','1024px releases sheet scroll lock');
+  await eventually(()=>toggle(page).evaluate(el=>document.activeElement===el),'leaving modal mode restores trigger focus');
+  await overviewLayout(page,true);
+  await panel(page).getByRole('button',{name:'Cancel',exact:true}).click();
 }
 async function scenario(width,placeholders=false,height=1000) {
   const name=`gallery-${width}x${height}${placeholders?'-planning-slots':''}`;
@@ -155,7 +261,7 @@ async function scenario(width,placeholders=false,height=1000) {
     if(url.pathname==='/favicon.ico') return route.fulfill({status:204,body:''});
     if(url.pathname==='/api/monthly-plan') {
       const month=url.searchParams.get('month'),plan=makePlan(month);
-      if(width>=1200) {
+      if(width>=1024) {
         plan.features.priorities=Array.from({length:12},(_,index)=>({id:`10000000-0000-4000-8000-${String(index+1).padStart(12,'0')}`,text:index===0?'Autumn menu launch':`Priority ${index+1}: ${'Long saved menu and event details. '.repeat(24)}`}));
         plan.entries.push(...Array.from({length:30},(_,index)=>({id:`extra-${index}`,postId:`extra-${index}`,date:`${month}-01`,title:`Additional plan entry ${index+1}`,status:'Draft'})));
       }
@@ -180,27 +286,31 @@ async function scenario(width,placeholders=false,height=1000) {
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
   try {
     await page.goto(`${ORIGIN}/dashboard`);await page.getByRole('heading',{name:'Your next two weeks'}).waitFor();
-    if(hasMonthlyPanel) await eventually(()=>toggle(page).getAttribute('aria-expanded').then(value=>value===(width>=1200?'true':'false')),'responsive panel initialized');
+    if(hasMonthlyPanel) await eventually(()=>toggle(page).getAttribute('aria-expanded').then(value=>value===(width>=1024?'true':'false')),'responsive panel initialized');
     else assert.equal(await toggle(page).count(),0,'main candidate has no monthly feature');
-    if(width>=1200&&hasMonthlyPanel) {
+    if(width>=1024&&hasMonthlyPanel) {
       await eventually(()=>panel(page).locator('textarea').isEnabled(),'desktop monthly plan ready');
-      measurements.initialOverview=await overviewFits(page);
-      await screenshot(page,`${name}-six-post-overview.png`);
+      measurements.initialOverview=await overviewLayout(page);
+      await screenshot(page,`${name}-create-open-top.png`);
+      measurements.openDocumentScroll=await verifyDocumentReachability(page,`${name}-create-open`,{withPanel:true});
     }
     await closePanel(page);
     const fullWidth=Math.min(1120,width-(width<768?32:64));
-    const createWidth=width>=1200?Math.min(fullWidth,1.125*height-368.5):fullWidth;
-    measurements.createCollapsed=await gallery(page,{expectedWidth:createWidth});
-    if(width>=1200) measurements.collapsedOverview=await overviewFits(page,false);
+    const createWidth=width>=1024?width-64:fullWidth;
+    const openCreateWidth=width>=1024&&hasMonthlyPanel?createWidth-264:createWidth;
+    measurements.createCollapsed=await gallery(page,{expectedWidth:createWidth,maxWidth:width>=1024?null:1120});
+    measurements.collapsedOverview=await overviewLayout(page,false);
     const orderBefore=await page.locator('.editorial-card-media > img,.editorial-card-media > video').evaluateAll(els=>els.map(el=>el.getAttribute('src')));
-    await screenshot(page,`${name}-create-collapsed.png`);
+    await screenshot(page,`${name}-create-collapsed-top.png`);
+    measurements.collapsedDocumentScroll=await verifyDocumentReachability(page,`${name}-create-collapsed`,{capture:width>=1024});
     if(hasMonthlyPanel) {
     await openPanel(page);
-    measurements.createOpen=await gallery(page,{columns:3,expectedWidth:createWidth});
-    assert.equal(await panel(page).getAttribute('role'),width>=1200?'complementary':'dialog');
-    assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),width<1200);
+    measurements.createOpen=await gallery(page,{columns:3,expectedWidth:openCreateWidth,maxWidth:width>=1024?null:1120});
+    assert.equal(await panel(page).getAttribute('role'),width>=1024?'complementary':'dialog');
+    assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),width<1024);
     await screenshot(page,`${name}-create-panel-open.png`);
-    if(width>=1200) {
+    if(width<1024) await verifyMobileFocus(page);
+    if(width>=1024) {
       const priorities=panel(page).locator('section > ul');
       const planList=panel(page).locator('ol').locator('..');
       const firstActions=await priorities.locator('li').first().locator('div').boundingBox(),priorityBounds=await priorities.boundingBox();
@@ -213,27 +323,31 @@ async function scenario(width,placeholders=false,height=1000) {
       }
       await priorities.getByRole('button',{name:/^Edit priority:/}).last().focus();
       assert.equal(await priorities.getByRole('button',{name:/^Edit priority:/}).last().evaluate(el=>document.activeElement===el),true,'long-list controls remain keyboard reachable');
-      measurements.longNotesOverview=await overviewFits(page);
+      await page.evaluate(()=>window.scrollTo(0,0));
+      await verifyPlannerControls(page);
+      measurements.longNotesOverview=await overviewLayout(page);
       await panel(page).getByLabel('Month',{exact:true}).fill('2026-08');
       await eventually(()=>panel(page).locator('[aria-label="August 2026 planning dates"] button').count().then(count=>count===42),'six-week calendar displayed');
       await eventually(()=>panel(page).locator('textarea').isEnabled(),'six-week month and long priorities loaded');
-      measurements.sixWeekOverview=await overviewFits(page);
+      await verifyPlannerControls(page);
+      measurements.sixWeekOverview=await overviewLayout(page);
       await screenshot(page,`${name}-six-week-calendar.png`);
       await panel(page).getByLabel('Month',{exact:true}).fill('2026-10');
+      await eventually(()=>panel(page).locator('textarea').isEnabled(),'October priorities reloaded');
+      if(width===1024) await verifyBreakpointResize(page);
     }
     await closePanel(page);await openPanel(page);await closePanel(page);
     assert.deepEqual(await page.locator('.editorial-card-media > img,.editorial-card-media > video').evaluateAll(els=>els.map(el=>el.getAttribute('src'))),orderBefore,'repeat panel toggles preserve selection and order');
-    measurements.createRestored=await gallery(page,{expectedWidth:createWidth});
+    measurements.createRestored=await gallery(page,{expectedWidth:createWidth,maxWidth:width>=1024?null:1120});
     }
-    if(width>=1200) {
+    if(width>=1024) {
       await page.getByRole('button',{name:'+ New post',exact:true}).click();
       await page.getByRole('textbox',{name:'New post caption',exact:true}).fill('Unsaved composer fixture');
       assert.equal(await page.locator('.editorial-plan-card').count(),6,'composer does not remove overview cards');
-      await page.locator('.editorial-plan-card').last().scrollIntoViewIfNeeded();
-      assert.equal(await page.locator('.editorial-plan-card').last().isVisible(),true,'composer flow leaves the last card reachable');
+      measurements.composerDocumentScroll=await verifyDocumentReachability(page,`${name}-composer`,{capture:false});
       await page.getByRole('button',{name:'Close composer',exact:true}).click();
       await page.evaluate(()=>window.scrollTo(0,0));
-      await overviewFits(page,false);
+      await overviewLayout(page,false);
       await page.getByRole('button',{name:'+ New post',exact:true}).click();
       assert.equal(await page.getByRole('textbox',{name:'New post caption',exact:true}).inputValue(),'Unsaved composer fixture','layout changes preserve composer state');
       await page.getByRole('button',{name:'Close composer',exact:true}).click();
@@ -277,7 +391,7 @@ async function scenario(width,placeholders=false,height=1000) {
       }
       await screenshot(page,`${name}-loading.png`);
       assert(Math.abs(measurements.approved.tiles[0].width-measurements.media.tiles[0].width)<1,'Approved and Media retain shared thumbnail widths');
-      if(width<1200)assert(Math.abs(measurements.media.tiles[0].width-measurements.createCollapsed.tiles[0].width)<1,'mobile/tablet retain shared thumbnail widths');
+      if(width<1024)assert(Math.abs(measurements.media.tiles[0].width-measurements.createCollapsed.tiles[0].width)<1,'mobile/tablet retain shared thumbnail widths');
     }
     assert.deepEqual(unexpected,[],'all network explicitly fulfilled at fake origin, without writes');
     assert.deepEqual(errors,[],'no uncaught component errors');
@@ -287,7 +401,7 @@ async function scenario(width,placeholders=false,height=1000) {
     try {await screenshot(page,`${name}-FAIL.png`);} catch {}
   } finally {traces.push({scenario:name,requests,unexpected,errors});await context.close();}
 }
-const viewportCases=[[390,1000],[768,1000],[1280,720],[1440,900],[2048,1055]];
+const viewportCases=[[390,1000],[768,1000],[1023,768],[1024,768],[1180,800],[1280,600],[1280,720],[1440,900],[2048,1055]];
 const planned=[...viewportCases.map(([width,height])=>`gallery-${width}x${height}`),'gallery-390x1000-planning-slots','gallery-1280x720-planning-slots'];
 try {
   browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
@@ -301,7 +415,7 @@ finally {
     'Server page wrappers are mirrored and guarded by source assertions. Server rendering, App Router internals, authentication, production data loading and deployed rendering require separate integration checks.',
     'All content is fictional with generated mixed-aspect SVG media and a tiny fixture MP4. No external requests, credentials, production media or state-changing requests are allowed.',
     'The suite verifies CSS crop behavior and source selection/order. It does not process or write original image files, and does not establish Instagram publishing behavior.',
-    'Screenshots cover mobile/tablet and exact desktop viewports 1280×720, 1440×900 and 2048×1055. Desktop assertions include six complete cards in two rows, 3:4 previews, calendar and priority controls without page scrolling, long saved notes and a six-week month. Real-device keyboard and safe-area hardware are outside this fixture.',
+    'Screenshots cover 390×1000, 768×1000, 1023×768, 1024×768, 1180×800, 1280×600, 1280×720, 1440×900 and 2048×1055, including desktop top and bottom-row document-scroll views. Assertions cover width-led Create geometry, six cards in two rows with equal 3:4 previews, a 240px sticky independently scrolling planner, long saved notes, six-week calendars, mobile focus/inert behavior, and 1023↔1024 resize with an unsaved buffer. All six cards need not fit above the fold. Real-device keyboard and safe-area hardware are outside this fixture.',
   ];
   const report={status:launchError?'blocked':results.some(result=>result.status==='failed')?'failed':'passed',generatedAt:new Date().toISOString(),...buildEvidence,plannedScenarios:planned,executed:results.length,results,screenshots,launchError,coverageLimits};
   await fs.writeFile(path.join(evidence,'gallery-browser-report.json'),JSON.stringify(report,null,2));

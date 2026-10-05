@@ -9,7 +9,7 @@ declare global {
 
 createRoot(document.getElementById('root')!).render(
   <main className="page-content editorial-create-page py-4 sm:py-8">
-    <div className="mx-auto max-w-[1640px]">
+    <div>
       <WeeklyContentPersistent {...window.__MONTHLY_FIXTURE__} />
     </div>
   </main>,

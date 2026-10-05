@@ -112,20 +112,22 @@ body:has(.editorial-shell) { background:#f7f5f0; }
   .editorial-stories>p { text-align:left; }
 }
 
-/* Desktop Create is a six-post overview. Size its 3:4 previews from the height
-   left after navigation, headings and two complete card footers, not the width
-   of a large monitor. Approved Posts and Media Bank retain their shared sizes.
-   Do not contain/clip the workspace: composer, backlog and fixed details must
-   remain in normal document flow or the viewport, respectively. */
-@media (min-width:1200px) {
-  .editorial-create-page { --overview-grid-width:calc(112.5dvh - 368.5px); --overview-main-width:max(600px,var(--overview-grid-width)); }
+/* Create is photo-led: three portrait columns take the available width and
+   continue in normal document flow. The planner is a secondary right rail.
+   Keep the shared Approved Posts and Media Bank width contract unchanged. */
+.editorial-create-page .content-gallery-main { max-width:none; }
+/* AppChrome's horizontal overflow rule creates a scroll container even without
+   a fixed height. Let this page scroll normally so the planner sticks to the
+   viewport, and keep fixed detail overlays outside any containing block. */
+.editorial-app-frame main:has(.editorial-create-page) { overflow:visible; }
+@media (min-width:1024px) {
   body:has(.editorial-create-page) .editorial-compact-nav { min-height:48px; }
   .editorial-create-page .editorial-overview-heading { align-items:center; gap:16px; padding:8px 0 12px; }
   .editorial-create-page .editorial-overview-heading h1 { font-size:30px; line-height:1.28; white-space:nowrap; }
   .editorial-create-page .editorial-overview-heading .btn-secondary { padding:7px 10px; font-size:12px; white-space:nowrap; }
   .editorial-create-page .editorial-toolbar { min-height:44px; gap:16px; font-size:12px; }
   .editorial-create-page .editorial-toolbar > div { gap:16px; }
-  .editorial-create-page .editorial-grid { width:min(100%,var(--overview-grid-width)); margin-inline:auto; padding:12px 0; }
+  .editorial-create-page .editorial-grid { padding:12px 0; }
   .editorial-create-page .editorial-plan-card { padding-bottom:8px; }
   .editorial-create-page .editorial-card-meta { margin-bottom:6px; line-height:15px; white-space:nowrap; }
   .editorial-create-page .editorial-plan-card > button:not(.content-gallery-tile) { width:100%; margin-top:6px; }
