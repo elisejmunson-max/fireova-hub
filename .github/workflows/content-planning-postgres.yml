@@ -31,7 +31,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd 'pg_isready -U postgres -d fireova_content_planning_test'
+          --health-cmd "pg_isready -U postgres -d fireova_content_planning_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -72,4 +72,7 @@ jobs:
         if: failure()
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
-        run: docker logs "$POSTGRES_CONTAINER"
+        run: |
+          if [ -n "$POSTGRES_CONTAINER" ]; then
+            docker logs "$POSTGRES_CONTAINER"
+          fi
