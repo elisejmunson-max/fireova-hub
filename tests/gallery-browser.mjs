@@ -20,6 +20,10 @@ const fixture = path.join(repo, 'tests/fixtures');
 const evidence = path.resolve(process.env.GALLERY_EVIDENCE_DIR || path.join(repo, '../evidence/gallery'));
 await fs.mkdir(evidence, { recursive:true });
 const hasMonthlyPanel = (await fs.readFile(path.join(repo,'app/(app)/dashboard/weekly-content-persistent.tsx'),'utf8')).includes('import MonthlyPlanningPanel');
+const globalSource = await fs.readFile(path.join(repo,'app/globals.css'),'utf8');
+assert(!globalSource.includes('repeat(2,minmax(0,1fr))'), 'Create overview must retain three columns with its panel open');
+assert(globalSource.includes('--overview-grid-width:calc(112.5dvh - 368.5px)'), 'desktop preview sizes must use the viewport height budget');
+assert(!globalSource.includes('container:content-gallery'), 'overview must not establish a containing block for fixed overlays');
 const sources = [
   'app/globals.css','app/(app)/dashboard/page.tsx','app/(app)/dashboard/weekly-content-persistent.tsx',
   ...(hasMonthlyPanel?['app/(app)/dashboard/monthly-planning.module.css','app/(app)/dashboard/monthly-planning-panel.tsx']:[]),
@@ -107,9 +111,38 @@ async function verifyDetailFit(page,selector,expectedSource) {
   assert.equal(await media.evaluate(el=>getComputedStyle(el).objectFit),'contain');
   assert.equal(await media.getAttribute('src'),expectedSource,'original media selection unchanged');
 }
-async function scenario(width,placeholders=false) {
-  const name=`gallery-${width}${placeholders?'-planning-slots':''}`;
-  const context=await browser.newContext({viewport:{width,height:1000},serviceWorkers:'block'});
+async function overviewFits(page,withPanel=true) {
+  const viewport=page.viewportSize();
+  assert.equal(await page.evaluate(()=>window.scrollY),0,'overview and collection interactions do not require page scrolling');
+  const inside=(box,label)=>assert(box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=viewport.width+1&&box.y+box.height<=viewport.height+1,`${label} fully inside ${viewport.width}×${viewport.height}: ${JSON.stringify(box)}`);
+  const cards=await page.locator('.editorial-grid > .editorial-plan-card').evaluateAll(els=>els.slice(0,6).map(el=>{
+    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
+    return {...rect(el),contents:[...el.querySelectorAll(':scope > button,:scope > h2,:scope > p,button h2,button p')].map(rect)};
+  }));
+  assert.equal(cards.length,6,'six complete overview cards');
+  for(const [index,card] of cards.entries()) {
+    inside(card,`card ${index+1}`);
+    for(const content of card.contents)inside(content,`card ${index+1} title, status or action`);
+    assert(Math.abs(card.y-cards[index<3?0:3].y)<1,'exactly three cards per row');
+  }
+  assert(cards[3].y>cards[0].y,'second row follows first');
+  assert(Math.abs(cards[0].x-cards[3].x)<1,'rows share a left edge');
+  for(const selector of ['#review-title','.editorial-overview-heading .btn-secondary','.editorial-toolbar']) {
+    for(const element of await page.locator(selector).all())inside(await element.boundingBox(),selector);
+  }
+  if(withPanel) {
+    const panelBox=await panel(page).boundingBox();inside(panelBox,'monthly panel');
+    assert(panelBox.x>cards[2].x+cards[2].width,'monthly plan beside the cards');
+    for(const element of [panel(page).locator('[aria-label$="planning dates"]'),panel(page).getByRole('heading',{name:'Must feature',exact:true}),panel(page).locator('textarea'),panel(page).getByRole('button',{name:'+ Add priority',exact:true})]) {
+      const box=await element.boundingBox();inside(box,'monthly calendar or priority control');
+      assert(box.x>=panelBox.x+1&&box.y>=panelBox.y+1&&box.x+box.width<=panelBox.x+panelBox.width-1&&box.y+box.height<=panelBox.y+panelBox.height-1,'calendar and priority controls stay inside the panel');
+    }
+  }
+  return {viewport,cards,panel:withPanel?await panel(page).boundingBox():null};
+}
+async function scenario(width,placeholders=false,height=1000) {
+  const name=`gallery-${width}x${height}${placeholders?'-planning-slots':''}`;
+  const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
   context.setDefaultTimeout(7000);
   const seed=gallerySeed({placeholders}),requests=[],unexpected=[],errors=[],measurements={};
   const respond=(route,body,type='application/json')=>route.fulfill({status:200,contentType:type,headers:{'Cache-Control':'no-store'},body:Buffer.isBuffer(body)?body:typeof body==='string'?body:JSON.stringify(body)});
@@ -120,7 +153,14 @@ async function scenario(width,placeholders=false) {
     if(url.pathname==='/app.js') return respond(route,js,'text/javascript');
     if(url.pathname==='/app.css') return respond(route,css,'text/css');
     if(url.pathname==='/favicon.ico') return route.fulfill({status:204,body:''});
-    if(url.pathname==='/api/monthly-plan') return respond(route,makePlan(url.searchParams.get('month')));
+    if(url.pathname==='/api/monthly-plan') {
+      const month=url.searchParams.get('month'),plan=makePlan(month);
+      if(width>=1200) {
+        plan.features.priorities=Array.from({length:12},(_,index)=>({id:`10000000-0000-4000-8000-${String(index+1).padStart(12,'0')}`,text:index===0?'Autumn menu launch':`Priority ${index+1}: ${'Long saved menu and event details. '.repeat(24)}`}));
+        plan.entries.push(...Array.from({length:30},(_,index)=>({id:`extra-${index}`,postId:`extra-${index}`,date:`${month}-01`,title:`Additional plan entry ${index+1}`,status:'Draft'})));
+      }
+      return respond(route,plan);
+    }
     if(url.pathname==='/api/media-bank/library') {
       const filter=url.searchParams.get('filter')||'all';
       const items=seed.media.initialAssets.filter(asset=>filter==='all'||asset.file_type.startsWith(filter==='photo'?'image/':'video/'));
@@ -142,27 +182,69 @@ async function scenario(width,placeholders=false) {
     await page.goto(`${ORIGIN}/dashboard`);await page.getByRole('heading',{name:'Your next two weeks'}).waitFor();
     if(hasMonthlyPanel) await eventually(()=>toggle(page).getAttribute('aria-expanded').then(value=>value===(width>=1200?'true':'false')),'responsive panel initialized');
     else assert.equal(await toggle(page).count(),0,'main candidate has no monthly feature');
+    if(width>=1200&&hasMonthlyPanel) {
+      await eventually(()=>panel(page).locator('textarea').isEnabled(),'desktop monthly plan ready');
+      measurements.initialOverview=await overviewFits(page);
+      await screenshot(page,`${name}-six-post-overview.png`);
+    }
     await closePanel(page);
     const fullWidth=Math.min(1120,width-(width<768?32:64));
-    measurements.createCollapsed=await gallery(page,{expectedWidth:fullWidth});
+    const createWidth=width>=1200?Math.min(fullWidth,1.125*height-368.5):fullWidth;
+    measurements.createCollapsed=await gallery(page,{expectedWidth:createWidth});
+    if(width>=1200) measurements.collapsedOverview=await overviewFits(page,false);
     const orderBefore=await page.locator('.editorial-card-media > img,.editorial-card-media > video').evaluateAll(els=>els.map(el=>el.getAttribute('src')));
     await screenshot(page,`${name}-create-collapsed.png`);
     if(hasMonthlyPanel) {
     await openPanel(page);
-    const mainWidth=await page.locator('.content-gallery-main').evaluate(el=>el.getBoundingClientRect().width);
-    measurements.createOpen=await gallery(page,{columns:width>=1200&&mainWidth<960?2:3});
+    measurements.createOpen=await gallery(page,{columns:3,expectedWidth:createWidth});
     assert.equal(await panel(page).getAttribute('role'),width>=1200?'complementary':'dialog');
     assert.equal(await page.locator('.content-gallery-main').evaluate(el=>el.hasAttribute('inert')),width<1200);
     await screenshot(page,`${name}-create-panel-open.png`);
+    if(width>=1200) {
+      const priorities=panel(page).locator('section > ul');
+      const planList=panel(page).locator('ol').locator('..');
+      const firstActions=await priorities.locator('li').first().locator('div').boundingBox(),priorityBounds=await priorities.boundingBox();
+      assert(firstActions&&priorityBounds&&firstActions.y+firstActions.height<=priorityBounds.y+priorityBounds.height+1,'one short priority and its Edit/Remove controls fit in the scroller');
+      for(const collection of [priorities,planList]) {
+        assert.equal(await collection.evaluate(el=>getComputedStyle(el).overflowY),'auto','long collections scroll independently');
+        assert.equal(await collection.evaluate(el=>el.scrollHeight>el.clientHeight),true,'fixture exercises a long scrolling collection');
+        await collection.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+        assert.equal(await collection.evaluate(el=>el.scrollTop>0),true,'collection can scroll to its final item');
+      }
+      await priorities.getByRole('button',{name:/^Edit priority:/}).last().focus();
+      assert.equal(await priorities.getByRole('button',{name:/^Edit priority:/}).last().evaluate(el=>document.activeElement===el),true,'long-list controls remain keyboard reachable');
+      measurements.longNotesOverview=await overviewFits(page);
+      await panel(page).getByLabel('Month',{exact:true}).fill('2026-08');
+      await eventually(()=>panel(page).locator('[aria-label="August 2026 planning dates"] button').count().then(count=>count===42),'six-week calendar displayed');
+      await eventually(()=>panel(page).locator('textarea').isEnabled(),'six-week month and long priorities loaded');
+      measurements.sixWeekOverview=await overviewFits(page);
+      await screenshot(page,`${name}-six-week-calendar.png`);
+      await panel(page).getByLabel('Month',{exact:true}).fill('2026-10');
+    }
     await closePanel(page);await openPanel(page);await closePanel(page);
     assert.deepEqual(await page.locator('.editorial-card-media > img,.editorial-card-media > video').evaluateAll(els=>els.map(el=>el.getAttribute('src'))),orderBefore,'repeat panel toggles preserve selection and order');
-    measurements.createRestored=await gallery(page,{expectedWidth:fullWidth});
+    measurements.createRestored=await gallery(page,{expectedWidth:createWidth});
+    }
+    if(width>=1200) {
+      await page.getByRole('button',{name:'+ New post',exact:true}).click();
+      await page.getByRole('textbox',{name:'New post caption',exact:true}).fill('Unsaved composer fixture');
+      assert.equal(await page.locator('.editorial-plan-card').count(),6,'composer does not remove overview cards');
+      await page.locator('.editorial-plan-card').last().scrollIntoViewIfNeeded();
+      assert.equal(await page.locator('.editorial-plan-card').last().isVisible(),true,'composer flow leaves the last card reachable');
+      await page.getByRole('button',{name:'Close composer',exact:true}).click();
+      await page.evaluate(()=>window.scrollTo(0,0));
+      await overviewFits(page,false);
+      await page.getByRole('button',{name:'+ New post',exact:true}).click();
+      assert.equal(await page.getByRole('textbox',{name:'New post caption',exact:true}).inputValue(),'Unsaved composer fixture','layout changes preserve composer state');
+      await page.getByRole('button',{name:'Close composer',exact:true}).click();
     }
     if(placeholders) {
       assert.equal(await page.locator('.editorial-planned-slot').count(),4,'covered and open slots use the same geometry');
     } else {
       await page.locator('.editorial-card-media').first().click();
       const detail=page.getByRole('dialog',{name:'A season at the table',exact:true});await detail.waitFor();
+      const overlay=await detail.locator('..').boundingBox();
+      assert(overlay&&Math.abs(overlay.x)<1&&Math.abs(overlay.y)<1&&Math.abs(overlay.width-width)<1&&Math.abs(overlay.height-height)<1,'post detail remains fixed to the viewport');
       await verifyDetailFit(page,'[role="dialog"] img.object-contain',originalUrl(seed.dashboard.initialAssets[0]));
       await page.getByRole('button',{name:'Next media',exact:true}).click();
       await verifyDetailFit(page,'[role="dialog"] img.object-contain',originalUrl(seed.dashboard.initialAssets[1]));
@@ -194,7 +276,8 @@ async function scenario(width,placeholders=false) {
         assert(Math.abs(loading.tiles[0].width-measurements.media.tiles[0].width)<1,'loading tile matches real gallery');
       }
       await screenshot(page,`${name}-loading.png`);
-      for(const view of ['approved','media']) assert(Math.abs(measurements[view].tiles[0].width-measurements.createCollapsed.tiles[0].width)<1,'same thumbnail width while flipping tabs');
+      assert(Math.abs(measurements.approved.tiles[0].width-measurements.media.tiles[0].width)<1,'Approved and Media retain shared thumbnail widths');
+      if(width<1200)assert(Math.abs(measurements.media.tiles[0].width-measurements.createCollapsed.tiles[0].width)<1,'mobile/tablet retain shared thumbnail widths');
     }
     assert.deepEqual(unexpected,[],'all network explicitly fulfilled at fake origin, without writes');
     assert.deepEqual(errors,[],'no uncaught component errors');
@@ -204,11 +287,12 @@ async function scenario(width,placeholders=false) {
     try {await screenshot(page,`${name}-FAIL.png`);} catch {}
   } finally {traces.push({scenario:name,requests,unexpected,errors});await context.close();}
 }
-const planned=['gallery-390','gallery-768','gallery-1280','gallery-1440','gallery-390-planning-slots','gallery-1280-planning-slots'];
+const viewportCases=[[390,1000],[768,1000],[1280,720],[1440,900],[2048,1055]];
+const planned=[...viewportCases.map(([width,height])=>`gallery-${width}x${height}`),'gallery-390x1000-planning-slots','gallery-1280x720-planning-slots'];
 try {
   browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
-  for(const width of [390,768,1280,1440]) await scenario(width);
-  for(const width of [390,1280]) await scenario(width,true);
+  for(const [width,height] of viewportCases) await scenario(width,false,height);
+  await scenario(390,true);await scenario(1280,true,720);
 } catch(error) {launchError=error.stack||String(error);console.error(launchError);process.exitCode=1;}
 finally {
   if(browser) await browser.close();
@@ -217,7 +301,7 @@ finally {
     'Server page wrappers are mirrored and guarded by source assertions. Server rendering, App Router internals, authentication, production data loading and deployed rendering require separate integration checks.',
     'All content is fictional with generated mixed-aspect SVG media and a tiny fixture MP4. No external requests, credentials, production media or state-changing requests are allowed.',
     'The suite verifies CSS crop behavior and source selection/order. It does not process or write original image files, and does not establish Instagram publishing behavior.',
-    'Screenshots are Chromium viewport captures at 390, 768, 1280 and 1440 pixels; real-device browser/keyboard and safe-area hardware are outside this fixture.',
+    'Screenshots cover mobile/tablet and exact desktop viewports 1280×720, 1440×900 and 2048×1055. Desktop assertions include six complete cards in two rows, 3:4 previews, calendar and priority controls without page scrolling, long saved notes and a six-week month. Real-device keyboard and safe-area hardware are outside this fixture.',
   ];
   const report={status:launchError?'blocked':results.some(result=>result.status==='failed')?'failed':'passed',generatedAt:new Date().toISOString(),...buildEvidence,plannedScenarios:planned,executed:results.length,results,screenshots,launchError,coverageLimits};
   await fs.writeFile(path.join(evidence,'gallery-browser-report.json'),JSON.stringify(report,null,2));

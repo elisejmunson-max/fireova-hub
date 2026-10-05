@@ -140,7 +140,9 @@ scenario('desktop-dashboard-appearance-collapse-preserves-six-drafts',async({pag
   await screenshot(page,'monthly-desktop-1440x1000-open.png');
   await button(page,'Close monthly plan').click();await panel(page).waitFor({state:'hidden'});
   assert.equal(await toggle(page).getAttribute('aria-expanded'),'false');
-  const expanded=await cards(page).first().boundingBox();assert(expanded.width>sizes[0].width);
+  const expanded=await cards(page).first().boundingBox();assert(Math.abs(expanded.width-sizes[0].width)<1,'height-budgeted previews stay compact when the panel closes');
+  const cardBounds=await cards(page).evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom};}));
+  assert(cardBounds.every(box=>box.top>=0&&box.bottom<=1000),'all six complete cards remain visible after collapse');
   assert.deepEqual(await cards(page).locator('img').evaluateAll(elements=>elements.map(img=>new URL(img.src).pathname)),order);
   await screenshot(page,'monthly-desktop-1440x1000-collapsed.png');
   await toggle(page).click();await ready(page);assert.equal(await cards(page).count(),6);

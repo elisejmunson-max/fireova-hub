@@ -609,7 +609,7 @@ export default function WeeklyContentPersistent({
                   </span>
                 )}
               </button>
-              <button type="button" onClick={() => openPost(post.id)} className="mt-3 block text-left">
+              <button type="button" onClick={() => openPost(post.id)} title={postTitle(post, captions[post.id] || "")} className="mt-3 block text-left">
                 <h2 className="editorial-serif text-2xl font-normal">{postTitle(post, captions[post.id] || "")}</h2>
                 <p className="mt-1 text-xs text-[#888980]">{post.kind} · {backlog ? "Past suggested date · Still awaiting review" : "Draft"}</p>
               </button>

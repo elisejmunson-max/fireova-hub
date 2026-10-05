@@ -33,13 +33,10 @@
 /* Shared Instagram-style galleries. Preview cropping never changes source media. */
 .content-gallery-shell { width:100%; max-width:calc(var(--content-gallery-width) + 64px); margin-inline:auto; padding-inline:32px; }
 .editorial-create-page { padding-inline:32px; }
-.content-gallery-main { width:100%; max-width:var(--content-gallery-width); margin-inline:auto; container:content-gallery / inline-size; }
+.content-gallery-main { width:100%; max-width:var(--content-gallery-width); margin-inline:auto; }
 .content-gallery-grid { display:grid; width:100%; min-width:0; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--content-gallery-gap); }
 .content-gallery-tile { position:relative; display:block; width:100%; min-width:0; min-height:0; aspect-ratio:3/4; overflow:hidden; border-radius:3px; }
 .content-gallery-tile > img,.content-gallery-tile > video { width:100%; height:100%; object-fit:cover; }
-@container content-gallery (width < 960px) {
-  .content-gallery-grid[data-panel-open="true"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
 
 /* Create Content — warm editorial planning and review experience. */
 .editorial-overview, .editorial-detail, .editorial-media-bank, .editorial-approved { color:#262722; }
@@ -113,6 +110,34 @@ body:has(.editorial-shell) { background:#f7f5f0; }
   .editorial-planned-slot > .mt-9 { margin-top:8px; width:28px; height:28px; font-size:20px; }
   .editorial-stories { grid-template-columns:1fr; }
   .editorial-stories>p { text-align:left; }
+}
+
+/* Desktop Create is a six-post overview. Size its 3:4 previews from the height
+   left after navigation, headings and two complete card footers, not the width
+   of a large monitor. Approved Posts and Media Bank retain their shared sizes.
+   Do not contain/clip the workspace: composer, backlog and fixed details must
+   remain in normal document flow or the viewport, respectively. */
+@media (min-width:1200px) {
+  .editorial-create-page { --overview-grid-width:calc(112.5dvh - 368.5px); --overview-main-width:max(600px,var(--overview-grid-width)); }
+  body:has(.editorial-create-page) .editorial-compact-nav { min-height:48px; }
+  .editorial-create-page .editorial-overview-heading { align-items:center; gap:16px; padding:8px 0 12px; }
+  .editorial-create-page .editorial-overview-heading h1 { font-size:30px; line-height:1.28; white-space:nowrap; }
+  .editorial-create-page .editorial-overview-heading .btn-secondary { padding:7px 10px; font-size:12px; white-space:nowrap; }
+  .editorial-create-page .editorial-toolbar { min-height:44px; gap:16px; font-size:12px; }
+  .editorial-create-page .editorial-toolbar > div { gap:16px; }
+  .editorial-create-page .editorial-grid { width:min(100%,var(--overview-grid-width)); margin-inline:auto; padding:12px 0; }
+  .editorial-create-page .editorial-plan-card { padding-bottom:8px; }
+  .editorial-create-page .editorial-card-meta { margin-bottom:6px; line-height:15px; white-space:nowrap; }
+  .editorial-create-page .editorial-plan-card > button:not(.content-gallery-tile) { width:100%; margin-top:6px; }
+  .editorial-create-page .editorial-plan-card h2 { margin-top:0; font-size:16px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .editorial-create-page .editorial-plan-card > h2 { margin-top:6px; }
+  .editorial-create-page .editorial-plan-card p { margin-top:2px; font-size:10px; line-height:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .editorial-create-page .editorial-planned-slot { padding:12px; }
+  .editorial-create-page .editorial-planned-slot .editorial-eyebrow { font-size:8px; letter-spacing:.05em; }
+  .editorial-create-page .editorial-planned-slot .editorial-serif { margin-top:10px; font-size:18px; line-height:1.15; }
+  .editorial-create-page .editorial-planned-slot > .mt-9 { margin-top:8px; width:28px; height:28px; font-size:20px; }
+  .editorial-create-page .editorial-planned-slot > span:last-child { font-size:9px; line-height:12px; }
+  .editorial-create-page .editorial-stories { padding:14px 0; gap:16px; }
 }
 
 /* Marketing Events: media review is the required next step before content creation. */
