@@ -95,7 +95,7 @@ test('owned rows referencing foreign storage paths are rejected before cache acc
 });
 
 test('unsupported row MIME types and declared oversized originals never fetch', async () => {
-  for (const file_type of ['video/mp4', 'image/svg+xml', 'application/pdf', 'image/unknown', 'image/jpeg;foo']) {
+  for (const file_type of ['video/unknown', 'image/svg+xml', 'application/pdf', 'image/unknown', 'image/jpeg;foo']) {
     const f = fixture({ getOwnedAsset: async () => ({ ...asset(), file_type }) });
     assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 415);
     assert.deepEqual(f.events, ['auth']);
@@ -407,4 +407,207 @@ test('request query source and dimensions cannot change the original or transfor
   const req = new Request('https://app.example/api/media-bank/thumbnail/asset-a?url=https://evil.example/a&width=100000');
   assert.equal((await serveThumbnail(req, 'asset-a', f.deps)).status, 200);
   assert.equal(fetched, urlFor(asset().storage_path));
+});
+
+// Videos consume only previously saved image posters. GET never processes video bytes.
+const videoAsset = (id = 'asset-a', user = owner): ThumbnailAsset => ({
+  ...asset(id, user), storage_path: `${user}/library/${id}.mp4`, file_type: 'video/mp4', size_bytes: 43 * 1024 * 1024,
+});
+const posterPath = `${owner}/media-bank-posters/v1/asset-a.jpg`;
+const eventPoster = (thumbnail_path: string | null = `${owner}/events/event-a/still.jpg`) => ({
+  id: 'asset-a', user_id: owner, storage_path: videoAsset().storage_path, thumbnail_path,
+});
+
+test('owned video reads only its exact matching event image poster, despite a 43 MB original', async () => {
+  const saved = eventPoster();
+  const f = fixture({
+    getOwnedAsset: async () => videoAsset(),
+    getEventPoster: async (row, signal) => {
+      assert.equal(row.storage_path, videoAsset().storage_path);
+      assert.ok(signal instanceof AbortSignal);
+      return saved;
+    },
+    fetcher: async url => { assert.equal(url, urlFor(saved.thumbnail_path!)); return imageResponse(); },
+  });
+  const response = await serveThumbnail(request(), 'asset-a', f.deps);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'thumbnail');
+});
+
+test('video without an event thumbnail reads the deterministic saved JPEG path', async () => {
+  for (const event of [null, eventPoster(null)]) {
+    const sources: string[] = [];
+    const f = fixture({
+      getOwnedAsset: async () => videoAsset(), getEventPoster: async () => event,
+      getSourceUrl: path => { sources.push(path); return urlFor(path); },
+    });
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 200);
+    assert.deepEqual(sources, [posterPath]);
+  }
+});
+
+test('all known upload video MIME types use saved posters; unknown and parameterized MIME never resolve or fetch', async () => {
+  for (const file_type of ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm', 'video/x-msvideo']) {
+    const f = fixture({ getOwnedAsset: async () => ({ ...videoAsset(), file_type }) });
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 200);
+  }
+  for (const file_type of ['video/unknown', 'video/mp4;codecs=h264', 'application/octet-stream']) {
+    const f = fixture({
+      getOwnedAsset: async () => ({ ...videoAsset(), file_type }),
+      getEventPoster: async () => { throw new Error('must not resolve poster'); },
+    });
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 415);
+    assert.deepEqual(f.events, ['auth']);
+  }
+});
+
+test('foreign or mismatched event rows never touch cache or storage', async () => {
+  for (const event of [
+    { ...eventPoster(), user_id: 'owner-b' },
+    { ...eventPoster(), id: 'asset-b' },
+    { ...eventPoster(), storage_path: `${owner}/library/other.mp4` },
+  ]) {
+    const f = fixture({ getOwnedAsset: async () => videoAsset(), getEventPoster: async () => event });
+    f.cache.get = () => { throw new Error('must not touch cache'); };
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+    assert.deepEqual(f.events, ['auth']);
+  }
+});
+
+test('foreign, URL, encoded, traversal and original-video event thumbnail paths never fetch', async () => {
+  for (const path of ['owner-b/events/still.jpg', 'https://evil.example/still.jpg', `${owner}/../still.jpg`,
+    `${owner}/events/%2e%2e/still.jpg`, `${owner}/events/still.jpg?url=evil`, `${owner}/events/still.svg`,
+    videoAsset().storage_path, `${owner}/other-video.mp4`, '']) {
+    const f = fixture({ getOwnedAsset: async () => videoAsset(), getEventPoster: async () => eventPoster(path) });
+    f.cache.get = () => { throw new Error('must not touch cache'); };
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404, path);
+    assert.deepEqual(f.events, ['auth']);
+  }
+});
+
+test('an original video with an image-looking name still cannot be its own poster', async () => {
+  const row = { ...videoAsset(), storage_path: `${owner}/library/disguised.jpg` };
+  const f = fixture({ getOwnedAsset: async () => row,
+    getEventPoster: async () => ({ ...eventPoster(row.storage_path), storage_path: row.storage_path }),
+  });
+  assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+  assert.deepEqual(f.events, ['auth']);
+});
+
+test('missing saved event or deterministic poster returns private 404 without trying the original', async () => {
+  for (const event of [null, eventPoster()]) {
+    const fetched: string[] = [];
+    const f = fixture({
+      getOwnedAsset: async () => videoAsset(), getEventPoster: async () => event,
+      fetcher: async url => { fetched.push(String(url)); return new Response(null, { status: 404 }); },
+    });
+    const response = await serveThumbnail(request(), 'asset-a', f.deps);
+    assert.equal(response.status, 404);
+    assert.equal(await response.text(), 'Thumbnail unavailable');
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.deepEqual(fetched, [urlFor(event?.thumbnail_path ?? posterPath)]);
+    assert.equal(f.events.includes('render'), false);
+    assert.equal(f.cache.stats().entries, 0);
+  }
+});
+
+test('saved poster still enforces image MIME, bounded input bytes, and no redirects', async () => {
+  for (const response of [
+    new Response('video bytes', { headers: { 'Content-Type': 'video/mp4' } }),
+    new Response('unknown bytes'),
+    imageResponse('oversized', { 'Content-Length': String(THUMBNAIL_LIMITS.originalBytes + 1) }),
+    new Response(null, { status: 302, headers: { Location: urlFor(videoAsset().storage_path) } }),
+  ]) {
+    let fetches = 0;
+    const f = fixture({
+      getOwnedAsset: async () => videoAsset(),
+      fetcher: async (url, options) => {
+        fetches++;
+        assert.equal(url, urlFor(posterPath));
+        assert.equal(options?.redirect, 'error');
+        return response;
+      },
+    });
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+    assert.equal(fetches, 1);
+    assert.equal(f.events.includes('render'), false);
+  }
+});
+
+test('saved video posters run the bounded real image decoder; invalid or oversized pixels safely fail', async () => {
+  const jpeg = await sharp({ create: { width: 600, height: 400, channels: 3, background: 'green' } }).jpeg().toBuffer();
+  const good = fixture({ getOwnedAsset: async () => videoAsset(), fetcher: async () => imageResponse(new Uint8Array(jpeg)), render: renderThumbnail });
+  const response = await serveThumbnail(request(), 'asset-a', good.deps);
+  assert.equal(response.status, 200);
+  const metadata = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+  assert.equal(metadata.format, 'webp');
+  assert.equal(metadata.width, 480);
+  for (const f of [
+    fixture({ getOwnedAsset: async () => videoAsset(), render: renderThumbnail }),
+    fixture({ getOwnedAsset: async () => videoAsset(), fetcher: async () => imageResponse(new Uint8Array(jpeg)), render: renderThumbnail, limits: { inputPixels: 100 } }),
+  ]) {
+    assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+    assert.equal(f.cache.stats().entries, 0);
+  }
+});
+
+test('video source query parameters or a compromised URL adapter cannot select arbitrary storage', async () => {
+  const f = fixture({ getOwnedAsset: async () => videoAsset(),
+    fetcher: async url => { assert.equal(url, urlFor(posterPath)); return imageResponse(); },
+  });
+  const malicious = new Request(`${request().url}?url=https://evil.example/movie&poster=owner-b/private.jpg`);
+  assert.equal((await serveThumbnail(malicious, 'asset-a', f.deps)).status, 200);
+  for (const source of ['https://evil.example/still.jpg', urlFor(videoAsset().storage_path), `${urlFor(posterPath)}?token=secret`]) {
+    const bad = fixture({ getOwnedAsset: async () => videoAsset(), getSourceUrl: () => source });
+    assert.equal((await serveThumbnail(request(), 'asset-a', bad.deps)).status, 404);
+    assert.equal(bad.events.includes('fetch'), false);
+  }
+});
+
+test('video authentication, ownership and current event binding are rechecked before cache hits', async () => {
+  let eventLookups = 0;
+  const f = fixture({ getOwnedAsset: async () => videoAsset(),
+    getEventPoster: async () => { eventLookups++; return eventPoster(); },
+  });
+  for (let i = 0; i < 2; i++) assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 200);
+  assert.equal(eventLookups, 2);
+  assert.equal(f.events.filter(event => event === 'fetch').length, 1);
+  f.deps.getUser = async () => null;
+  assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 401);
+  assert.equal(eventLookups, 2);
+  f.deps.getUser = async () => ({ id: owner });
+  f.deps.getOwnedAsset = async () => null;
+  assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+  assert.equal(eventLookups, 2);
+  f.deps.getOwnedAsset = async () => videoAsset();
+  f.deps.getEventPoster = async () => ({ ...eventPoster(), storage_path: `${owner}/unrelated.mp4` });
+  assert.equal((await serveThumbnail(request(), 'asset-a', f.deps)).status, 404);
+  assert.equal(f.events.filter(event => event === 'fetch').length, 1);
+});
+
+test('video cache binds original source, poster path, asset ID and owner separately', async () => {
+  const f = fixture({ getOwnedAsset: async () => videoAsset(), getEventPoster: async () => eventPoster() });
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  f.deps.getEventPoster = async () => eventPoster(`${owner}/events/changed.jpg`);
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  f.deps.getEventPoster = async () => null;
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  f.deps.getOwnedAsset = async () => ({ ...videoAsset(), storage_path: `${owner}/library/replaced.mp4` });
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  f.deps.getOwnedAsset = async (id, user) => videoAsset(id, user);
+  await serveThumbnail(request(), 'asset-b', f.deps);
+  f.deps.getUser = async () => ({ id: 'owner-b' });
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  assert.equal(f.events.filter(event => event === 'fetch').length, 6);
+});
+
+test('poster lookup errors fail closed without touching an existing cache or storage', async () => {
+  const f = fixture({ getOwnedAsset: async () => videoAsset(), getEventPoster: async () => eventPoster() });
+  await serveThumbnail(request(), 'asset-a', f.deps);
+  f.deps.getEventPoster = async () => { throw new Error('private database detail'); };
+  f.cache.get = () => { throw new Error('must not touch cache'); };
+  const response = await serveThumbnail(request(), 'asset-a', f.deps);
+  assert.equal(response.status, 500);
+  assert.equal(await response.text(), 'Thumbnail unavailable');
+  assert.equal(f.events.filter(event => event === 'fetch').length, 1);
 });

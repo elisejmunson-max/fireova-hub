@@ -9,6 +9,7 @@ import {
   type MediaFilter,
 } from "@/lib/media-bank-pagination";
 import { MediaPageRequests } from "@/lib/media-bank-requests";
+import { createMediaBankVideoPoster } from "@/lib/media-bank-video-poster";
 type A = MediaBankAsset;
 type Counts = { all: number; photo: number; video: number };
 type U = {
@@ -56,14 +57,26 @@ function MediaThumbnail({ asset }: { asset: A }) {
       </div>
     );
   return (
-    <img
-      src={`/api/media-bank/thumbnail/${encodeURIComponent(asset.id)}`}
-      loading="lazy"
-      decoding="async"
-      onError={() => setFailed(true)}
-      alt={asset.filename}
-      className="h-full w-full object-cover"
-    />
+    <>
+      <img
+        src={`/api/media-bank/thumbnail/${encodeURIComponent(asset.id)}`}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+        alt={asset.filename}
+        className="h-full w-full object-cover"
+      />
+      {asset.file_type.startsWith("video/") && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl text-white">
+            ▶
+          </span>
+        </span>
+      )}
+    </>
   );
 }
 export default function MediaLibrary({
@@ -75,6 +88,7 @@ export default function MediaLibrary({
   initialCounts: Counts;
   initialError?: string;
 }) {
+  const uploadInFlight = useRef(false);
   const [assets, setAssets] = useState<A[]>(initialAssets),
     [counts, setCounts] = useState(initialCounts),
     [total, setTotal] = useState(initialCounts.all),
@@ -388,7 +402,8 @@ export default function MediaLibrary({
     }
   }
   async function upload(files: FileList | null) {
-    if (!files?.length) return;
+    if (!files?.length || uploadInFlight.current) return;
+    uploadInFlight.current = true;
     setUploading(true);
     setMsg("Preparing media…");
     try {
@@ -418,6 +433,7 @@ export default function MediaLibrary({
       if (!start.ok)
         throw new Error(prepared.error || "Could not prepare upload");
       const uploads = (prepared.uploads || []) as U[];
+      const uploadedFiles = new Map<string, File>();
       for (let i = 0; i < uploads.length; i++) {
         setMsg(`Uploading ${i + 1} of ${uploads.length}…`);
         const item = uploads[i],
@@ -425,6 +441,7 @@ export default function MediaLibrary({
             (f) => f.name === item.name && f.size === item.size,
           );
         if (!file) throw new Error(`Could not match ${item.name}`);
+        uploadedFiles.set(item.id, file);
         const { error } = await sb.storage
           .from("media")
           .uploadToSignedUrl(item.path, item.token, file, {
@@ -444,7 +461,24 @@ export default function MediaLibrary({
       if (!complete.ok)
         throw new Error(data.error || "Could not finish upload");
       const added = (data.assets || []) as A[];
-      setMsg(`${added.length} added.`);
+      let missingPosters = 0;
+      for (const asset of added.filter((a) => a.file_type.startsWith("video/"))) {
+        // Only files the user just selected are decoded. The grid never opens video bytes.
+        const file = uploadedFiles.get(asset.id);
+        try {
+          const poster = file ? await createMediaBankVideoPoster(file) : undefined;
+          if (!poster) { missingPosters++; continue; }
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
+          try {
+            const saved = await fetch(`/api/media-bank/poster/${encodeURIComponent(asset.id)}`, {
+              method: "POST", headers: { "Content-Type": "image/jpeg" }, body: poster, signal: controller.signal,
+            });
+            if (!saved.ok) missingPosters++;
+          } finally { clearTimeout(timeout); }
+        } catch { missingPosters++; }
+      }
+      setMsg(`${added.length} added.${missingPosters ? ` ${missingPosters} video preview${missingPosters === 1 ? " is" : "s are"} unavailable; the original can still be opened.` : ""}`);
       await load(true);
       // Analysis changes search membership after the untagged upload refresh.
       // Refresh as each analysis settles so a stalled video cannot hide finished photo matches.
@@ -453,6 +487,7 @@ export default function MediaLibrary({
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Upload failed");
     } finally {
+      uploadInFlight.current = false;
       setUploading(false);
       if (input.current) input.current.value = "";
     }
@@ -688,14 +723,15 @@ export default function MediaLibrary({
                 data-media-id={a.id}
                 onClick={() => open(a)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") open(a);
+                  if (e.key === "Enter" && e.target === e.currentTarget) open(a);
                 }}
                 tabIndex={0}
                 role="button"
                 aria-label={`Open ${a.filename}`}
                 className="content-gallery-tile cursor-pointer bg-stone-100"
               >
-                {a.file_type.startsWith("image/") ? (
+                {a.file_type.startsWith("image/") ||
+                a.file_type.startsWith("video/") ? (
                   <MediaThumbnail asset={a} />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center bg-[#171713] p-4 text-center text-white">
