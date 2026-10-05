@@ -680,7 +680,7 @@ export default function MediaLibrary({
         <>
           <div
             aria-label="Media results"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            className="content-gallery-grid"
           >
             {assets.map((a) => (
               <div
@@ -693,7 +693,7 @@ export default function MediaLibrary({
                 tabIndex={0}
                 role="button"
                 aria-label={`Open ${a.filename}`}
-                className="relative aspect-square cursor-pointer overflow-hidden rounded-xl border bg-stone-100"
+                className="content-gallery-tile cursor-pointer bg-stone-100"
               >
                 {a.file_type.startsWith("image/") ? (
                   <MediaThumbnail asset={a} />
@@ -731,12 +731,12 @@ export default function MediaLibrary({
           {loading && (
             <div
               aria-live="polite"
-              className="grid grid-cols-2 gap-3 pt-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+              className="content-gallery-grid pt-4"
             >
               {Array.from({ length: 10 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-stone-200"
+                  className="content-gallery-tile animate-pulse bg-stone-200"
                 />
               ))}
             </div>

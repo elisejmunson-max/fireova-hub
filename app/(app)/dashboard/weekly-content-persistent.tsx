@@ -425,7 +425,7 @@ export default function WeeklyContentPersistent({
   return (
     <section aria-labelledby="review-title" className="editorial-overview editorial-shell">
       <div className={monthlyStyles.workspace} data-open={monthlyOpen && !monthlyMobile}>
-      <div ref={monthlyMainRef} className={monthlyStyles.main}>
+      <div ref={monthlyMainRef} className={`${monthlyStyles.main} content-gallery-main`}>
       <header className="editorial-overview-heading">
         <div>
           <h1
@@ -530,7 +530,8 @@ export default function WeeklyContentPersistent({
         </div>
       ) : (
         <div
-          className="editorial-grid"
+          className="editorial-grid content-gallery-grid"
+          data-panel-open={monthlyOpen && !monthlyMobile}
           aria-label="Posts ready for review"
         >
           {planningCells.map((cell, index) => {
@@ -538,7 +539,7 @@ export default function WeeklyContentPersistent({
               const label = cell.coverage.state === "approved" ? "Approved" : cell.coverage.state === "skipped" ? "Skipped" : "Removed";
               return <article key={cell.coverage.slotId} className="editorial-plan-card">
                 <div className="editorial-card-meta"><span>{cell.coverage.planningDate || suggestedDays[index]}</span><span>{label}</span></div>
-                <div className={`editorial-planned-slot planned-${index % 3}`}>
+                <div className={`editorial-planned-slot content-gallery-tile planned-${index % 3}`}>
                   <span className="editorial-eyebrow">Planning coverage</span>
                   <span className="editorial-serif mt-8 text-left text-3xl leading-tight">{label} post</span>
                   <span className="mt-auto text-left text-xs leading-5">This place is accounted for<br/>Nothing scheduled automatically</span>
@@ -550,7 +551,7 @@ export default function WeeklyContentPersistent({
             if (cell.type === "open") {
               return <article key={`open-${index}`} className="editorial-plan-card">
                 <div className="editorial-card-meta"><span>{planningDates[index] || suggestedDays[index % suggestedDays.length]}</span><span>Open idea</span></div>
-                <button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className={`editorial-planned-slot planned-${index % 3}`}>
+                <button type="button" disabled={!planningAvailable} onClick={() => setComposerOpen(true)} className={`editorial-planned-slot content-gallery-tile planned-${index % 3}`}>
                   <span className="editorial-eyebrow">Unprepared slot</span><span className="mt-9 flex h-10 w-10 items-center justify-center rounded-full border border-[#ced0c2] text-2xl font-light">+</span>
                   <span className="editorial-serif mt-5 text-left text-3xl leading-tight">{slotDirections[index % slotDirections.length]}</span>
                   <span className="mt-auto text-left text-xs leading-5">Media + caption not prepared<br/>Nothing scheduled</span>
@@ -569,7 +570,7 @@ export default function WeeklyContentPersistent({
               <button
                 type="button"
                 onClick={() => openPost(post.id)}
-                className="editorial-card-media group"
+                className="editorial-card-media content-gallery-tile group"
                 aria-label={`Open ${post.kind} post, ${statusLabel(post)}`}
               >
                 {!asset || asset.missing ? (
@@ -581,13 +582,13 @@ export default function WeeklyContentPersistent({
                     src={url(asset)}
                     muted
                     playsInline
-                    className="h-full w-full border-8 border-[#100e0c] object-cover transition duration-200 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
                   />
                 ) : (
                   <img
                     src={url(asset)}
                     alt={asset.filename || ""}
-                    className="h-full w-full border-8 border-[#100e0c] object-cover transition duration-200 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
                   />
                 )}
                 <span

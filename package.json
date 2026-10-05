@@ -12,7 +12,9 @@
     "typecheck:media-bank": "tsc --noEmit --project tsconfig.media-bank.json",
     "test:monthly-planning": "node --test lib/manual-content-drafts.test.ts lib/monthly-planning.test.ts tests/monthly-planning-api.test.mjs",
     "test:monthly-planning:browser": "node tests/monthly-planning-browser.mjs",
-    "typecheck:monthly-planning": "tsc --noEmit --project tsconfig.monthly-planning.json"
+    "typecheck:monthly-planning": "tsc --noEmit --project tsconfig.monthly-planning.json",
+    "test:gallery:browser": "node tests/gallery-browser.mjs",
+    "typecheck:gallery": "tsc --noEmit --project tests/fixtures/gallery-tsconfig.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

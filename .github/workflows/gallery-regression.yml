@@ -1,0 +1,54 @@
+name: Consistent gallery thumbnails
+on:
+  pull_request:
+    paths:
+      - 'app/globals.css'
+      - 'app/(app)/dashboard/**'
+      - 'app/(app)/approved-posts/**'
+      - 'app/(app)/media-bank/**'
+      - 'components/layout/**'
+      - 'tests/gallery-browser.mjs'
+      - 'tests/fixtures/gallery-*'
+      - 'tests/fixtures/media-bank-video.mp4'
+      - 'package*.json'
+      - '.github/workflows/gallery-regression.yml'
+permissions:
+  contents: read
+jobs:
+  gallery:
+    name: Portrait galleries and viewport regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck:gallery
+      - run: npm run typecheck:media-bank
+      - run: npm run test:media-bank
+      - run: node --test lib/manual-content-drafts.test.ts
+      - name: Build without production credentials
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://build-only.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-only-public-placeholder
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:gallery:browser
+        env:
+          GALLERY_EVIDENCE_DIR: ${{ runner.temp }}/gallery-evidence
+      - name: Upload fake-only gallery screenshots and measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gallery-regression-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/gallery-evidence
+          if-no-files-found: error
+          retention-days: 7
