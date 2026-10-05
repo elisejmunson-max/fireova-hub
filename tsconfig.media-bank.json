@@ -6,7 +6,9 @@
     "lib/media-bank-*.ts",
     "app/(app)/media-bank/library.tsx",
     "app/api/media-bank/library/route.ts",
-    "app/api/media-bank/thumbnail/[id]/route.ts"
+    "app/api/media-bank/thumbnail/[id]/route.ts",
+    "app/api/media-bank/poster/[id]/route.ts",
+    "app/api/media-assets/[id]/route.ts"
   ],
   "exclude": ["node_modules"]
 }

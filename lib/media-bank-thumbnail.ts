@@ -1,4 +1,6 @@
 import sharp from 'sharp';
+// @ts-expect-error Direct Node TypeScript tests require the suffix.
+import { mediaBankPosterPath } from './media-bank-poster-path.ts';
 
 // Process-local bounds; each deployment instance has its own cache and queue.
 export const THUMBNAIL_LIMITS = Object.freeze({
@@ -31,6 +33,13 @@ export type ThumbnailAsset = {
   created_at?: string;
 };
 
+export type ThumbnailEventPoster = {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  thumbnail_path: string | null;
+};
+
 export class ThumbnailError extends Error {
   status: number;
   constructor(status: number) {
@@ -41,6 +50,7 @@ export class ThumbnailError extends Error {
 
 const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/tiff']);
 const supportedFormats = new Set(['jpeg', 'png', 'webp', 'gif', 'heif', 'tiff']);
+const supportedVideoTypes = new Set(['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm', 'video/x-msvideo']);
 
 /** Object keys, never URLs. All upload paths in this application start with user.id. */
 export function validThumbnailPath(path: unknown, owner: string): path is string {
@@ -291,6 +301,7 @@ export class ThumbnailGate {
 export type ThumbnailDependencies = {
   getUser: (signal: AbortSignal) => Promise<{ id: string } | null>;
   getOwnedAsset: (id: string, owner: string, signal: AbortSignal) => Promise<ThumbnailAsset | null>;
+  getEventPoster?: (asset: ThumbnailAsset, signal: AbortSignal) => Promise<ThumbnailEventPoster | null>;
   getSourceUrl: (path: string) => string;
   supabaseUrl: string;
   fetcher?: typeof fetch;
@@ -320,10 +331,26 @@ export async function serveThumbnail(request: Request, id: string, deps: Thumbna
     checkSignal(signal);
     // Recheck ownership, even if the adapter/database unexpectedly returns a foreign row.
     if (!asset || asset.id !== id || asset.user_id !== user.id || !validThumbnailPath(asset.storage_path, user.id)) throw new ThumbnailError(404);
-    if (!supportedTypes.has(asset.file_type)) throw new ThumbnailError(415);
-    if (typeof asset.size_bytes === 'number' && asset.size_bytes > limits.originalBytes) throw new ThumbnailError(413);
+    const isVideo = supportedVideoTypes.has(asset.file_type);
+    if (!isVideo && !supportedTypes.has(asset.file_type)) throw new ThumbnailError(415);
+    // A video can be large: only its saved image poster is read and byte-limited.
+    if (!isVideo && typeof asset.size_bytes === 'number' && asset.size_bytes > limits.originalBytes) throw new ThumbnailError(413);
+    let sourcePath = asset.storage_path;
+    if (isVideo) {
+      const event = deps.getEventPoster ? await deps.getEventPoster(asset, signal) : null;
+      checkSignal(signal);
+      // Event sync preserves all three identifiers. A mismatched adapter result is
+      // not permission to read an unrelated event's poster, even for the same owner.
+      if (event && (event.id !== asset.id || event.user_id !== user.id || event.storage_path !== asset.storage_path)) throw new ThumbnailError(404);
+      const posterPath = event?.thumbnail_path ?? mediaBankPosterPath(user.id, asset.id);
+      if (!validThumbnailPath(posterPath, user.id) || posterPath === asset.storage_path
+        || !/\.(?:jpe?g|png|webp|gif|avif|tiff?)$/i.test(posterPath)) throw new ThumbnailError(404);
+      sourcePath = posterPath;
+    }
     // No original fetch, URL resolution, or cache lookup may move above the ownership gate.
-    const key = JSON.stringify([asset.id, asset.storage_path, asset.file_type, asset.size_bytes, asset.created_at, '480-webp72-v1']);
+    // Include the original identity/source AND the selected poster. Poster changes
+    // therefore cannot hit an older event/deterministic derivative cache entry.
+    const key = JSON.stringify([asset.id, asset.storage_path, asset.file_type, asset.size_bytes, asset.created_at, sourcePath, '480-webp72-v1']);
     const response = (bytes: Buffer) => new Response(new Uint8Array(bytes), {
       headers: { ...privateHeaders, 'Content-Type': 'image/webp', 'Content-Length': String(bytes.length) },
     });
@@ -335,9 +362,17 @@ export async function serveThumbnail(request: Request, id: string, deps: Thumbna
       // A preceding request may have populated this entry while this request waited.
       const warmed = cache.get(user.id, key);
       if (warmed) return response(warmed);
-      const url = validatedThumbnailUrl(deps.getSourceUrl(asset.storage_path), deps.supabaseUrl, asset.storage_path);
-      const input = await readThumbnailOriginal(url, signal, deps.fetcher, limits);
-      const output = await (deps.render || renderThumbnail)(input, signal, limits);
+      const url = validatedThumbnailUrl(deps.getSourceUrl(sourcePath), deps.supabaseUrl, sourcePath);
+      let output: Buffer;
+      try {
+        const input = await readThumbnailOriginal(url, signal, deps.fetcher, limits);
+        output = await (deps.render || renderThumbnail)(input, signal, limits);
+      } catch (error) {
+        // Missing/invalid saved posters are a safe fallback. Never retry with the
+        // original video, decode it, or generate/upload a still on this GET path.
+        if (isVideo && !(error instanceof ThumbnailError && [499, 504].includes(error.status))) throw new ThumbnailError(404);
+        throw error;
+      }
       checkSignal(signal);
       if (!output.length || output.length > limits.outputBytes) throw new ThumbnailError(413);
       cache.set(user.id, key, output);

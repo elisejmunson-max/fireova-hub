@@ -14,7 +14,7 @@ Optional `CHROMIUM_PATH` selects a system Chromium executable. By default Playwr
 
 No server socket, CI secret, Supabase account, production media, or network access to a production service is needed. Playwright fulfills every expected request at `https://media-bank.fixture.test` and aborts unexpected requests. APIs check an HTTP-only, secure, test-only session cookie. The dataset has 241 owner-A media records, including an initially unloaded unique search target, plus one foreign-owner record that must not be returned. SVG responses represent thumbnails and full images. The small MP4 exercises actual browser video decoding. The mocked upload flow does not validate its deliberately minimal image bytes.
 
-## Prepared scenarios (17)
+## Prepared scenarios (21)
 
 1. Desktop initial 24-item page, bounded thumbnail requests, no originals/videos, scroll pagination, detail navigation, explicit video decoding
 2. Whole-library unloaded-item search, counts, persistent selection, empty results, type filter
@@ -47,3 +47,9 @@ ffmpeg -f lavfi -i color=c=0x26372b:s=320x240:d=1 -c:v libx264 -pix_fmt yuv420p 
 ```
 
 The binary is committed, so ffmpeg is not needed to run tests.
+
+## Saved video posters
+
+The video grid now requests saved-image thumbnail endpoints and mounts no video element. Added scenarios cover video-poster failure with keyboard Retry, real local MP4 poster extraction and cookie-authenticated poster-save requests, failed optional poster writes preserving originals, and same-name/different-size local files mapping to the correct immutable upload IDs. The existing post-upload video analysis still reads only its explicitly uploaded original; that behavior is preserved and distinguished from grid loading.
+
+Server unit tests separately exercise ownership, bounded JPEG upload/decode, metadata stripping, concurrency, request deadlines retaining work permits, tiny-chunk streaming, deletion cleanup and concurrent-delete ownership rechecks. The browser contracts remain mocked and do not establish live RLS/storage correctness.

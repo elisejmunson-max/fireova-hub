@@ -28,7 +28,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       if (error) throw new Error('Thumbnail lookup failed');
       return data;
     },
-    // Existing media bucket originals are public. This never invokes a paid transform,
+    getEventPoster: async (asset, signal) => {
+      // The cookie-bound client/RLS and exact three-column match are both required.
+      // No undocumented preview fields or arbitrary URLs participate in resolution.
+      const { data, error } = await supabase.from('event_media')
+        .select('id,user_id,storage_path,thumbnail_path')
+        .eq('id', asset.id)
+        .eq('user_id', asset.user_id)
+        .eq('storage_path', asset.storage_path)
+        .abortSignal(signal)
+        .maybeSingle();
+      if (error) throw new Error('Thumbnail lookup failed');
+      return data;
+    },
+    // Existing media bucket photos/posters are public. This never invokes a paid transform,
     // copies auth headers to storage, or accepts a source URL from the request.
     getSourceUrl: path => supabase.storage.from('media').getPublicUrl(path).data.publicUrl,
   });
