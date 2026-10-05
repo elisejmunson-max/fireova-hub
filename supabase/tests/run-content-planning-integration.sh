@@ -9,12 +9,28 @@ if [ "$DB_NAME" != "fireova_content_planning_test" ]; then
   exit 2
 fi
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/content-planning-fixture.sql"
-$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/content-planning.sql"
 
-# Idempotent/partial-install recovery: the complete transaction must apply cleanly twice.
-$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/content-planning.sql"
+snapshot_unchanged_access() {
+  $PSQL "$FIREOVA_TEST_DATABASE_URL" -Atqc "select jsonb_build_object('tables',(select jsonb_agg(jsonb_build_object('name',relname,'acl',relacl::text) order by relname) from pg_class where relnamespace='public'::regnamespace and relname in ('posts','post_media','media_assets','review_queue','review_feedback')),'defaults',(select jsonb_agg(jsonb_build_object('owner',pg_get_userbyid(defaclrole),'kind',defaclobjtype,'acl',defaclacl::text) order by defaclrole,defaclobjtype) from pg_default_acl where defaclnamespace='public'::regnamespace))"
+}
+snapshot_planning_access() {
+  $PSQL "$FIREOVA_TEST_DATABASE_URL" -Atqc "select jsonb_build_object('table',(select relacl::text from pg_class where oid='public.content_plan_slots'::regclass),'functions',(select jsonb_agg(jsonb_build_object('name',oid::regprocedure::text,'acl',proacl::text,'definer',prosecdef) order by oid::regprocedure::text) from pg_proc where pronamespace='public'::regnamespace and proname in ('content_plan_asset_key','content_plan_date','normalize_review_queue_slots','restore_review_queue_identity','protect_review_queue_planning','mark_deleted_approved_slot_removed','save_review_queue_with_plan','approve_review_draft')),'policies',(select jsonb_agg(jsonb_build_object('name',polname,'roles',polroles::text,'using',pg_get_expr(polqual,polrelid),'check',pg_get_expr(polwithcheck,polrelid)) order by polname) from pg_policy where polrelid='public.content_plan_slots'::regclass))"
+}
+
+run_owner_suite() {
+  MIGRATION_OWNER=$1
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -v migration_owner="$MIGRATION_OWNER" -f "$ROOT/supabase/tests/content-planning-fixture.sql"
+UNCHANGED_ACCESS_BEFORE=$(snapshot_unchanged_access)
+$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "set role $MIGRATION_OWNER" -f "$ROOT/supabase/content-planning.sql"
+PLANNING_ACCESS_FIRST=$(snapshot_planning_access)
+test "$(snapshot_unchanged_access)" = "$UNCHANGED_ACCESS_BEFORE"
+
+# Idempotence: repeat migration must preserve the same exact ACLs and leave
+# existing-table/default privileges unchanged. This does not claim partial recovery.
+$PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "set role $MIGRATION_OWNER" -f "$ROOT/supabase/content-planning.sql"
+test "$(snapshot_planning_access)" = "$PLANNING_ACCESS_FIRST"
+test "$(snapshot_unchanged_access)" = "$UNCHANGED_ACCESS_BEFORE"
 
 $PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/content-planning.integration.sql"
 
@@ -133,10 +149,20 @@ test "$($PSQL "$FIREOVA_TEST_DATABASE_URL" -Atqc "select count(*) from public.po
 test "$($PSQL "$FIREOVA_TEST_DATABASE_URL" -Atqc "select count(*) from public.posts where user_id='33333333-3333-3333-3333-333333333333' and source_draft_id in ('$DRAFT_A','$DRAFT_B')")" = 2
 test "$($PSQL "$FIREOVA_TEST_DATABASE_URL" -Atqc "select jsonb_array_length(slots) from public.review_queue where user_id='33333333-3333-3333-3333-333333333333'")" = 0
 
-# Anonymous functions are rejected.
+# Additional auth-guard smoke check: even a privileged caller without a user
+# subject is rejected. Actual anon/service-role ACL denial is tested separately.
 if $PSQL "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "select public.save_review_queue_with_plan('[]'::jsonb,null)" >/dev/null 2>&1; then
-  echo "anonymous queue save unexpectedly succeeded" >&2
+  echo "subject-less queue save unexpectedly succeeded" >&2
   exit 1
 fi
 
-echo "content planning PostgreSQL integration suite passed"
+rm -rf "$RACE_DIR"
+echo "content planning PostgreSQL integration suite passed for $MIGRATION_OWNER"
+
+}
+
+# Both object-creation roles have broad live Supabase defaults. Exercise each
+# in a freshly reset disposable database; this does not alter production roles.
+run_owner_suite postgres
+run_owner_suite supabase_admin
+echo "content planning PostgreSQL integration suite passed for both ACL owners"

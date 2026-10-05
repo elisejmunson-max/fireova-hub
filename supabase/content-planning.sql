@@ -48,6 +48,7 @@ alter table public.content_plan_slots enable row level security;
 drop policy if exists "Users manage own content plan" on public.content_plan_slots;
 create policy "Users manage own content plan"
   on public.content_plan_slots for all
+  to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -437,11 +438,35 @@ end;
 $$;
 
 alter table public.content_plan_slots validate constraint content_plan_slots_state_shape_check;
-grant select, insert, update, delete on public.content_plan_slots to authenticated;
-revoke all on function public.save_review_queue_with_plan(jsonb,text) from public;
-revoke all on function public.approve_review_draft(uuid[],text,text,text[],text,text,text,date,integer,text) from public;
-grant execute on function public.save_review_queue_with_plan(jsonb,text) to authenticated;
-grant execute on function public.approve_review_draft(uuid[],text,text,text[],text,text,text,date,integer,text) to authenticated;
+-- Supabase default ACLs can grant these roles privileges explicitly; revoking
+-- PUBLIC alone does not remove those grants. Normalize only planning objects.
+revoke all privileges on table public.content_plan_slots
+  from public, anon, authenticated, service_role;
+grant select, insert, update, delete on table public.content_plan_slots
+  to authenticated;
+
+revoke all privileges on function
+  public.content_plan_asset_key(jsonb),
+  public.content_plan_date(date, integer),
+  public.normalize_review_queue_slots(jsonb, date),
+  public.restore_review_queue_identity(jsonb, jsonb),
+  public.protect_review_queue_planning(),
+  public.mark_deleted_approved_slot_removed(),
+  public.save_review_queue_with_plan(jsonb, text),
+  public.approve_review_draft(uuid[], text, text, text[], text, text, text, date, integer, text)
+  from public, anon, authenticated, service_role;
+
+-- Invoker RPCs/triggers call these four helpers. Trigger functions themselves
+-- need no client EXECUTE grant; the migration owner creates the triggers.
+-- No service-role workflow is needed by the authenticated planning routes.
+grant execute on function
+  public.content_plan_asset_key(jsonb),
+  public.content_plan_date(date, integer),
+  public.normalize_review_queue_slots(jsonb, date),
+  public.restore_review_queue_identity(jsonb, jsonb),
+  public.save_review_queue_with_plan(jsonb, text),
+  public.approve_review_draft(uuid[], text, text, text[], text, text, text, date, integer, text)
+  to authenticated;
 
 notify pgrst, 'reload schema';
 commit;
