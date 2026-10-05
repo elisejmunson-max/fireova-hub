@@ -1,0 +1,75 @@
+name: Content planning PostgreSQL
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/content-planning-postgres.yml'
+      - 'supabase/content-planning.sql'
+      - 'supabase/tests/content-planning*'
+      - 'supabase/tests/run-content-planning-integration.sh'
+      - 'lib/manual-content-drafts*'
+      - 'app/api/review-queue/**'
+      - 'app/api/weekly-post/approve/**'
+      - 'app/(app)/dashboard/**'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    name: Isolated PostgreSQL 17 integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: fireova_content_planning_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U postgres -d fireova_content_planning_test'
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Disposable service credentials only. No application or production secrets.
+      FIREOVA_TEST_DATABASE_URL: postgresql://postgres:disposable-test-only@127.0.0.1:5432/fireova_content_planning_test
+    steps:
+      - name: Check out the exact pull request head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Ensure PostgreSQL client is available
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+          psql --version
+      - name: Run fake-data migration, RLS, rollback, replay and concurrency tests
+        run: bash -x supabase/tests/run-content-planning-integration.sh
+      - name: Verify tests used a real non-bypass RLS role
+        run: |
+          psql "$FIREOVA_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set local role authenticated;
+          select public.test_assert(
+            (select not rolsuper and not rolbypassrls from pg_roles where rolname=current_user),
+            'authenticated role is neither superuser nor BYPASSRLS'
+          );
+          select public.test_assert(
+            row_security_active('public.review_queue') and row_security_active('public.content_plan_slots'),
+            'row-level security is active for queue and planning tables'
+          );
+          rollback;
+          SQL
+      - name: Show disposable database errors after a failure
+        if: failure()
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: docker logs "$POSTGRES_CONTAINER"
