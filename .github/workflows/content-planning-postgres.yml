@@ -8,6 +8,8 @@ on:
       - 'supabase/content-planning.sql'
       - 'supabase/tests/content-planning*'
       - 'supabase/tests/run-content-planning-integration.sh'
+      - 'supabase/tests/run-content-planning-guard.py'
+      - 'supabase/tests/migration-guard/**'
       - 'lib/manual-content-drafts*'
       - 'app/api/review-queue/**'
       - 'app/api/weekly-post/approve/**'
@@ -68,6 +70,8 @@ jobs:
           );
           rollback;
           SQL
+      - name: Rehearse guarded migration success and rollback with fake baselines
+        run: python3 supabase/tests/run-content-planning-guard.py
       - name: Show disposable database errors after a failure
         if: failure()
         env:

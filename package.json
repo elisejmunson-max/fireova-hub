@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:media-bank": "node --test lib/media-bank-*.test.ts",
+    "test:media-bank:browser": "node tests/media-bank-browser.mjs",
+    "typecheck:media-bank": "tsc --noEmit --project tsconfig.media-bank.json",
     "test:monthly-planning": "node --test lib/manual-content-drafts.test.ts lib/monthly-planning.test.ts tests/monthly-planning-api.test.mjs",
     "test:monthly-planning:browser": "node tests/monthly-planning-browser.mjs",
     "typecheck:monthly-planning": "tsc --noEmit --project tsconfig.monthly-planning.json"
