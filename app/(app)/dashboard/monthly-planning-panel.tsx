@@ -62,6 +62,18 @@ export default function MonthlyPlanningPanel({ open, onClose, anchor, refreshKey
       afterClose.current = action || null; window.history.back();
     } else { onCloseRef.current(); action?.(); }
   }, [mobile]);
+  // Keep this listener mounted while the sheet closes. The dashboard's own
+  // popstate handler can render the closed state before transient listeners run.
+  useEffect(() => {
+    const pop = () => {
+      if (historyToken.current && window.history.state?.fireovaMonthlyPanel === historyToken.current) return;
+      const action = afterClose.current; afterClose.current = null;
+      if (historyToken.current) onCloseRef.current();
+      if (action) requestAnimationFrame(action);
+    };
+    window.addEventListener('popstate', pop);
+    return () => window.removeEventListener('popstate', pop);
+  }, []);
   useEffect(() => {
     if (!open || !mobile) { closing.current = false; return; }
     closing.current = false;
@@ -69,12 +81,6 @@ export default function MonthlyPlanningPanel({ open, onClose, anchor, refreshKey
     const token = typeof previousHistory?.fireovaMonthlyPanel === 'string' ? previousHistory.fireovaMonthlyPanel : crypto.randomUUID();
     historyToken.current = token;
     if (previousHistory?.fireovaMonthlyPanel !== token) window.history.pushState({ ...previousHistory, fireovaMonthlyPanel: token }, '');
-    const pop = () => {
-      if (window.history.state?.fireovaMonthlyPanel === token) return;
-      onCloseRef.current(); const action = afterClose.current; afterClose.current = null;
-      if (action) requestAnimationFrame(action);
-    };
-    window.addEventListener('popstate', pop);
     const previous = document.activeElement as HTMLElement | null, overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden'; panelRef.current?.focus();
     const keydown = (event: KeyboardEvent) => {
@@ -86,7 +92,7 @@ export default function MonthlyPlanningPanel({ open, onClose, anchor, refreshKey
       else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panelRef.current)) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', keydown);
-    return () => { window.removeEventListener('popstate', pop); document.removeEventListener('keydown', keydown); document.body.style.overflow = overflow; if (window.history.state?.fireovaMonthlyPanel === token) window.history.replaceState({ ...previousHistory, fireovaMonthlyPanel: undefined }, ''); historyToken.current = null; requestAnimationFrame(() => { if (previous?.isConnected) previous.focus(); }); };
+    return () => { document.removeEventListener('keydown', keydown); document.body.style.overflow = overflow; if (window.history.state?.fireovaMonthlyPanel === token) window.history.replaceState({ ...previousHistory, fireovaMonthlyPanel: undefined }, ''); historyToken.current = null; requestAnimationFrame(() => { if (previous?.isConnected) previous.focus(); }); };
   }, [open, mobile, closePanel]);
 
   async function save(priorities: MonthlyPriority[], revision = state.plan?.features.revision, key = month) {
