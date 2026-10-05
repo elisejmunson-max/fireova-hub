@@ -1,0 +1,53 @@
+name: Media Bank regression
+
+on:
+  pull_request:
+    paths:
+      - 'app/(app)/media-bank/**'
+      - 'app/api/media-bank/**'
+      - 'lib/media-bank-*.ts'
+      - 'tests/media-bank-browser.mjs'
+      - 'tests/fixtures/media-bank-*'
+      - 'tsconfig.media-bank.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/media-bank-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  media-bank:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Focused strict typecheck
+        run: npm run typecheck:media-bank
+      - name: Pagination and thumbnail security tests
+        run: npm run test:media-bank
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser fixtures and request proof
+        env:
+          MEDIA_BANK_EVIDENCE_DIR: ${{ runner.temp }}/media-bank-evidence
+        run: npm run test:media-bank:browser
+      - name: Save fixture reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: media-bank-regression-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/media-bank-evidence
+          if-no-files-found: warn
+          retention-days: 7
