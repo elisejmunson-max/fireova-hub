@@ -27,6 +27,8 @@ type Page = {
   hasMore: boolean;
   nextOffset: number;
 };
+type ExportAsset={id:string;filename:string;export_name:string;file_type:string;size_bytes:number;created_at:string;tags?:string[]|null;ai_categories?:string[]|null;notes?:string|null;folder_id?:string|null;photographer?:string|null};
+type ExportData={assets:ExportAsset[];manifest:Record<string,unknown>};
 const vals = (a: A, p: string) =>
   (a.tags || []).filter((t) => t.startsWith(p)).map((t) => t.slice(p.length));
 async function responseJson(r: Response) {
@@ -112,7 +114,13 @@ export default function MediaLibrary({
     [show, setShow] = useState(false),
     [slides, setSlides] = useState<A[]>([]),
     [showIndex, setShowIndex] = useState(0),
-    [playing, setPlaying] = useState(true);
+    [playing, setPlaying] = useState(true),
+    [exportData,setExportData]=useState<ExportData|null>(null),
+    [exportOpen,setExportOpen]=useState(false),
+    [exporting,setExporting]=useState(false),
+    [exportDone,setExportDone]=useState(0),
+    [exportFailed,setExportFailed]=useState<ExportAsset[]>([]),
+    [exportMessage,setExportMessage]=useState("");
   const mounted = useRef(true);
   const input = useRef<HTMLInputElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
@@ -122,6 +130,7 @@ export default function MediaLibrary({
     navigation = useRef(0),
     slideshowStarting = useRef(false),
     first = useRef(true),
+    exportController=useRef<AbortController|null>(null),
     sb = useMemo(() => createClient(), []),
     peopleFor = (a: A) => vals(a, "person:"),
     creditFor = (a: A) => vals(a, "photographer:")[0] || "",
@@ -540,6 +549,9 @@ export default function MediaLibrary({
     link.click();
     URL.revokeObjectURL(u);
   }
+  async function prepareExport(){setExportMessage("Checking your library…");setExportData(null);setExportFailed([]);setExportDone(0);setExportOpen(true);try{const response=await fetch("/api/media-bank/export"),data=await responseJson(response);if(!response.ok||!Array.isArray(data.assets))throw new Error(data.error||"Could not prepare export.");setExportData(data as ExportData);setExportMessage(`${data.assets.length} originals ready to export.`)}catch(reason){setExportMessage(reason instanceof Error?reason.message:"Could not prepare export.")}}
+  async function saveExportToFolder(only?:ExportAsset[]){if(!exportData||exporting)return;const picker=(window as Window&{showDirectoryPicker?: (options?:{mode?:string})=>Promise<any>}).showDirectoryPicker;if(!picker){setExportMessage("Folder saving needs Chrome or Edge. Use Download ZIP instead.");return}try{const chosen=await picker.call(window,{mode:"readwrite"}),folder=await chosen.getDirectoryHandle(`Fireova Media Bank ${new Date().toISOString().slice(0,10)}`,{create:true}),items=only||exportData.assets,controller=new AbortController();exportController.current=controller;setExporting(true);setExportDone(0);setExportFailed([]);const failed:ExportAsset[]=[];for(let index=0;index<items.length;index++){if(controller.signal.aborted)break;const asset=items[index];setExportMessage(`Saving ${index+1} of ${items.length}: ${asset.filename}`);try{const response=await fetch(`/api/media-bank/export/${encodeURIComponent(asset.id)}`,{signal:controller.signal});if(!response.ok||!response.body)throw new Error("download");const handle=await folder.getFileHandle(asset.export_name,{create:true}),writable=await handle.createWritable();await response.body.pipeTo(writable,{signal:controller.signal});setExportDone(index+1-failed.length)}catch(reason){if((reason as Error).name==="AbortError")break;failed.push(asset)}}if(!controller.signal.aborted){const manifest={...exportData.manifest,download_errors:failed.map(asset=>({id:asset.id,filename:asset.filename}))},handle=await folder.getFileHandle("fireova-media-bank-manifest.json",{create:true}),writable=await handle.createWritable();await writable.write(JSON.stringify(manifest,null,2));await writable.close();setExportFailed(failed);setExportMessage(failed.length?`${items.length-failed.length} saved. ${failed.length} could not be downloaded.`:`All ${items.length} originals and the manifest were saved.`)}else setExportMessage("Export cancelled. Files already saved remain in the folder.")}catch(reason){if((reason as Error).name!=="AbortError")setExportMessage(reason instanceof Error?reason.message:"Could not save the export.")}finally{setExporting(false);exportController.current=null}}
+  function downloadZip(){const link=document.createElement("a");link.href="/api/media-bank/export/archive";link.download="fireova-media-bank.zip";link.click();setExportMessage("ZIP download started. Keep this page open until your browser finishes it.")}
   async function remove(a: Pick<A, "id">) {
     const r = await fetch(`/api/media-assets/${encodeURIComponent(a.id)}`, {
       method: "DELETE",
@@ -659,6 +671,7 @@ export default function MediaLibrary({
           >
             {retagging ? "Tagging…" : "Refresh AI Tags"}
           </button>
+          <button onClick={()=>void prepareExport()} disabled={uploading||retagging||exporting} className="btn-secondary">↓ Download all</button>
           <button
             onClick={() => input.current?.click()}
             disabled={uploading || retagging}
@@ -704,6 +717,7 @@ export default function MediaLibrary({
           </button>
         </div>
       )}
+      {exportOpen&&<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Download all media"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold">Download all originals</h2><p className="mt-1 text-sm text-stone-500">Photos, videos, filenames and a metadata manifest. Video posters are not included.</p></div><button aria-label="Close export" disabled={exporting} onClick={()=>setExportOpen(false)} className="text-2xl text-stone-400">×</button></div><div className="mt-5 rounded-lg bg-stone-50 p-3 text-sm" aria-live="polite"><p>{exportMessage}</p>{exportData&&<p className="mt-1 text-xs text-stone-500">{exportDone} of {exportFailed.length?exportDone+exportFailed.length:exportData.assets.length} saved</p>}</div><div className="mt-5 grid gap-2 sm:grid-cols-2"><button onClick={()=>void saveExportToFolder()} disabled={!exportData||exporting} className="btn-primary justify-center">Choose folder</button><button onClick={downloadZip} disabled={!exportData||exporting} className="btn-secondary justify-center">Download ZIP</button></div>{exporting&&<button onClick={()=>exportController.current?.abort()} className="mt-3 w-full rounded-lg border px-4 py-2 text-sm font-semibold text-red-600">Cancel export</button>}{!exporting&&exportFailed.length>0&&<button onClick={()=>void saveExportToFolder(exportFailed)} className="mt-3 w-full rounded-lg border px-4 py-2 text-sm font-semibold">Retry {exportFailed.length} failed</button>}<p className="mt-4 text-xs leading-5 text-stone-500">Choose folder works best in Chrome or Edge and saves one original at a time without loading the whole library into memory. ZIP is a streamed fallback for libraries under 3.5 GB.</p></div></div>}
       {!loading && !error && activeCount === 0 ? (
         <div className="rounded-xl border border-dashed bg-white px-6 py-16 text-center">
           <h2 className="text-lg">No media found</h2>
