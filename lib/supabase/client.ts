@@ -1,18 +1,16 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/lib/types'
 
 export const supabaseConfigured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Use @supabase/supabase-js directly for browser clients.
-// @supabase/ssr (which pulls in ramda) is intentionally kept server-side only
-// to avoid bundling hundreds of ramda modules into the client JS.
+// Use the same cookie-backed session as Server Components and middleware.
 export function createClient() {
   if (!supabaseConfigured) {
     throw new Error('SUPABASE_NOT_CONFIGURED')
   }
-  return createSupabaseClient<Database>(
+  return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
